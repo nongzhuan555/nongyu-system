@@ -4,7 +4,7 @@
 
 农屿系统仓库以monorepo的单仓架构统一存放和管理了整个农屿产品矩阵下的所有代码
 
-**农屿产品体系：**
+**项目结构：**
 
 ```plaintext
 │  AGENTS.md（Agent开发指导文档）
@@ -24,31 +24,5 @@
     └─nongyu-tool-second（农屿工具-川农二课）
 ```
 
-## 各项目技术栈
-
-### nongyu-web-admin
-
-- 网络（axios）
-- 骨架（react 18）
-- UI（ant design）
-- 图表（echarts）
-- 样式（Tailwind CSS）
-- 路由（react router）
-- 语言（TS）
-- 状态管理（Zustand）
-- 构建工具（Vite）
-
-### nongyu-node-server
-
-- 数据库（MySQL）
-- 框架（Express）
-- 语言（Node.js+TS）
-- 构建工具（NPM）
-
-### nongyu-rn-app
-
-- 框架（React native）
-- 语言（TS）
-- 构建工具（Expo）
 
 

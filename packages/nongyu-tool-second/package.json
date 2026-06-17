@@ -1,0 +1,21 @@
+{
+  "name": "nongyu-tool-second",
+  "version": "1.0.0",
+  "description": "农屿二课工具库",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --watch",
+    "lint": "oxlint .",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "axios": "catalog:",
+    "iconv-lite": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1"
+  }
+}

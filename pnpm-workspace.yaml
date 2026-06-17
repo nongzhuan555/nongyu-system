@@ -1,0 +1,20 @@
+packages:
+  # 包含 apps 目录下的所有子项目，即农屿产品
+  - 'apps/*'
+  # 包含 packages 目录下的所有子项目，即农屿工具库
+  - 'packages/*'
+
+allowBuilds:
+  esbuild: set this to true or false
+
+# 项目统一依赖版本管理，不区分开发时依赖和运行时依赖，也不区分是否是全局依赖
+catalog:
+  typescript: "^5.7.0" #
+  tsup: "^8.0.0" #
+  oxfmt: "^0.10.0" #
+  oxlint: "^0.10.0" #
+  vite: "^8.0.0" #
+  axios: "^1.17.0" #
+  iconv-lite: "^0.7.2" #
+  buffer: "^6.0.3" #
+  mitt: "^3.0.1" #

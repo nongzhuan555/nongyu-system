@@ -1,0 +1,30 @@
+{
+  "name": "nongyu-agent-cli",
+  "version": "1.0.0",
+  "description": "CLI version of nongyu-agent-sdk",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "nongyu": "./bin/nongyu.js"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --clean",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "lint": "oxlint .",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "boxen": "^8.0.1",
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "conf": "^13.1.0",
+    "nongyu-agent-sdk": "workspace:*",
+    "ora": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "tsx": "^4.19.2"
+  }
+}

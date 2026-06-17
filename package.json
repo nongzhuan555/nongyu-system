@@ -1,0 +1,31 @@
+{
+  "name": "nongyu-system",
+  "version": "1.0.0",
+  "description": "农屿系统，本项目使用单仓架构管理农屿系统下的所有产品以及工具库",
+  "author": "tanglei",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
+    "fmt": "oxfmt . --write",
+    "fmt:check": "oxfmt . --check",
+    "type-check": "pnpm -r type-check"
+  },
+  "keywords": [
+    "university",
+    "nongyu",
+    "jiaowu",
+    "sicau"
+  ],
+  "packageManager": "pnpm@11.5.1",
+  "devDependencies": {
+    "typescript": "catalog:",
+    "tsup": "catalog:",
+    "oxlint": "catalog:",
+    "oxfmt": "catalog:",
+    "vite": "catalog:"
+  }
+}

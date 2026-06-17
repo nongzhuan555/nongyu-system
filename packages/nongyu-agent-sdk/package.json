@@ -1,0 +1,35 @@
+{
+  "name": "nongyu-agent-sdk",
+  "version": "1.0.0",
+  "description": "农屿系统内部专用的Agent SDK",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "oxlint \"src/**/*.ts\"",
+    "type-check": "tsc --noEmit",
+    "test": "tsx test/test.ts",
+    "debug": "tsx test/debug-cli.ts"
+  },
+  "dependencies": {
+    "axios": "catalog:",
+    "iconv-lite": "catalog:",
+    "mitt": "catalog:",
+    "zod": "^3.23.0",
+    "nongyu-tool-jiaowu": "workspace:*",
+    "nongyu-tool-second": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "tsx": "^4.19.2"
+  }
+}

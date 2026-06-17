@@ -1,6 +1,12 @@
 # 依赖项
 node_modules/
 
+# 编译输出
+dist/
+build/
+.expo/
+*.tsbuildinfo
+
 # 旧代码
 old-code/
 

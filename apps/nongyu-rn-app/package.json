@@ -1,0 +1,30 @@
+{
+  "name": "nongyu-rn-app",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "lint": "oxlint .",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "expo": "~52.0.31",
+    "expo-status-bar": "~2.0.1",
+    "react": "18.3.1",
+    "react-native": "0.76.7",
+    "nongyu-tool-jiaowu": "workspace:*",
+    "nongyu-agent-sdk": "workspace:*",
+    "axios": "catalog:",
+    "swr": "^2.3.2",
+    "mobx": "^6.13.6",
+    "mobx-react-lite": "^4.1.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@types/react": "~18.3.12"
+  },
+  "private": true
+}
