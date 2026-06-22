@@ -173,8 +173,14 @@ function convertMessage(msg: ModelMessage): Record<string, unknown> {
     content: msg.content,
   };
 
-  if (msg.name) result.name = msg.name;
-  if (msg.tool_call_id) result.tool_call_id = msg.tool_call_id;
+  if (msg.role === 'tool') {
+    // tool 角色消息必须有 name 字段（DeepSeek 等厂商强制要求）
+    result.name = msg.name ?? '';
+    if (msg.tool_call_id) result.tool_call_id = msg.tool_call_id;
+  } else {
+    if (msg.name) result.name = msg.name;
+    if (msg.tool_call_id) result.tool_call_id = msg.tool_call_id;
+  }
   if (msg.tool_calls && msg.tool_calls.length > 0) {
     result.tool_calls = msg.tool_calls;
   }

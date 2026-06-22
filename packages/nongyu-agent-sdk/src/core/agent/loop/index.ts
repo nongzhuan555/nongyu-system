@@ -190,6 +190,7 @@ export class AgentLoop {
                   role: 'tool',
                   content: skipResult,
                   toolCallId: tc.id,
+                  name: tc.function.name,
                   timestamp: Date.now(),
                 });
                 continue;
@@ -380,7 +381,24 @@ export class AgentLoop {
           }
 
           if (delta.toolCalls) {
-            toolCallsAccum = delta.toolCalls;
+            // 流式 tool_call 分多个 delta 发送（先 name，后 arguments），按 index 合并
+            for (const tc of delta.toolCalls) {
+              const idx = tc.index ?? toolCallsAccum.length;
+              if (!toolCallsAccum[idx]) {
+                toolCallsAccum[idx] = { id: tc.id, type: tc.type, function: { ...tc.function } };
+              } else {
+                const cur = toolCallsAccum[idx];
+                if (tc.id) cur.id = tc.id;
+                if (tc.type) cur.type = tc.type;
+                if (tc.function) {
+                  if (!cur.function) cur.function = {};
+                  if (tc.function.name) cur.function.name = tc.function.name;
+                  if (tc.function.arguments) {
+                    cur.function.arguments = (cur.function.arguments ?? '') + tc.function.arguments;
+                  }
+                }
+              }
+            }
           }
 
           if (delta.finishReason) {
@@ -391,6 +409,15 @@ export class AgentLoop {
         totalTokens += 100; // 流式模式下 usage 可能不精确，估算
 
         if (toolCallsAccum.length > 0) {
+          // 添加 assistant 消息（包含 tool_calls），确保下一轮上下文完整
+          messages.push({
+            id: this.generateId(),
+            role: 'assistant',
+            content: fullText || '',
+            toolCalls: toolCallsAccum,
+            timestamp: Date.now(),
+          });
+
           // 执行工具调用（含审批检查）
           for (const tc of toolCallsAccum) {
             if (!tc.function?.name) continue;

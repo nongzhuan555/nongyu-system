@@ -26,6 +26,7 @@ export type {
   GenerateConfig,
   GenerateResult,
   StreamDelta,
+  StreamToolCallDelta,
   ToolSchema,
 } from './model';
 

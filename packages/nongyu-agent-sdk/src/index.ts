@@ -97,6 +97,7 @@ export type {
   GenerateConfig,
   GenerateResult,
   StreamDelta,
+  StreamToolCallDelta,
   ToolSchema,
 
   // Context
@@ -122,6 +123,14 @@ export type {
   InboundEnvelope,
   OutboundEnvelope,
 } from './types';
+
+// ===== React Hooks（使用方需自行安装 react >=18）=====
+export { useAgentChat } from './hooks';
+export type {
+  ChatMessage,
+  UseAgentChatConfig,
+  UseAgentChatReturn,
+} from './hooks';
 
 export type {
   SDKConfig,

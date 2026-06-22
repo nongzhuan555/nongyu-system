@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod';
-import { tool } from './index';
+import { tool } from '../index';
 import {
   // jiaowuLogin, 教务登录不封装成Agent用的tool
   // setLoginData, 同理,也不由Agent直接使用

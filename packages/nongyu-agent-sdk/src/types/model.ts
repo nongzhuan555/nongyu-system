@@ -62,11 +62,16 @@ export interface GenerateResult {
 
 // ===== 流式增量 =====
 
+/** 流式返回的 tool_call delta，包含 index 用于合并 */
+export interface StreamToolCallDelta extends Partial<ToolCall> {
+  index?: number;
+}
+
 export interface StreamDelta {
   /** 文本增量 */
   content?: string;
   /** 工具调用增量 */
-  toolCalls?: Partial<ToolCall>[];
+  toolCalls?: StreamToolCallDelta[];
   /** 结束原因 */
   finishReason?: string;
 }

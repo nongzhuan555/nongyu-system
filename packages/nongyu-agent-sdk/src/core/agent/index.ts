@@ -143,12 +143,12 @@ export class AgentImpl implements Agent {
     return this;
   }
 
-  on(event: keyof AgentEventMap, handler: AgentEventHandler<typeof event>): void {
-    this.events.on(event, handler);
+  on<E extends keyof AgentEventMap>(event: E, handler: AgentEventHandler<E>): void {
+    this.events.on(event, handler as AgentEventHandler<typeof event>);
   }
 
-  off(event: keyof AgentEventMap, handler: AgentEventHandler<typeof event>): void {
-    this.events.off(event, handler);
+  off<E extends keyof AgentEventMap>(event: E, handler: AgentEventHandler<E>): void {
+    this.events.off(event, handler as AgentEventHandler<typeof event>);
   }
 
   private updateStatus(status: AgentStatus): void {

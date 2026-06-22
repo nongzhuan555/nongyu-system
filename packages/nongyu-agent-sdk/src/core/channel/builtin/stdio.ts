@@ -127,6 +127,44 @@ export class StdioChannel implements ChannelPlugin {
     }
   }
 
+  async sendStream(stream: AsyncIterable<OutboundEnvelope>): Promise<void> {
+    // 输出 Agent 前缀开头
+    if (this.options.agentPrefix) {
+      process.stdout.write(this.options.agentPrefix);
+    }
+
+    for await (const chunk of stream) {
+      switch (chunk.chunkType) {
+        case 'text:delta':
+          // 文本增量：直接写入，不换行
+          process.stdout.write(chunk.content);
+          break;
+        case 'tool:call':
+          this.println(`\n  [🔧 调用工具] ${chunk.content}`);
+          break;
+        case 'tool:result':
+          this.println(`  [✅ 工具返回] ${chunk.content}`);
+          break;
+        case 'info':
+          this.println(`\n  [ℹ] ${chunk.content}`);
+          break;
+        case 'final':
+        default:
+          // 最终块或无标记块：换行输出
+          if (chunk.content) {
+            this.println(`\n${chunk.content}`);
+          }
+          break;
+      }
+    }
+
+    // 流结束后换行，恢复输入提示
+    process.stdout.write('\n');
+    if (this.rl && this.running) {
+      this.rl.prompt();
+    }
+  }
+
   // ===== 内部方法 =====
 
   private async handleLine(line: string): Promise<void> {

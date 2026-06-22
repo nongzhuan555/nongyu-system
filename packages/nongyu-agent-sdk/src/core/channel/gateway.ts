@@ -54,15 +54,32 @@ export class Gateway {
 
   // 发送出站消息（供 Agent 使用）
   async send(envelope: OutboundEnvelope): Promise<void> {
-    // 从 conversationId 中解析通道 ID
-    const channelId = envelope.conversationId.split(':')[0];
+    const channel = this.resolveChannel(envelope.conversationId);
+    await channel.send(envelope);
+  }
+
+  // 流式发送出站消息（供 Agent 使用）
+  async sendStream(conversationId: string, stream: AsyncIterable<OutboundEnvelope>): Promise<void> {
+    const channel = this.resolveChannel(conversationId);
+    if (channel.sendStream) {
+      await channel.sendStream(stream);
+    } else {
+      // 降级：收集所有块合并为一条完整消息
+      let content = '';
+      for await (const chunk of stream) {
+        content += chunk.content;
+      }
+      await channel.send({ conversationId, content });
+    }
+  }
+
+  // 从 conversationId 解析通道
+  private resolveChannel(conversationId: string): ChannelPlugin {
+    const channelId = conversationId.split(':')[0];
     const channel = this.channels.get(channelId);
-    
     if (!channel) {
       throw new Error(`通道未找到: ${channelId}`);
     }
-    
-    console.log(`[Gateway] 发送消息到 [${channelId}] ${envelope.conversationId}`);
-    await channel.send(envelope);
+    return channel;
   }
 }

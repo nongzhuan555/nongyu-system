@@ -20,6 +20,14 @@
     "test": "tsx test/test.ts",
     "debug": "tsx test/debug-cli.ts"
   },
+  "peerDependencies": {
+    "react": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
   "dependencies": {
     "axios": "catalog:",
     "iconv-lite": "catalog:",
@@ -30,6 +38,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.1",
+    "@types/react": "catalog:",
+    "react": "catalog:",
     "tsx": "^4.19.2"
   }
 }
