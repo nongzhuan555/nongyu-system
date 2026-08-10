@@ -1,24 +1,46 @@
 {
   "name": "nongyu-agent-gui",
-  "private": true,
   "version": "1.0.0",
+  "description": "农屿 Agent 聊天界面组件，支持 React DOM 嵌入使用",
   "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
+    "build": "tsup",
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint .",
-    "type-check": "tsc --noEmit",
-    "preview": "vite preview"
+    "lint": "oxlint \"src/**/*.{ts,tsx}\"",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "antd": "^5.24.1",
-    "nongyu-agent-sdk": "workspace:*"
+    "highlight.js": "catalog:",
+    "nongyu-agent-sdk": "workspace:*",
+    "react-markdown": "catalog:",
+    "rehype-highlight": "catalog:",
+    "rehype-sanitize": "catalog:",
+    "remark-gfm": "catalog:"
   },
   "devDependencies": {
-    "@types/react": "^19.0.8",
-    "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^4.3.4"
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "autoprefixer": "catalog:",
+    "postcss": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:"
   }
 }

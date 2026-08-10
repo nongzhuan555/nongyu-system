@@ -1,8 +1,8 @@
 packages:
   # 包含 apps 目录下的所有子项目，即农屿产品
-  - 'apps/*'
+  - "apps/*"
   # 包含 packages 目录下的所有子项目，即农屿工具库
-  - 'packages/*'
+  - "packages/*"
 
 allowBuilds:
   esbuild: set this to true or false
@@ -11,10 +11,28 @@ allowBuilds:
 catalog:
   typescript: "^5.7.0" #
   tsup: "^8.0.0" #
-  oxfmt: "^0.10.0" #
+  oxfmt: "^0.62.0" #
   oxlint: "^0.10.0" #
   vite: "^8.0.0" #
+  husky: "^9.1.7" #
+  lint-staged: "^17.3.0" #
+  "@commitlint/cli": "^21.2.1" #
+  "@commitlint/config-conventional": "^21.2.0" #
   axios: "^1.17.0" #
   iconv-lite: "^0.7.2" #
   buffer: "^6.0.3" #
   mitt: "^3.0.1" #
+  react: "^19.2.0" #
+  "@types/react": "^19.2.0" #
+  "@types/react-dom": "^19.2.0" #
+  react-dom: "^19.2.0" #
+  react-native: "^0.85.2" #
+  react-markdown: "^10.1.0" #
+  remark-gfm: "^4.0.0" #
+  rehype-highlight: "^7.0.0" #
+  rehype-sanitize: "^6.0.0" #
+  highlight.js: "^11.11.1" #
+  "@vitejs/plugin-react": "^4.3.4" #
+  autoprefixer: "^10.4.20" #
+  postcss: "^8.5.1" #
+  tailwindcss: "^3.4.17" #

@@ -1,9 +1,15 @@
 {
   "name": "nongyu-system",
   "version": "1.0.0",
-  "description": "农屿系统，本项目使用单仓架构管理农屿系统下的所有产品以及工具库",
-  "author": "tanglei",
   "private": true,
+  "description": "农屿系统，本项目使用单仓架构管理农屿系统下的所有产品以及工具库",
+  "keywords": [
+    "jiaowu",
+    "nongyu",
+    "sicau",
+    "university"
+  ],
+  "author": "tanglei",
   "main": "index.js",
   "scripts": {
     "dev": "pnpm -r --parallel dev",
@@ -12,20 +18,32 @@
     "lint:fix": "oxlint . --fix",
     "fmt": "oxfmt . --write",
     "fmt:check": "oxfmt . --check",
-    "type-check": "pnpm -r type-check"
+    "type-check": "pnpm -r type-check",
+    "prepare": "husky",
+    "codegraph:init": "codegraph init",
+    "codegraph:status": "codegraph status",
+    "codegraph:serve": "codegraph serve --mcp"
   },
-  "keywords": [
-    "university",
-    "nongyu",
-    "jiaowu",
-    "sicau"
-  ],
-  "packageManager": "pnpm@11.5.1",
   "devDependencies": {
-    "typescript": "catalog:",
-    "tsup": "catalog:",
-    "oxlint": "catalog:",
+    "@colbymchenry/codegraph": "1.5.0",
+    "@commitlint/cli": "catalog:",
+    "@commitlint/config-conventional": "catalog:",
+    "husky": "catalog:",
+    "lint-staged": "catalog:",
     "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:"
-  }
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "oxlint",
+      "oxfmt --write"
+    ],
+    "*.{json,md,yml,yaml,css,html}": [
+      "oxfmt --write"
+    ]
+  },
+  "packageManager": "pnpm@11.5.1"
 }

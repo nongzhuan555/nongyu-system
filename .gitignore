@@ -26,3 +26,11 @@ yarn-error.log*
 
 # vscode 相关文件
 .vscode/
+
+# MCP 配置含数据库密码，不提交
+.cursor/mcp.json
+
+# CodeGraph 本地索引（本机生成，不入库）
+.codegraph/
+.codegraph-*/
+
