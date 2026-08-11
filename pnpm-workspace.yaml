@@ -5,7 +5,9 @@ packages:
   - "packages/*"
 
 allowBuilds:
-  esbuild: set this to true or false
+  dtrace-provider: false
+  esbuild: true
+  react-native-update: true
 
 # 项目统一依赖版本管理，不区分开发时依赖和运行时依赖，也不区分是否是全局依赖
 catalog:

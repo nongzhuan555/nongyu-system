@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "农屿",
+    "slug": "nongyu",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "nongyu",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#E8F5E9"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nongyu.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#E8F5E9"
+      },
+      "package": "com.nongyu.app",
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true,
+      "permissions": ["android.permission.RECORD_AUDIO"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-image-picker",
+      "expo-web-browser",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#E8F5E9",
+          "image": "./assets/splash-icon.png"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d35f7507-58a6-459b-8e27-9874ea2609fa"
+      }
+    },
+    "owner": "devtangleis-team"
+  }
+}

@@ -30,6 +30,12 @@ yarn-error.log*
 # MCP 配置含数据库密码，不提交
 .cursor/mcp.json
 
+# 业务 MySQL 连接信息（含口令，禁止入库）
+docs/nongyu-node-server/数据库连接信息.md
+
+# 运维脚本含 SSH / MySQL 口令，禁止入库
+scripts/ops/
+
 # CodeGraph 本地索引（本机生成，不入库）
 .codegraph/
 .codegraph-*/
