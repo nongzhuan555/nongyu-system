@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { Tabs } from "expo-router";
-import { BlurTargetRoot } from "@/components/navigation/BlurTargetContext";
+import { BlurTargetProvider, BlurTargetSurface } from "@/components/navigation/BlurTargetContext";
 import { FloatingTabBar } from "@/components/navigation/FloatingTabBar";
 import { lightTokens } from "@/theme/tokens";
 
@@ -10,30 +10,32 @@ export const unstable_settings = {
 };
 
 /**
- * 主 Tab 容器：页面在 BlurTarget 内，悬浮底栏在外侧采样毛玻璃
+ * 主 Tab 容器：Provider 同时包住页面与底栏，Surface 只包页面作采样目标
  */
 export default function TabsLayout() {
   return (
-    <View style={styles.root}>
-      <BlurTargetRoot>
-        <Tabs
-          tabBar={() => null}
-          screenOptions={{
-            headerShown: false,
-            sceneStyle: {
-              backgroundColor: lightTokens.color.background,
-            },
-          }}
-        >
-          <Tabs.Screen name="index" options={{ href: null }} />
-          <Tabs.Screen name="home" options={{ title: "首页" }} />
-          <Tabs.Screen name="course" options={{ title: "课表" }} />
-          <Tabs.Screen name="center" options={{ title: "广场" }} />
-          <Tabs.Screen name="mine" options={{ title: "我的" }} />
-        </Tabs>
-      </BlurTargetRoot>
-      <FloatingTabBar />
-    </View>
+    <BlurTargetProvider>
+      <View style={styles.root}>
+        <BlurTargetSurface>
+          <Tabs
+            tabBar={() => null}
+            screenOptions={{
+              headerShown: false,
+              sceneStyle: {
+                backgroundColor: lightTokens.color.background,
+              },
+            }}
+          >
+            <Tabs.Screen name="index" options={{ href: null }} />
+            <Tabs.Screen name="home" options={{ title: "首页" }} />
+            <Tabs.Screen name="course" options={{ title: "课表" }} />
+            <Tabs.Screen name="center" options={{ title: "广场" }} />
+            <Tabs.Screen name="mine" options={{ title: "我的" }} />
+          </Tabs>
+        </BlurTargetSurface>
+        <FloatingTabBar />
+      </View>
+    </BlurTargetProvider>
   );
 }
 

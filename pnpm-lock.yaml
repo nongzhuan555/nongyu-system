@@ -32,7 +32,7 @@ catalogs:
       version: 6.0.3
     highlight.js:
       specifier: ^11.11.1
-      version: 11.11.1
+      version: 11.11.2
     husky:
       specifier: ^9.1.7
       version: 9.1.7
@@ -204,6 +204,9 @@ importers:
       axios:
         specifier: 'catalog:'
         version: 1.17.0
+      buffer:
+        specifier: 'catalog:'
+        version: 6.0.3
       dayjs:
         specifier: ^1.11.13
         version: 1.11.21
@@ -315,6 +318,9 @@ importers:
       react-native-worklets:
         specifier: 0.10.1
         version: 0.10.1(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.16)(react@19.2.3))(react@19.2.3)
+      string_decoder:
+        specifier: ^1.3.0
+        version: 1.3.0
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -428,7 +434,7 @@ importers:
     dependencies:
       highlight.js:
         specifier: 'catalog:'
-        version: 11.11.1
+        version: 11.11.2
       nongyu-agent-sdk:
         specifier: workspace:*
         version: link:../nongyu-agent-sdk
@@ -4572,8 +4578,8 @@ packages:
   hermes-parser@0.36.1:
     resolution: {integrity: sha512-GApNk4zLHi2UWoWZZkx7LNCOSzLSc5lB55pZ/PhK7ycFeg7u5LcF88p/WbpIi1XUDtE0MpHE3uRR3u3KB7TjSQ==}
 
-  highlight.js@11.11.1:
-    resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
+  highlight.js@11.11.2:
+    resolution: {integrity: sha512-oaXMACAU0kzOMXBjWpNcX+vlwSBCIAiZ9BHa7gA15NOTtT2L/l8OSZDuqS2XppOhZBPJ7hm4o8ep2kyuip2uEQ==}
     engines: {node: '>=12.0.0'}
 
   hoist-non-react-statics@3.3.2:
@@ -6671,6 +6677,9 @@ packages:
   string-width@8.2.2:
     resolution: {integrity: sha512-GaPUh5gfdrYzqeVNZvUfT23vYYxXzKYidUcnMtJg/3rxRV63EFZy3k6xfKlmfeJD0176lnUV/Usr3XcwSvFzpg==}
     engines: {node: '>=20'}
+
+  string_decoder@1.3.0:
+    resolution: {integrity: sha512-hkRX8U1WjJFd8LsDJ2yQ/wWWxaopEsABU1XfkM8A+j0+85JAGppt16cr1Whg6KIbb4okU6Mql6BOj+uup/wKeA==}
 
   stringify-entities@4.0.4:
     resolution: {integrity: sha512-IwfBptatlO+QCJUo19AqvrPNqlVMpW9YEL2LIVY+Rpv2qsjCGxaDLNRgeGsQWJhfItebuJhsGSLjaBbNSQ+ieg==}
@@ -12052,7 +12061,7 @@ snapshots:
     dependencies:
       hermes-estree: 0.36.1
 
-  highlight.js@11.11.1: {}
+  highlight.js@11.11.2: {}
 
   hoist-non-react-statics@3.3.2:
     dependencies:
@@ -12445,7 +12454,7 @@ snapshots:
     dependencies:
       '@types/hast': 3.0.4
       devlop: 1.1.0
-      highlight.js: 11.11.1
+      highlight.js: 11.11.2
 
   lru-cache@10.4.3: {}
 
@@ -14607,6 +14616,10 @@ snapshots:
     dependencies:
       get-east-asian-width: 1.6.0
       strip-ansi: 7.2.0
+
+  string_decoder@1.3.0:
+    dependencies:
+      safe-buffer: 5.2.1
 
   stringify-entities@4.0.4:
     dependencies:
