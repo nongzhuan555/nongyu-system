@@ -5,7 +5,7 @@
 
 import { extractKaikeInfo } from "../extractor/kaikeInfoExtractor";
 import type { KaikeItem, KaikeResult, KaikeInfoResult } from "../extractor/kaikeInfoExtractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 export type { KaikeItem, KaikeResult, KaikeInfoResult };
 
@@ -45,6 +45,6 @@ export const getKaikeInfo = async (): Promise<KaikeInfoResult> => {
     return extractKaikeInfo(html);
   } catch (error) {
     console.error("获取开课目录失败:", error);
-    return { result: null, success: false };
+    return jiaowuFailResult(null, error);
   }
 };

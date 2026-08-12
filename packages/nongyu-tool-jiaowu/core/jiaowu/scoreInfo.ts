@@ -3,7 +3,7 @@
  */
 
 import { extractScoreInfo } from "../extractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 /**
  * 教务网成绩查询页面 URL
@@ -72,9 +72,6 @@ export const getScoreInfo = async () => {
     return extractScoreInfo(html);
   } catch (error) {
     console.error("获取成绩信息失败:", error);
-    return {
-      result: [],
-      success: false,
-    };
+    return jiaowuFailResult([], error);
   }
 };

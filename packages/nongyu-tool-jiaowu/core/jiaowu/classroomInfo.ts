@@ -4,7 +4,7 @@
 
 import { extractClassroomInfo } from "../extractor/classroomInfoExtractor";
 import type { ClassroomInfo, ClassroomInfoResult } from "../extractor/classroomInfoExtractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 export type { ClassroomInfo, ClassroomInfoResult };
 
@@ -27,6 +27,6 @@ export const getClassroomInfo = async (searchWord: string): Promise<ClassroomInf
     return extractClassroomInfo(html);
   } catch (error) {
     console.error("获取教室信息失败:", error);
-    return { result: null, success: false };
+    return jiaowuFailResult(null, error);
   }
 };

@@ -3,7 +3,7 @@
  */
 
 import { extractExamInfo } from "../extractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 /**
  * 教务网考试安排查询页面 URL
@@ -73,9 +73,6 @@ export const getExamInfo = async () => {
     return extractExamInfo(html);
   } catch (error) {
     console.error("获取考试安排失败:", error);
-    return {
-      result: [],
-      success: false,
-    };
+    return jiaowuFailResult([], error);
   }
 };

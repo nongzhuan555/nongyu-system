@@ -25,6 +25,8 @@ type JiaowuPageShellProps = {
   loading?: boolean;
   /** 无数据且失败 */
   error?: boolean;
+  /** 失败页文案（如超时校园网提示） */
+  errorMessage?: string;
   /** 成功但空列表 */
   empty?: boolean;
   emptyText?: string;
@@ -46,6 +48,7 @@ export function JiaowuPageShell({
   children,
   loading,
   error,
+  errorMessage,
   empty,
   emptyText,
   onRetry,
@@ -62,7 +65,7 @@ export function JiaowuPageShell({
   if (loading) {
     body = <JiaowuListSkeleton />;
   } else if (error) {
-    body = <JiaowuErrorView onRetry={onRetry} />;
+    body = <JiaowuErrorView onRetry={onRetry} message={errorMessage} />;
   } else if (empty) {
     body = <JiaowuEmptyView text={emptyText} />;
   }

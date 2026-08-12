@@ -24,6 +24,7 @@ const STALE_MS: Record<JiaowuResource, number> = {
 type ToolResult<T> = {
   success: boolean;
   result: T;
+  message?: string;
 };
 
 type UseJiaowuQueryOptions<T> = {
@@ -57,7 +58,7 @@ export function useJiaowuQuery<T>({
     queryFn: async () => {
       const res = await queryFn();
       if (!res.success) {
-        throw new Error("教务数据获取失败");
+        throw new Error(res.message || "教务数据获取失败");
       }
       return res.result;
     },
@@ -69,12 +70,13 @@ export function useJiaowuQuery<T>({
   const refresh = async () => {
     try {
       await query.refetch({ throwOnError: true });
-    } catch {
+    } catch (err) {
       if (query.data !== undefined) {
+        const detail = err instanceof Error && err.message ? err.message : "请稍后重试";
         Toast.show({
           type: "error",
           text1: "刷新失败",
-          text2: "已保留上次数据，请稍后重试",
+          text2: `已保留上次数据。${detail}`,
         });
       }
     }

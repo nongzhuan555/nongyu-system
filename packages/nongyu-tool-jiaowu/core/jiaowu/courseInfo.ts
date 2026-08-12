@@ -3,7 +3,7 @@
  */
 
 import { extractCourseInfo } from "../extractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 /**
  * 教务网班级课表查询页面 URL
@@ -99,9 +99,6 @@ export const getCourseInfo = async () => {
     return extractCourseInfo(html);
   } catch (error) {
     console.error("获取课表信息失败:", error);
-    return {
-      result: [],
-      success: false,
-    };
+    return jiaowuFailResult([], error);
   }
 };

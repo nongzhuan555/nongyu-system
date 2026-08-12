@@ -5,7 +5,7 @@
 
 import { extractCompetitionInfo } from "../extractor/competitionInfoExtractor";
 import type { NoticeItem, NoticeResult } from "../extractor/competitionInfoExtractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 export type { NoticeItem, NoticeResult };
 
@@ -71,6 +71,6 @@ export const getCompetitionInfo = async (): Promise<NoticeResult> => {
     return extractCompetitionInfo(html);
   } catch (error) {
     console.error("获取竞赛通知失败:", error);
-    return { result: [], success: false };
+    return jiaowuFailResult([], error);
   }
 };

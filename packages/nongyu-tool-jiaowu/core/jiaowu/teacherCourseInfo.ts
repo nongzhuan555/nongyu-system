@@ -13,7 +13,7 @@ import type {
   TeacherCourseInfoResult,
   TeacherSearchItem,
 } from "../extractor/teacherCourseInfoExtractor";
-import { fetchJiaowuHtml, encodeGbkUrl } from "../utils";
+import { fetchJiaowuHtml, encodeGbkUrl, jiaowuFailResult } from "../utils";
 
 /**
  * 教师姓名搜索 URL
@@ -147,6 +147,6 @@ export const getTeacherCourseInfoByName = async (
     return extractTeacherCourseInfo(html);
   } catch (error) {
     console.error("获取教师课表失败:", error);
-    return { result: null, success: false };
+    return jiaowuFailResult(null, error);
   }
 };

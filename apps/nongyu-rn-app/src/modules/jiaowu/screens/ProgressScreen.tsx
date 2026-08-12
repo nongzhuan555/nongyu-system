@@ -8,7 +8,7 @@ import { lightTokens } from "@/theme/tokens";
  * 学业进度页
  */
 export function ProgressScreen() {
-  const { data, isPending, isError, isFetching, isRefetching, refresh } = useJiaowuQuery({
+  const { data, isPending, isError, error, isFetching, isRefetching, refresh } = useJiaowuQuery({
     resource: "progress",
     requireAuth: true,
     queryFn: getProgressInfo,
@@ -22,6 +22,7 @@ export function ProgressScreen() {
       title="学业进度"
       loading={isPending && !data}
       error={isError && !data}
+      errorMessage={error instanceof Error ? error.message : undefined}
       empty={!!data && list.length === 0}
       emptyText="暂无进度数据"
       onRetry={refresh}

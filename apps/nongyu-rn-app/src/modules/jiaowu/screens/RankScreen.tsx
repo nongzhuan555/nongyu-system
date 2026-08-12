@@ -8,7 +8,7 @@ import { lightTokens } from "@/theme/tokens";
  * 专业排名页（单条卡片）
  */
 export function RankScreen() {
-  const { data, isPending, isError, isFetching, isRefetching, refresh } = useJiaowuQuery({
+  const { data, isPending, isError, error, isFetching, isRefetching, refresh } = useJiaowuQuery({
     resource: "rank",
     requireAuth: true,
     queryFn: getRankInfo,
@@ -21,6 +21,7 @@ export function RankScreen() {
       title="专业排名"
       loading={isPending && !data}
       error={isError && !data}
+      errorMessage={error instanceof Error ? error.message : undefined}
       empty={data === null}
       emptyText="暂无排名数据"
       onRetry={refresh}

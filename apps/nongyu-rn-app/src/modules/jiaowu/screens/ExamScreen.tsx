@@ -8,7 +8,7 @@ import { lightTokens } from "@/theme/tokens";
  * 考试安排页（独立于课表模块）
  */
 export function ExamScreen() {
-  const { data, isPending, isError, isFetching, isRefetching, refresh } = useJiaowuQuery({
+  const { data, isPending, isError, error, isFetching, isRefetching, refresh } = useJiaowuQuery({
     resource: "exam",
     requireAuth: true,
     queryFn: getExamInfo,
@@ -22,6 +22,7 @@ export function ExamScreen() {
       title="考试安排"
       loading={isPending && !data}
       error={isError && !data}
+      errorMessage={error instanceof Error ? error.message : undefined}
       empty={!!data && list.length === 0}
       emptyText="暂无考试安排"
       onRetry={refresh}

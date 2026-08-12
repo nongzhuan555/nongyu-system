@@ -19,6 +19,13 @@ export {
 // Cookie 桥接（冷启动恢复 / 持久化备份）
 export { getCookie, setCookie } from "./core/utils";
 
+// 超时/内网提示
+export {
+  JIAOWU_CAMPUS_NETWORK_HINT,
+  isJiaowuTimeoutError,
+  resolveJiaowuErrorMessage,
+} from "./core/utils";
+
 // 导出核心业务查询模块-仅限当前版本支持的功能
 export {
   getRankInfo, // 获取学生的加权平均成绩及专业排名

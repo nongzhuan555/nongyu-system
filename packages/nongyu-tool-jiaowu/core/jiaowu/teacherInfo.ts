@@ -4,7 +4,7 @@
 
 import { extractTeacherInfo } from "../extractor/teacherInfoExtractor";
 import type { TeacherInfo, TeacherInfoResult } from "../extractor/teacherInfoExtractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 export type { TeacherInfo, TeacherInfoResult };
 
@@ -26,6 +26,6 @@ export const getTeacherInfo = async (teacherCode: string): Promise<TeacherInfoRe
     return extractTeacherInfo(html);
   } catch (error) {
     console.error("获取教师信息失败:", error);
-    return { result: null, success: false };
+    return jiaowuFailResult(null, error);
   }
 };

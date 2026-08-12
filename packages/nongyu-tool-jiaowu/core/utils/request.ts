@@ -11,6 +11,7 @@ import axios, {
 } from "axios";
 import { decodeGbk } from "./decode";
 import { getCookie, setCookie } from "./cookie";
+import { isJiaowuTimeoutError, resolveJiaowuErrorMessage } from "./errors";
 
 /**
  * 教务网请求的通用 Headers
@@ -31,7 +32,7 @@ const COMMON_HEADERS: Record<string, string> = {
  * 设置超时时间、通用 Header，并指定响应类型为 arraybuffer 以便后续处理 GBK 编码
  */
 const service: AxiosInstance = axios.create({
-  timeout: 10000,
+  timeout: 20000,
   headers: COMMON_HEADERS,
   responseType: "arraybuffer", // 默认返回 arraybuffer 以便手动解码 GBK
 });
@@ -126,19 +127,23 @@ service.interceptors.response.use(
     return response;
   },
   async (error) => {
-    const config = error.config as ExtendedAxiosRequestConfig;
+    const config = error.config as ExtendedAxiosRequestConfig | undefined;
 
     // 如果是网络错误或其他异常，且重试次数未达上限（默认3次），进行重试
-    if (!config || (config._retryCount || 0) >= 3) {
-      return Promise.reject(error);
+    if (config && (config._retryCount || 0) < 3) {
+      config._retryCount = (config._retryCount || 0) + 1;
+      console.log(`网络错误或请求失败，正在进行第 ${config._retryCount} 次重试...`);
+
+      // 延迟 1s 后重试
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return service(config);
     }
 
-    config._retryCount = (config._retryCount || 0) + 1;
-    console.log(`网络错误或请求失败，正在进行第 ${config._retryCount} 次重试...`);
-
-    // 延迟 1s 后重试
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return service(config);
+    // 重试耗尽：超时统一抛出校园网提示，便于上层直接透出 message
+    if (isJiaowuTimeoutError(error)) {
+      return Promise.reject(new Error(resolveJiaowuErrorMessage(error)));
+    }
+    return Promise.reject(error);
   },
 );
 

@@ -8,7 +8,7 @@ import { lightTokens } from "@/theme/tokens";
  * 培养方案页：标题 + 课程列表
  */
 export function PlanScreen() {
-  const { data, isPending, isError, isFetching, isRefetching, refresh } = useJiaowuQuery({
+  const { data, isPending, isError, error, isFetching, isRefetching, refresh } = useJiaowuQuery({
     resource: "plan",
     requireAuth: true,
     queryFn: getPlanInfo,
@@ -22,6 +22,7 @@ export function PlanScreen() {
       title="培养方案"
       loading={isPending && !data}
       error={isError && !data}
+      errorMessage={error instanceof Error ? error.message : undefined}
       empty={data === null || (!!data && courses.length === 0)}
       emptyText="暂无培养方案"
       onRetry={refresh}

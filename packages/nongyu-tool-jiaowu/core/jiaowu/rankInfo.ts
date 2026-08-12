@@ -3,7 +3,7 @@
  */
 
 import { extractRankInfo } from "../extractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 /**
  * 教务网排名查询页面 URL
@@ -61,9 +61,6 @@ export const getRankInfo = async () => {
     return extractRankInfo(html);
   } catch (error) {
     console.error("获取排名信息失败:", error);
-    return {
-      result: null,
-      success: false,
-    };
+    return jiaowuFailResult(null, error);
   }
 };

@@ -3,7 +3,7 @@
  */
 
 import { extractProgressInfo } from "../extractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 /**
  * 教务网学业进度查询页面 URL
@@ -75,9 +75,6 @@ export const getProgressInfo = async () => {
     return extractProgressInfo(html);
   } catch (error) {
     console.error("获取学业进度失败:", error);
-    return {
-      result: [],
-      success: false,
-    };
+    return jiaowuFailResult([], error);
   }
 };

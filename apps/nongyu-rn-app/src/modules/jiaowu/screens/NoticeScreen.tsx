@@ -9,7 +9,7 @@ import { lightTokens } from "@/theme/tokens";
  * 教学通知列表页
  */
 export function NoticeScreen() {
-  const { data, isPending, isError, isFetching, isRefetching, refresh } = useJiaowuQuery({
+  const { data, isPending, isError, error, isFetching, isRefetching, refresh } = useJiaowuQuery({
     resource: "notice",
     requireAuth: false,
     queryFn: getTeachingNoticeInfo,
@@ -23,6 +23,7 @@ export function NoticeScreen() {
       title="教务通知"
       loading={isPending && !data}
       error={isError && !data}
+      errorMessage={error instanceof Error ? error.message : undefined}
       empty={!!data && list.length === 0}
       emptyText="暂无教学通知"
       onRetry={refresh}

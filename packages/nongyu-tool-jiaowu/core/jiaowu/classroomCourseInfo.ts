@@ -10,7 +10,7 @@ import type {
   ClassroomCourseResult,
   ClassroomCourseInfoResult,
 } from "../extractor/classroomCourseInfoExtractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 import { getClassroomInfo } from "./classroomInfo";
 
 /**
@@ -56,7 +56,7 @@ export const getClassroomCourseInfo = async (
     return extractClassroomCourseInfo(html);
   } catch (error) {
     console.error("获取教室课程信息失败:", error);
-    return { result: null, success: false };
+    return jiaowuFailResult(null, error);
   }
 };
 
@@ -152,6 +152,6 @@ export const getClassroomCourseInfoByName = async (
     return getClassroomCourseInfo(match.classroomId, referer);
   } catch (error) {
     console.error("获取教室课程信息失败:", error);
-    return { result: null, success: false };
+    return jiaowuFailResult(null, error);
   }
 };

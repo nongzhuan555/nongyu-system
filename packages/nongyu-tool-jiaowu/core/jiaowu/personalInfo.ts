@@ -3,7 +3,7 @@
  */
 
 import { extractPersonalInfo } from "../extractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 /**
  * 教务网个人信息页面 URL
@@ -64,9 +64,6 @@ export const getPersonalInfo = async () => {
     return extractPersonalInfo(html);
   } catch (error) {
     console.error("获取个人信息失败:", error);
-    return {
-      result: null,
-      success: false,
-    };
+    return jiaowuFailResult(null, error);
   }
 };

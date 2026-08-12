@@ -11,6 +11,14 @@ export { decodeToText, decodeGbk, encodeGbkUrl } from "./decode";
 // Cookie 管理
 export { getCookie, setCookie } from "./cookie";
 
+// 错误与超时提示
+export {
+  JIAOWU_CAMPUS_NETWORK_HINT,
+  isJiaowuTimeoutError,
+  resolveJiaowuErrorMessage,
+  jiaowuFailResult,
+} from "./errors";
+
 // 网页抓取
 export { fetchJiaowuHtml } from "./fetchJiaowuHtml";
 

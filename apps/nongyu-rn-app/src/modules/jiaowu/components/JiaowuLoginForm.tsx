@@ -41,7 +41,9 @@ export function JiaowuLoginForm({ onSuccess, compact }: JiaowuLoginFormProps) {
       Toast.show({
         type: "success",
         text1: "登录成功",
-        text2: result.nodeOk ? undefined : "本地教务会话已就绪",
+        text2: result.nodeOk
+          ? "教务会话与农屿 Token 均已就绪"
+          : "仅本地教务会话（农屿 Token 未签发）",
       });
       onSuccess?.();
     } finally {

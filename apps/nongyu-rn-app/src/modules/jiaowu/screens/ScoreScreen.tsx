@@ -26,7 +26,7 @@ function groupByTerm(items: ScoreRow[]): { term: string; items: ScoreRow[] }[] {
  * 成绩查询页
  */
 export function ScoreScreen() {
-  const { data, isPending, isError, isFetching, isRefetching, refresh } = useJiaowuQuery({
+  const { data, isPending, isError, error, isFetching, isRefetching, refresh } = useJiaowuQuery({
     resource: "score",
     requireAuth: true,
     queryFn: getScoreInfo,
@@ -41,6 +41,7 @@ export function ScoreScreen() {
       title="成绩查询"
       loading={isPending && !data}
       error={isError && !data}
+      errorMessage={error instanceof Error ? error.message : undefined}
       empty={!!data && list.length === 0}
       emptyText="暂无成绩"
       onRetry={refresh}

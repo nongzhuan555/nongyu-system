@@ -4,7 +4,7 @@
 
 import { extractTeachingNotices } from "../extractor";
 import { extractCompetitionInfo } from "../extractor/competitionInfoExtractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 /**
  * 教务网通知公告页面 URL
@@ -75,10 +75,7 @@ export const getNoticeInfo = async () => {
     };
   } catch (error) {
     console.error("获取教务通知失败:", error);
-    return {
-      result: [],
-      success: false,
-    };
+    return jiaowuFailResult([], error);
   }
 };
 
@@ -95,9 +92,6 @@ export const getTeachingNoticeInfo = async () => {
     return extractTeachingNotices(html);
   } catch (error) {
     console.error("获取教学通知失败:", error);
-    return {
-      result: [],
-      success: false,
-    };
+    return jiaowuFailResult([], error);
   }
 };

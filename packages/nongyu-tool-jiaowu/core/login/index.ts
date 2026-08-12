@@ -3,7 +3,12 @@
  * 负责维护用户凭据、执行登录请求以及生成/管理会话 Cookie
  */
 
-import { post, setCookie, type ExtendedAxiosRequestConfig } from "../utils";
+import {
+  post,
+  setCookie,
+  resolveJiaowuErrorMessage,
+  type ExtendedAxiosRequestConfig,
+} from "../utils";
 import { AxiosResponse } from "axios";
 
 /**
@@ -196,8 +201,9 @@ export async function jiaowuLogin(user?: string, pwd?: string) {
     }
 
     return { success: false, message: "登录失败，可能是学号密码错误或接口变动" };
-  } catch (error: any) {
-    console.error("登录请求异常:", error.message);
-    return { success: false, message: `登录异常: ${error.message}` };
+  } catch (error: unknown) {
+    const message = resolveJiaowuErrorMessage(error, "登录异常");
+    console.error("登录请求异常:", message);
+    return { success: false, message };
   }
 }

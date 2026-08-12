@@ -9,7 +9,7 @@ import { lightTokens } from "@/theme/tokens";
  * 竞赛通知列表页
  */
 export function CompetitionScreen() {
-  const { data, isPending, isError, isFetching, isRefetching, refresh } = useJiaowuQuery({
+  const { data, isPending, isError, error, isFetching, isRefetching, refresh } = useJiaowuQuery({
     resource: "competition",
     requireAuth: false,
     queryFn: getCompetitionInfo,
@@ -23,6 +23,7 @@ export function CompetitionScreen() {
       title="竞赛通知"
       loading={isPending && !data}
       error={isError && !data}
+      errorMessage={error instanceof Error ? error.message : undefined}
       empty={!!data && list.length === 0}
       emptyText="暂无竞赛通知"
       onRetry={refresh}

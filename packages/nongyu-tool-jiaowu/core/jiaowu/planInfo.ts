@@ -4,7 +4,7 @@
 
 import { extractPlanInfo, mergePlanCourses } from "../extractor/planInfoExtractor";
 import type { PlanInfo, PlanInfoResult, PlanCourse } from "../extractor/planInfoExtractor";
-import { fetchJiaowuHtml } from "../utils";
+import { fetchJiaowuHtml, jiaowuFailResult } from "../utils";
 
 /**
  * 教务网培养方案页面基础 URL
@@ -142,6 +142,6 @@ export const getPlanInfo = async (): Promise<PlanInfoResult> => {
     };
   } catch (error) {
     console.error("获取培养方案失败:", error);
-    return { result: null, success: false };
+    return jiaowuFailResult(null, error);
   }
 };
