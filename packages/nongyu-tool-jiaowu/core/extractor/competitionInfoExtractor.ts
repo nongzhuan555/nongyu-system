@@ -3,27 +3,27 @@
  * 负责从教务首页 HTML 中解析竞赛通知列表
  */
 
-import { stripTags } from '../utils/html';
-import type { NoticeItem, NoticeResult } from './noticeInfoExtractor';
+import { stripTags } from "../utils/html";
+import type { NoticeItem, NoticeResult } from "./noticeInfoExtractor";
 
 export type { NoticeItem, NoticeResult };
 
 /**
  * 教务通知基础跳转地址
  */
-const BASE_NOTICE_URL = 'https://jiaowu.sicau.edu.cn/web/web/web/';
+const BASE_NOTICE_URL = "https://jiaowu.sicau.edu.cn/web/web/web/";
 
 /**
  * 竞赛通知锚点标记（页面 HTML 注释）
  * 教务首页用该注释分隔竞赛通知区域：
  * <!---------------------------------------------------------------竞赛通知内容开始------------------------------>
  */
-const COMPETITION_ANCHOR = '竞赛通知内容开始';
+const COMPETITION_ANCHOR = "竞赛通知内容开始";
 
 /**
  * 备选关键字：当页面中没有注释标记时，回退按此关键字搜索
  */
-const FALLBACK_KEYWORD = '竞赛通知';
+const FALLBACK_KEYWORD = "竞赛通知";
 
 /**
  * 最大提取条数
@@ -48,7 +48,7 @@ const MAX_ITEMS = 50;
  * }
  */
 export const extractCompetitionInfo = (html: string): NoticeResult => {
-  if (!html || typeof html !== 'string') {
+  if (!html || typeof html !== "string") {
     return { result: [], success: false };
   }
 
@@ -114,11 +114,11 @@ function parseNoticeItems(html: string): NoticeItem[] {
  * 将相对路径转换为完整的教务网链接
  */
 function normalizeUrl(url: string): string {
-  if (!url || url.startsWith('http') || url.startsWith('javascript')) {
+  if (!url || url.startsWith("http") || url.startsWith("javascript")) {
     return url;
   }
 
-  const cleanPath = url.startsWith('../web/') ? url.slice(7) : url;
+  const cleanPath = url.startsWith("../web/") ? url.slice(7) : url;
   return `${BASE_NOTICE_URL}${cleanPath}`;
 }
 
@@ -127,7 +127,7 @@ function normalizeUrl(url: string): string {
  */
 function cleanTitle(title: string): string {
   return title
-    .replace(/\s+/g, ' ')
-    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, " ")
+    .replace(/&nbsp;/g, " ")
     .trim();
 }

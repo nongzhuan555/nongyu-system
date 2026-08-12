@@ -2,7 +2,7 @@
 
 > 版本: v1.0 | 最后更新: 2026-06-14
 
-***
+---
 
 ## 目录
 
@@ -21,16 +21,16 @@
 13. [对外 API 设计](#13-对外-api-设计)
 14. [实施路线图](#14-实施路线图)
 
-***
+---
 
 ## 1. 设计目标
 
 ### 1.1 运行环境
 
-| 环境               | 说明                                                         |
-| ---------------- | ---------------------------------------------------------- |
-| **浏览器**          | 作为 Web 应用（nongyu-web-admin / nongyu-agent-gui）的内嵌 SDK      |
-| **React Native** | 作为移动端（nongyu-rn-app）的内嵌 SDK                                |
+| 环境             | 说明                                                                      |
+| ---------------- | ------------------------------------------------------------------------- |
+| **浏览器**       | 作为 Web 应用（nongyu-web-admin / nongyu-agent-gui）的内嵌 SDK            |
+| **React Native** | 作为移动端（nongyu-rn-app）的内嵌 SDK                                     |
 | **Node.js**      | 作为服务端（nongyu-node-server）或 CLI 工具（nongyu-agent-cli）的后端 SDK |
 
 纯 TypeScript 编写，无 DOM 依赖，通过适配器模式屏蔽平台差异（网络请求、持久化存储等）。
@@ -45,19 +45,21 @@
 ```ts
 // 高层 - 极简使用
 const { messages, send, status } = useAgent({
-  agent: 'jiaowu-assistant',
+  agent: "jiaowu-assistant",
 });
 
 // 底层 - 自定义组装
 const agent = createAgent({
-  name: 'custom',
-  systemPrompt: '你是一个...',
+  name: "custom",
+  systemPrompt: "你是一个...",
   tools: { toolA, toolB },
 });
 // 也支持后续动态追加工具
 agent.use(toolC);
-agent.on('step:start', (ctx) => { /* ... */ });
-const stream = agent.stream({ prompt: '...' });
+agent.on("step:start", (ctx) => {
+  /* ... */
+});
+const stream = agent.stream({ prompt: "..." });
 ```
 
 ### 1.3 核心设计原则
@@ -67,7 +69,7 @@ const stream = agent.stream({ prompt: '...' });
 - **事件驱动**：Agent 内部通过事件总线解耦，外部可订阅任意生命周期事件
 - **跨平台无锁**：仅在主线程运行，不引入 Web Worker / 多线程复杂性
 
-***
+---
 
 ## 2. 核心架构概览
 
@@ -130,7 +132,7 @@ User Input → Channel → Gateway → AgentLoop
   → Gateway → Channel → UI
 ```
 
-***
+---
 
 ## 3. Agent 系统
 
@@ -138,11 +140,11 @@ User Input → Channel → Gateway → AgentLoop
 
 参考 OpenAI Agents SDK 和 Vercel AI SDK 的最佳实践，每个 Agent 由三个核心要素构成：
 
-| 要素               | 说明                                   |
-| ---------------- | ------------------------------------ |
-| **Model**        | 驱动推理和决策的大语言模型                        |
+| 要素             | 说明                                                              |
+| ---------------- | ----------------------------------------------------------------- |
+| **Model**        | 驱动推理和决策的大语言模型                                        |
 | **systemPrompt** | 系统提示词，定义 Agent 的角色、行为方式和约束规则，创建后不可更改 |
-| **Tools**        | Agent 可调用的外部能力（函数 / 子 Agent ）        |
+| **Tools**        | Agent 可调用的外部能力（函数 / 子 Agent ）                        |
 
 > 使用系统提示词定义 Agent 的角色和做事方式，再匹配相应的工具，就构成了一个具备特定领域能力的 Agent。
 
@@ -166,8 +168,8 @@ User Input → Channel → Gateway → AgentLoop
 
 **子 Agent 编排模式**：
 
-| 模式                | 场景                                   | 实现方式                         |
-| ----------------- | ------------------------------------ | ---------------------------- |
+| 模式              | 场景                                                       | 实现方式                              |
+| ----------------- | ---------------------------------------------------------- | ------------------------------------- |
 | **Agent-as-Tool** | 主 Agent 保持对话主导权，子 Agent 完成独立子任务后返回结果 | 子 Agent 包装为 Tool，被主 Agent 调用 |
 
 ### 3.3 Agent 定义
@@ -253,13 +255,13 @@ Agent 在运行过程中维护明确的状态，主要用于 UI 展示和外部�
 
 ```ts
 type AgentStatus =
-  | 'idle'
-  | 'thinking' // 用于表示complete完整响应的中间状态
-  | 'streaming' // 用于表示stream流式响应的中间状态
-  | 'tool-calling'
-  | 'completed'
-  | 'stopped'
-  | 'error';
+  | "idle"
+  | "thinking" // 用于表示complete完整响应的中间状态
+  | "streaming" // 用于表示stream流式响应的中间状态
+  | "tool-calling"
+  | "completed"
+  | "stopped"
+  | "error";
 
 interface AgentState {
   status: AgentStatus;
@@ -306,12 +308,12 @@ interface Agent {
 ### 3.6 工厂函数
 
 ```ts
-import { createAgent, createSubAgent } from 'nongyu-agent-sdk';
+import { createAgent, createSubAgent } from "nongyu-agent-sdk";
 
 // 创建主 Agent
 const mainAgent = createAgent({
-  name: 'nongyu-assistant',
-  description: '农屿智能助手，负责理解用户意图并协调子模块完成任务',
+  name: "nongyu-assistant",
+  description: "农屿智能助手，负责理解用户意图并协调子模块完成任务",
   systemPrompt: `你是农屿系统的智能助手...
   你有以下子模块可以调用：
   - jiaowu-agent: 处理教务相关问题
@@ -320,19 +322,19 @@ const mainAgent = createAgent({
   subAgents: [jiaowuAgent, secondAgent],
   runConfig: {
     maxSteps: 20,
-  }
+  },
 });
 
 // 创建子 Agent（语法完全相同）
 const jiaowuAgent = createAgent({
-  name: 'jiaowu-agent',
-  description: '处理川农教务相关的问题，包括课程查询、成绩查询、课表管理等',
-  systemPrompt: '你是川农教务助手...',
-  tools: { /* 教务工具 */ },
+  name: "jiaowu-agent",
+  description: "处理川农教务相关的问题，包括课程查询、成绩查询、课表管理等",
+  systemPrompt: "你是川农教务助手...",
+  tools: {/* 教务工具 */},
 });
 ```
 
-***
+---
 
 ## 4. 工具系统
 
@@ -341,7 +343,7 @@ const jiaowuAgent = createAgent({
 参考 Vercel AI SDK 6 的 `tool()` 工厂函数：
 
 ```ts
-import { z } from 'zod/v4'; // Zod v4 原生支持 JSON Schema 互转
+import { z } from "zod/v4"; // Zod v4 原生支持 JSON Schema 互转
 
 interface ToolDefinition<TInput extends z.ZodTypeAny, TOutput> {
   /** 工具描述，用于 LLM 理解何时调用 */
@@ -357,23 +359,21 @@ interface ToolDefinition<TInput extends z.ZodTypeAny, TOutput> {
   needsApproval?: boolean | ((input: z.infer<TInput>) => boolean);
 }
 
-function tool<TInput extends z.ZodTypeAny, TOutput>(
-  def: ToolDefinition<TInput, TOutput>
-): Tool;
+function tool<TInput extends z.ZodTypeAny, TOutput>(def: ToolDefinition<TInput, TOutput>): Tool;
 ```
 
 ### 4.2 使用示例
 
 ```ts
 const courseQueryTool = tool({
-  description: '查询课程信息，支持按课程名称、教师名称、课程编号搜索',
+  description: "查询课程信息，支持按课程名称、教师名称、课程编号搜索",
   inputSchema: z.object({
-    keyword: z.string().describe('搜索关键词'),
-    semester: z.string().optional().describe('学期，格式: 2025-2026-1'),
+    keyword: z.string().describe("搜索关键词"),
+    semester: z.string().optional().describe("学期，格式: 2025-2026-1"),
   }),
   async execute({ keyword, semester }, ctx) {
     // ctx 提供 abortSignal、emit 等上下文能力
-    ctx.emit('tool:progress', { message: `正在查询 "${keyword}"...` });
+    ctx.emit("tool:progress", { message: `正在查询 "${keyword}"...` });
     const result = await jiaowuApi.queryCourses(keyword, semester);
     return result;
   },
@@ -388,7 +388,7 @@ agent.use(courseQueryTool);
 Zod v4 原生支持 `z.toJSONSchema()`：
 
 ```ts
-import { zodToJsonSchema } from 'zod/v4';
+import { zodToJsonSchema } from "zod/v4";
 
 const schema = courseQueryTool.inputSchema; // Zod schema
 const jsonSchema = zodToJsonSchema(schema);
@@ -422,7 +422,7 @@ function agentAsTool(agent: Agent): Tool {
 
 ```ts
 const deleteCourseTool = tool({
-  description: '删除指定课程',
+  description: "删除指定课程",
   inputSchema: z.object({ courseId: z.string() }),
   needsApproval: true, // 始终需要审批
   // 或按输入动态判断:
@@ -433,7 +433,7 @@ const deleteCourseTool = tool({
 });
 ```
 
-***
+---
 
 ## 5. 上下文管理器
 
@@ -499,7 +499,7 @@ interface ContextConfig {
  * 缺点：可能丢失早期的关键约束信息
  */
 interface TrimmingStrategy {
-  type: 'trimming';
+  type: "trimming";
   keepLastNTurns: number;
   /** 是否在裁剪前先生成摘要（需要额外 LLM 调用） */
   summarizeBeforeTrim?: boolean;
@@ -522,7 +522,7 @@ interface TrimmingStrategy {
  * 缺点：额外的 LLM 调用延迟
  */
 interface SummarizationStrategy {
-  type: 'summarization';
+  type: "summarization";
   /** 用于生成摘要的模型（通常用小模型节省成本） */
   summaryModel?: ModelProvider;
   /** 当 Token 使用率达到此值时触发摘要（0-1），默认 0.8 */
@@ -539,7 +539,7 @@ interface SummarizationStrategy {
  * - 被裁剪掉的部分生成摘要挂在前面
  */
 interface HybridStrategy {
-  type: 'hybrid';
+  type: "hybrid";
   keepLastNTurns: number;
   summaryModel?: ModelProvider;
   compactThreshold: number;
@@ -606,7 +606,7 @@ Model Response:
 - 上下文压缩的触发基于最近的 `prompt_tokens` 是否接近 `limit * compactThreshold`
 - 本方案完全消除了对 tokenizer 的依赖，且比估算精确，因为使用的是模型实际计数的结果
 
-***
+---
 
 ## 6. 事件总线
 
@@ -623,48 +623,48 @@ type AgentEventMap = {
   // ===== Agent 生命周期事件 =====
 
   /** Agent 开始执行 */
-  'agent:start': { agentName: string; input: AgentInput };
+  "agent:start": { agentName: string; input: AgentInput };
 
   /** 单个 Step 开始 */
-  'step:start': { agentName: string; stepNumber: number; messages: Message[] };
+  "step:start": { agentName: string; stepNumber: number; messages: Message[] };
 
   /** LLM 调用完成（返回文本或工具调用） */
-  'step:complete': {
+  "step:complete": {
     agentName: string;
     stepNumber: number;
-    type: 'text' | 'tool_call';
+    type: "text" | "tool_call";
     tokensUsed: number;
   };
 
   /** 流式文本增量（仅 streaming 模式） */
-  'text:delta': { agentName: string; delta: string; fullText: string };
+  "text:delta": { agentName: string; delta: string; fullText: string };
 
   /** 文本生成完成 */
-  'text:complete': { agentName: string; text: string };
+  "text:complete": { agentName: string; text: string };
 
   // ===== 工具事件 =====
 
   /** 工具被 LLM 调用 */
-  'tool:call': { agentName: string; toolName: string; input: unknown };
+  "tool:call": { agentName: string; toolName: string; input: unknown };
 
   /** 工具执行完成 */
-  'tool:result': { agentName: string; toolName: string; output: unknown; duration: number };
+  "tool:result": { agentName: string; toolName: string; output: unknown; duration: number };
 
   /** 工具执行出错 */
-  'tool:error': { agentName: string; toolName: string; error: Error };
+  "tool:error": { agentName: string; toolName: string; error: Error };
 
   /** 工具需要用户审批 */
-  'tool:approval-required': { agentName: string; toolName: string; input: unknown };
+  "tool:approval-required": { agentName: string; toolName: string; input: unknown };
 
   // ===== 上下文事件 =====
 
   /** 上下文压缩触发 */
-  'context:compact': { agentName: string; beforeTokens: number; afterTokens: number };
+  "context:compact": { agentName: string; beforeTokens: number; afterTokens: number };
 
   // ===== 终止事件 =====
 
   /** Agent 正常完成 */
-  'agent:complete': {
+  "agent:complete": {
     agentName: string;
     output: AgentOutput;
     totalSteps: number;
@@ -672,13 +672,13 @@ type AgentEventMap = {
   };
 
   /** Agent 被停止 */
-  'agent:stop': { agentName: string; stepNumber: number };
+  "agent:stop": { agentName: string; stepNumber: number };
 
   /** Agent 出错 */
-  'agent:error': { agentName: string; error: Error; stepNumber: number };
+  "agent:error": { agentName: string; error: Error; stepNumber: number };
 
   // ===== 状态变更 =====
-  'state:change': { agentName: string; state: AgentState };
+  "state:change": { agentName: string; state: AgentState };
 };
 ```
 
@@ -686,27 +686,27 @@ type AgentEventMap = {
 
 ```ts
 // 订阅单个 Agent 事件
-agent.on('step:start', ({ stepNumber }) => {
+agent.on("step:start", ({ stepNumber }) => {
   console.log(`Step ${stepNumber} 开始`);
 });
 
-agent.on('text:delta', ({ delta }) => {
+agent.on("text:delta", ({ delta }) => {
   // 实时渲染到 UI
   appendToChat(delta);
 });
 
-agent.on('tool:approval-required', async ({ toolName, input }) => {
+agent.on("tool:approval-required", async ({ toolName, input }) => {
   // 弹出确认框等待用户确认
   const approved = await showConfirmDialog(toolName, input);
   return { approved };
 });
 
-agent.on('agent:error', ({ error }) => {
+agent.on("agent:error", ({ error }) => {
   showErrorToast(error.message);
 });
 ```
 
-***
+---
 
 ## 7. 流式传输协议
 
@@ -748,15 +748,17 @@ data: {"error":{"message":"模型返回超时"}}
 async function* streamAgent(agent: Agent, input: AgentInput): AsyncIterable<StreamChunk> {
   let stopRequested = false;
 
-  agent.on('agent:stop', () => { stopRequested = true; });
+  agent.on("agent:stop", () => {
+    stopRequested = true;
+  });
 
   for await (const step of executeAgentLoop(agent, input)) {
     if (stopRequested) break;
 
-    if (step.type === 'text-delta') {
-      yield { event: 'text:delta', data: { delta: step.delta, fullText: step.fullText } };
-    } else if (step.type === 'tool-call') {
-      yield { event: 'tool:call', data: { toolName: step.toolName, input: step.input } };
+    if (step.type === "text-delta") {
+      yield { event: "text:delta", data: { delta: step.delta, fullText: step.fullText } };
+    } else if (step.type === "tool-call") {
+      yield { event: "tool:call", data: { toolName: step.toolName, input: step.input } };
     }
     // ... 其他事件
   }
@@ -769,14 +771,14 @@ function toSSEResponse(stream: AsyncIterable<StreamChunk>): Response {
     async start(controller) {
       for await (const chunk of stream) {
         controller.enqueue(
-          encoder.encode(`event: ${chunk.event}\ndata: ${JSON.stringify(chunk.data)}\n\n`)
+          encoder.encode(`event: ${chunk.event}\ndata: ${JSON.stringify(chunk.data)}\n\n`),
         );
       }
       controller.close();
     },
   });
   return new Response(readable, {
-    headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+    headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
   });
 }
 ```
@@ -789,7 +791,7 @@ class SSEClient {
     const response = await fetch(url);
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -807,7 +809,7 @@ class SSEClient {
 }
 ```
 
-***
+---
 
 ## 8. Channel 通道系统
 
@@ -826,7 +828,7 @@ interface ChannelPlugin {
   meta: {
     id: string;
     name: string;
-    type: 'http' | 'websocket' | 'stdio' | 'sse' | 'custom';
+    type: "http" | "websocket" | "stdio" | "sse" | "custom";
     version: string;
   };
 
@@ -844,7 +846,7 @@ interface ChannelPlugin {
 }
 
 interface InboundEnvelope {
-  channel: string;        // 通道 ID
+  channel: string; // 通道 ID
   conversationId: string; // 会话 ID（通道内唯一）
   from: { name: string; id?: string };
   text: string;
@@ -888,10 +890,10 @@ class Gateway {
 ### 8.4 使用示例
 
 ```ts
-import { Gateway } from 'nongyu-agent-sdk/channel';
+import { Gateway } from "nongyu-agent-sdk/channel";
 
 const gateway = new Gateway();
-gateway.registerChannel(httpChannel);     // HTTP API
+gateway.registerChannel(httpChannel); // HTTP API
 gateway.registerChannel(websocketChannel); // WebSocket
 
 // 对接 Agent
@@ -906,7 +908,7 @@ gateway.onMessage(async (envelope) => {
 await gateway.start();
 ```
 
-***
+---
 
 ## 9. 客户端 SDK
 
@@ -942,7 +944,7 @@ class AgentClient {
   stop(): void;
 
   /** 获取连接状态 */
-  get status(): 'connecting' | 'connected' | 'disconnected' | 'error';
+  get status(): "connecting" | "connected" | "disconnected" | "error";
 }
 ```
 
@@ -975,7 +977,7 @@ function ChatPanel() {
 }
 ```
 
-***
+---
 
 ## 10. Agent 运行循环
 
@@ -989,7 +991,7 @@ function ChatPanel() {
  *
  * 1. prepareStep(ctx)   - 每步前钩子（上下文裁剪、动态模型选择）
  * 2. model.generate()   - 调用 LLM
- * 3. parseResponse()    - 解析返回：纯文本 / tool_call 
+ * 3. parseResponse()    - 解析返回：纯文本 / tool_call
  * 4. 分支:
  *    - 纯文本 → emit text:delta → 继续循环直到模型 finish
  *    - tool_call → emit tool:call → executeTool() → emit tool:result → 回到步骤 1
@@ -1012,10 +1014,13 @@ const stopConditions = {
   stepCountIs: (n: number) => (ctx: StepContext) => ctx.stepNumber >= n,
 
   /** 模型返回 final 状态 */
-  modelFinished: () => (ctx: StepContext) => ctx.finishReason === 'stop',
+  modelFinished: () => (ctx: StepContext) => ctx.finishReason === "stop",
 
   /** 自定义组合 */
-  any: (...conditions: StopCondition[]) => (ctx: StepContext) => conditions.some(c => c(ctx)),
+  any:
+    (...conditions: StopCondition[]) =>
+    (ctx: StepContext) =>
+      conditions.some((c) => c(ctx)),
 };
 
 // 使用
@@ -1040,24 +1045,24 @@ const agent = createAgent({
     async prepareStep(ctx) {
       // 动态选择模型：前几步用便宜模型，复杂任务用强模型
       if (ctx.stepNumber > 5) {
-        ctx.model = 'gpt-5'; // 切换到更强的模型
+        ctx.model = "gpt-5"; // 切换到更强的模型
       }
 
       // 根据执行情况动态注入提示
       if (ctx.stepNumber > 10 && !ctx.toolCalls.length) {
         ctx.messages.push({
-          role: 'system',
-          content: '提示：你似乎卡住了，请尝试换个思路。',
+          role: "system",
+          content: "提示：你似乎卡住了，请尝试换个思路。",
         });
       }
 
       return ctx;
-    }
-  }
+    },
+  },
 });
 ```
 
-***
+---
 
 ## 11. 可观测性
 
@@ -1086,17 +1091,21 @@ interface Span {
 }
 
 // 内置：控制台日志 Tracer
-class ConsoleTracer implements Tracer { /* ... */ }
+class ConsoleTracer implements Tracer {
+  /* ... */
+}
 
 // 内置：OpenTelemetry Tracer（可选集成）
-class OpenTelemetryTracer implements Tracer { /* ... */ }
+class OpenTelemetryTracer implements Tracer {
+  /* ... */
+}
 ```
 
 ### 11.2 Agent 集成
 
 ```ts
 const agent = createAgent({
-  name: 'nongyu-assistant',
+  name: "nongyu-assistant",
   // 启用观测
   tracer: new ConsoleTracer(),
 });
@@ -1105,7 +1114,7 @@ const agent = createAgent({
 // 自动生成 Trace Span
 ```
 
-***
+---
 
 ## 12. 目录结构规划
 
@@ -1195,7 +1204,7 @@ packages/nongyu-agent-sdk/
 └── TECH-DESIGN.md
 ```
 
-***
+---
 
 ## 13. 对外 API 设计
 
@@ -1244,7 +1253,7 @@ export {
   // Observability
   type Tracer,
   ConsoleTracer,
-} from './core';
+} from "./core";
 ```
 
 ### 13.2 子路径导出
@@ -1260,7 +1269,7 @@ export {
 }
 ```
 
-***
+---
 
 ## 14. 实施路线图
 
@@ -1301,14 +1310,13 @@ export {
 - [ ] React Hook 完善（`useAgentState`，审批交互 UI 支持）
 - [ ] 集成测试 + 文档
 
-***
+---
 
 ## 参考
 
-| 来源                                                                                                                | 相关要点                                                               |
-| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| [Vercel AI SDK 6](https://ai-sdk.dev/)                                                                            | ToolLoopAgent、Agent 接口、Tool 定义、streaming、SSE、stopWhen、prepareStep  |
-| [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/)                                               | Agent-as-Tool、Handoff、Guardrails、Context Management、Session Memory |
-| [Anthropic Agent 最佳实践](https://docs.anthropic.com/en/docs/agents-and-tools)                                       | Prompt + Tools = Agent、Tool use patterns、Context engineering       |
-| [OpenAI Context Engineering Cookbook](https://developers.openai.com/cookbook/examples/agents_sdk/session_memory/) | Trimming / Summarization 策略、Session 管理                             |
-
+| 来源                                                                                                              | 相关要点                                                                    |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [Vercel AI SDK 6](https://ai-sdk.dev/)                                                                            | ToolLoopAgent、Agent 接口、Tool 定义、streaming、SSE、stopWhen、prepareStep |
+| [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/)                                               | Agent-as-Tool、Handoff、Guardrails、Context Management、Session Memory      |
+| [Anthropic Agent 最佳实践](https://docs.anthropic.com/en/docs/agents-and-tools)                                   | Prompt + Tools = Agent、Tool use patterns、Context engineering              |
+| [OpenAI Context Engineering Cookbook](https://developers.openai.com/cookbook/examples/agents_sdk/session_memory/) | Trimming / Summarization 策略、Session 管理                                 |

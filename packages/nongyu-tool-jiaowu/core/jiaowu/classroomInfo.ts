@@ -2,9 +2,9 @@
  * 教室信息查询模块
  */
 
-import { extractClassroomInfo } from '../extractor/classroomInfoExtractor';
-import type { ClassroomInfo, ClassroomInfoResult } from '../extractor/classroomInfoExtractor';
-import { fetchJiaowuHtml } from '../utils';
+import { extractClassroomInfo } from "../extractor/classroomInfoExtractor";
+import type { ClassroomInfo, ClassroomInfoResult } from "../extractor/classroomInfoExtractor";
+import { fetchJiaowuHtml } from "../utils";
 
 export type { ClassroomInfo, ClassroomInfoResult };
 
@@ -22,12 +22,11 @@ export type { ClassroomInfo, ClassroomInfoResult };
  */
 export const getClassroomInfo = async (searchWord: string): Promise<ClassroomInfoResult> => {
   try {
-    const CLASSROOM_INFO_URL =
-  `https://jiaowu.sicau.edu.cn/web/web/js_kb_cha/jshi_new.asp?bj=${searchWord}`;
+    const CLASSROOM_INFO_URL = `https://jiaowu.sicau.edu.cn/web/web/js_kb_cha/jshi_new.asp?bj=${searchWord}`;
     const html = await fetchJiaowuHtml(CLASSROOM_INFO_URL);
     return extractClassroomInfo(html);
   } catch (error) {
-    console.error('获取教室信息失败:', error);
+    console.error("获取教室信息失败:", error);
     return { result: null, success: false };
   }
 };

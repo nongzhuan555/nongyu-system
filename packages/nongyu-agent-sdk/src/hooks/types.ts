@@ -1,4 +1,4 @@
-import type { ToolCallRecord } from '../types/agent';
+import type { ToolCallRecord } from "../types/agent";
 
 /**
  * 对话消息（前端 UI 层）
@@ -8,12 +8,12 @@ import type { ToolCallRecord } from '../types/agent';
  */
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   createdAt: number;
 
   /** 消息渲染状态 */
-  status?: 'pending' | 'streaming' | 'done' | 'error';
+  status?: "pending" | "streaming" | "done" | "error";
 
   /** 工具调用记录（仅 assistant 消息，流式过程中动态追加） */
   toolCalls?: ToolCallRecord[];
@@ -65,15 +65,13 @@ export interface UseAgentChatReturn {
    * @example React Native
    * <TextInput onChangeText={handleInputChange} />
    */
-  handleInputChange: (
-    e: { target: { value: string } } | string,
-  ) => void;
+  handleInputChange: (e: { target: { value: string } } | string) => void;
 
   /** 提交当前 input，触发 AI 回复 */
   handleSubmit: (e?: { preventDefault?: () => void }) => Promise<void>;
 
   /** 直接追加消息并触发 AI 回复 */
-  append: (message: { role: 'user'; content: string }) => Promise<void>;
+  append: (message: { role: "user"; content: string }) => Promise<void>;
 
   /** 重新生成最后一条 AI 回复 */
   reload: () => Promise<void>;

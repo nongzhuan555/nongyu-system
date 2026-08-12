@@ -3,7 +3,7 @@
  * 负责从教务开课计划页面 (kai.asp) 提取课程汇总开课目录
  */
 
-import { stripTags } from '../utils/html';
+import { stripTags } from "../utils/html";
 
 /**
  * 单条开课课程记录
@@ -80,30 +80,30 @@ export interface KaikeInfoResult {
  * 表格共 29 列（0-28），前 26 列为数据，后 3 列为操作链接
  */
 const COL = {
-  INDEX: 0,              // 序号
-  COURSE_CODE: 1,        // 课程编号
-  DEPARTMENT: 2,         // 任课单位
-  COURSE_ID_WITH_NAME: 3,// 课程代码+名称
-  COURSE_NAME: 4,        // 课程名称
-  COURSE_TYPE: 5,        // 课程性质
-  CLASSROOM: 6,          // 上课地点
-  SCHEDULE_TIME: 7,      // 上课时间
-  WEEK_RANGE: 8,         // 周次
-  CREDITS: 9,            // 学分
-  LECTURE_HOURS: 10,     // 讲课学时
-  LAB_HOURS: 11,         // 实验学时
-  PRACTICE_HOURS: 12,    // 实践学时
-  TOTAL_HOURS: 13,       // 总学时
-  TEACHER: 14,           // 教师
-  PLANNED_COUNT: 15,     // 计划人数
-  SELECTED_COUNT: 16,    // 已选人数
-  REMAINING_COUNT: 17,   // 剩余容量
-  CLASS_NAME: 18,        // 上课班级
-  IS_LOCKED: 19,         // 锁定
-  CAMPUS: 20,            // 校区
-  COURSE_CATEGORY: 22,   // 课程类别
-  COURSE_SYSTEM: 23,     // 课程体系
-  SCHEDULE_TYPE: 24,     // 排课类别
+  INDEX: 0, // 序号
+  COURSE_CODE: 1, // 课程编号
+  DEPARTMENT: 2, // 任课单位
+  COURSE_ID_WITH_NAME: 3, // 课程代码+名称
+  COURSE_NAME: 4, // 课程名称
+  COURSE_TYPE: 5, // 课程性质
+  CLASSROOM: 6, // 上课地点
+  SCHEDULE_TIME: 7, // 上课时间
+  WEEK_RANGE: 8, // 周次
+  CREDITS: 9, // 学分
+  LECTURE_HOURS: 10, // 讲课学时
+  LAB_HOURS: 11, // 实验学时
+  PRACTICE_HOURS: 12, // 实践学时
+  TOTAL_HOURS: 13, // 总学时
+  TEACHER: 14, // 教师
+  PLANNED_COUNT: 15, // 计划人数
+  SELECTED_COUNT: 16, // 已选人数
+  REMAINING_COUNT: 17, // 剩余容量
+  CLASS_NAME: 18, // 上课班级
+  IS_LOCKED: 19, // 锁定
+  CAMPUS: 20, // 校区
+  COURSE_CATEGORY: 22, // 课程类别
+  COURSE_SYSTEM: 23, // 课程体系
+  SCHEDULE_TYPE: 24, // 排课类别
 } as const;
 
 /** 列 21 为空，跳过 */
@@ -111,7 +111,7 @@ const COL = {
 /**
  * 开课目录页基础 URL
  */
-const KAIKE_URL = 'https://jiaowu.sicau.edu.cn/xuesheng/gongxuan/gongxuan/kai.asp?title_id1=2';
+const KAIKE_URL = "https://jiaowu.sicau.edu.cn/xuesheng/gongxuan/gongxuan/kai.asp?title_id1=2";
 
 /**
  * 提取开课目录数据
@@ -131,7 +131,7 @@ const KAIKE_URL = 'https://jiaowu.sicau.edu.cn/xuesheng/gongxuan/gongxuan/kai.as
  * }
  */
 export const extractKaikeInfo = (html: string): KaikeInfoResult => {
-  if (!html || typeof html !== 'string' || html.includes('登录超时')) {
+  if (!html || typeof html !== "string" || html.includes("登录超时")) {
     return { result: null, success: false };
   }
 
@@ -155,7 +155,7 @@ function parseSemester(html: string): string {
     const semMatch = title.match(/(\d{4}-\d{4}-\d)/);
     if (semMatch) return semMatch[1];
   }
-  return '';
+  return "";
 }
 
 /**
@@ -220,12 +220,12 @@ function parseDataRows(html: string): KaikeItem[] {
  * 清洗上课地点文本：移除 <br> 引入的换行
  */
 function cleanClassroom(text: string): string {
-  return text.replace(/\n/g, '').trim();
+  return text.replace(/\n/g, "").trim();
 }
 
 /**
  * 清洗上课时间文本：移除 <br> 引入的换行
  */
 function cleanScheduleTime(text: string): string {
-  return text.replace(/\n/g, '').trim();
+  return text.replace(/\n/g, "").trim();
 }

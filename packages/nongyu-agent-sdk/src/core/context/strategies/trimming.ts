@@ -1,4 +1,4 @@
-import type { Message } from '../../../types/message';
+import type { Message } from "../../../types/message";
 
 /**
  * 裁剪策略：保留最近 N 轮完整对话
@@ -11,14 +11,14 @@ export class TrimmingStrategy {
   constructor(private keepLastNTurns: number) {}
 
   async apply(
-    systemMessage: { role: 'system'; content: string },
+    systemMessage: { role: "system"; content: string },
     messages: Message[],
     summary?: string,
   ): Promise<{ messages: Message[]; summary?: string }> {
     // 计算用户消息数量，确定"轮"
     const userIndices: number[] = [];
     for (let i = 0; i < messages.length; i++) {
-      if (messages[i].role === 'user') {
+      if (messages[i].role === "user") {
         userIndices.push(i);
       }
     }

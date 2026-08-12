@@ -2,28 +2,29 @@
  * 学业进度业务模块
  */
 
-import { extractProgressInfo } from '../extractor';
-import { fetchJiaowuHtml } from '../utils';
+import { extractProgressInfo } from "../extractor";
+import { fetchJiaowuHtml } from "../utils";
 
 /**
  * 教务网学业进度查询页面 URL
  */
-const PROGRESS_INFO_URL = 'https://jiaowu.sicau.edu.cn/xuesheng/chengji/xdjd/xuefen_2023.asp?title_id1=1';
+const PROGRESS_INFO_URL =
+  "https://jiaowu.sicau.edu.cn/xuesheng/chengji/xdjd/xuefen_2023.asp?title_id1=1";
 
 /**
  * 获取学生的学业修读进度（各模块学分统计）。
- * 
+ *
  * 使用场景：
  * 1. 农屿app内学业进度页面供学生查看自己的学业修读进度。
  * 2. nongyu-agent将此作为tool调用，用于获取当前用户的学业修读进度。
- * 
+ *
  * @returns 成功返回 `{ success: true, result: ProgressItem[] }`，失败返回 `{ success: false, result: [] }`
- * 
+ *
  * @example 基本调用
  * ```ts
  * const progress = await getProgressInfo();
  * ```
- * 
+ *
  * @example 成功示例
  * ```ts
  * const progress = await getProgressInfo();
@@ -57,7 +58,7 @@ const PROGRESS_INFO_URL = 'https://jiaowu.sicau.edu.cn/xuesheng/chengji/xdjd/xue
  * //   success: true
  * // }
  * ```
- * 
+ *
  * @example 失败示例
  * ```ts
  * // 网络异常或未登录时
@@ -73,10 +74,10 @@ export const getProgressInfo = async () => {
     const html = await fetchJiaowuHtml(PROGRESS_INFO_URL);
     return extractProgressInfo(html);
   } catch (error) {
-    console.error('获取学业进度失败:', error);
+    console.error("获取学业进度失败:", error);
     return {
       result: [],
       success: false,
     };
   }
-}
+};

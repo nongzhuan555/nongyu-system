@@ -3,7 +3,7 @@
  * 负责从教务教室课表页面 (jshi_new.asp) 提取教室基本信息
  */
 
-import { stripTags } from '../utils/html';
+import { stripTags } from "../utils/html";
 
 /**
  * 教室信息字段定义
@@ -48,7 +48,7 @@ export interface ClassroomInfoResult {
  * }
  */
 export const extractClassroomInfo = (html: string): ClassroomInfoResult => {
-  if (!html || typeof html !== 'string' || html.includes('登录超时')) {
+  if (!html || typeof html !== "string" || html.includes("登录超时")) {
     return { result: null, success: false };
   }
 
@@ -84,18 +84,18 @@ function parseGridTable(html: string): ClassroomInfo[] {
 
     if (values.length < 5) continue;
 
-    const index = values[0]?.trim() || '';
+    const index = values[0]?.trim() || "";
 
     // 提取教室编号（从"查看"链接的 bianhao 参数）
     const linkMatch = cells[cells.length - 1]?.match(/bianhao=([^&\s"']+)/i);
-    const classroomId = linkMatch ? linkMatch[1] : '';
+    const classroomId = linkMatch ? linkMatch[1] : "";
 
     const item: ClassroomInfo = {
       index,
-      campus: values[1]?.trim() || '',
-      location: values[2]?.trim() || '',
-      capacity: values[3]?.trim() || '',
-      type: values[4]?.trim() || '',
+      campus: values[1]?.trim() || "",
+      location: values[2]?.trim() || "",
+      capacity: values[3]?.trim() || "",
+      type: values[4]?.trim() || "",
       classroomId,
     };
 

@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import type { Agent } from '../../types/agent';
-import type { Tool } from '../../types/tool';
-import { tool } from '../tool';
+import { z } from "zod";
+import type { Agent } from "../../types/agent";
+import type { Tool } from "../../types/tool";
+import { tool } from "../tool";
 
 /**
  * 将子 Agent 封装为一个 Tool（Agent-as-Tool 模式）

@@ -1,5 +1,5 @@
-import type { Message } from './message';
-import type { ModelProvider, ModelUsage } from './model';
+import type { Message } from "./message";
+import type { ModelProvider, ModelUsage } from "./model";
 
 // ===== 上下文结构 =====
 
@@ -15,7 +15,7 @@ export interface AgentContext {
 }
 
 export interface SystemMessage {
-  role: 'system';
+  role: "system";
   content: string;
 }
 
@@ -32,7 +32,7 @@ export interface ContextConfig {
   /** 最大 Token 数，默认 8000 */
   maxTokens: number;
   /** 上下文管理策略 */
-  strategy: 'trimming' | 'summarization' | 'hybrid';
+  strategy: "trimming" | "summarization" | "hybrid";
   /** 保留最近 N 轮完整对话（裁剪时），默认 6 */
   keepLastNTurns: number;
   /** 当 Token 超过此比例时触发压缩，默认 0.8 */

@@ -1,14 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { BlurView, type BlurViewProps } from "expo-blur";
 import { useRouter, useSegments, type Href } from "expo-router";
-import { type ComponentType, type RefObject } from "react";
-import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useMemo } from "react";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { lightTokens } from "@/theme/tokens";
-import { useBlurTargetRef } from "./BlurTargetContext";
-
-/** React 19 下 class 组件类型与 JSX 不兼容时的兼容包装 */
-const GlassBlur = BlurView as unknown as ComponentType<BlurViewProps>;
+import { GlassPanel } from "./GlassPanel";
 
 /** 与 src/modules 目录命名对齐 */
 type TabKey = "home" | "course" | "center" | "mine";
@@ -47,7 +43,18 @@ const TABS: TabItem[] = [
   },
 ];
 
-const tokens = lightTokens.tabBar;
+const base = lightTokens.tabBar;
+
+type TabBarMetrics = {
+  horizontalInset: number;
+  bottomGap: number;
+  aiGap: number;
+  aiSize: number;
+  height: number;
+  iconSize: number;
+  labelSize: number;
+  aiFontSize: number;
+};
 
 /**
  * 悬浮底栏：左侧「农屿AI」圆钮 + 右侧毛玻璃胶囊 Tab
@@ -57,10 +64,9 @@ export function FloatingTabBar() {
   const segments = useSegments();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
-  const blurTargetRef = useBlurTargetRef();
+  const metrics = useMemo(() => resolveTabBarMetrics(windowWidth), [windowWidth]);
 
   const activeTab = resolveActiveTab(segments);
-  const capsuleWidth = (windowWidth - tokens.horizontalInset * 2) * tokens.capsuleWidthRatio;
 
   return (
     <View
@@ -68,104 +74,98 @@ export function FloatingTabBar() {
       style={[
         styles.host,
         {
-          paddingBottom: Math.max(insets.bottom, tokens.bottomGap),
-          paddingHorizontal: tokens.horizontalInset,
+          paddingBottom: insets.bottom + metrics.bottomGap,
+          paddingHorizontal: metrics.horizontalInset,
         },
       ]}
     >
-      <View style={styles.row} pointerEvents="box-none">
-        <GlassCircleButton
-          blurTargetRef={blurTargetRef}
+      <View style={[styles.row, { gap: metrics.aiGap }]} pointerEvents="box-none">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="农屿AI"
           onPress={() => router.push("/ai" as Href)}
-        />
+        >
+          <GlassPanel
+            style={{
+              width: metrics.aiSize,
+              height: metrics.aiSize,
+              borderRadius: metrics.aiSize / 2,
+            }}
+            contentStyle={styles.aiContent}
+          >
+            <Text
+              style={[
+                styles.aiText,
+                { fontSize: metrics.aiFontSize, lineHeight: metrics.aiFontSize + 3 },
+              ]}
+              numberOfLines={2}
+            >
+              农屿AI
+            </Text>
+          </GlassPanel>
+        </Pressable>
 
-        <View style={[styles.capsuleShell, { width: capsuleWidth }]}>
-          <GlassBlur
-            intensity={tokens.blurIntensity}
-            tint="light"
-            blurMethod="dimezisBlurViewSdk31Plus"
-            {...(blurTargetRef ? { blurTarget: blurTargetRef } : {})}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.glassOverlay} pointerEvents="none" />
-          <View style={styles.capsuleRow}>
-            {TABS.map((tab) => {
-              const focused = tab.key === activeTab;
-              return (
-                <Pressable
-                  key={tab.key}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: focused }}
-                  onPress={() => router.navigate(tab.href)}
-                  style={styles.tabItem}
+        <GlassPanel
+          style={[styles.capsule, { height: metrics.height }]}
+          contentStyle={styles.capsuleRow}
+        >
+          {TABS.map((tab) => {
+            const focused = tab.key === activeTab;
+            const accent = focused ? lightTokens.color.brand : lightTokens.color.textSecondary;
+            return (
+              <Pressable
+                key={tab.key}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: focused }}
+                onPress={() => router.navigate(tab.href)}
+                style={styles.tabItem}
+              >
+                <Ionicons name={tab.icon} size={metrics.iconSize} color={accent} />
+                <Text
+                  style={[
+                    styles.label,
+                    {
+                      color: accent,
+                      fontSize: metrics.labelSize,
+                      fontWeight: focused ? "700" : "600",
+                    },
+                  ]}
                 >
-                  <View
-                    style={[
-                      styles.iconDisc,
-                      focused && {
-                        backgroundColor: lightTokens.color.brand,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={tab.icon}
-                      size={tokens.iconSize}
-                      color={focused ? lightTokens.color.onBrand : lightTokens.color.textSecondary}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.label,
-                      {
-                        color: focused ? lightTokens.color.brand : lightTokens.color.textSecondary,
-                      },
-                    ]}
-                  >
-                    {tab.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </GlassPanel>
       </View>
     </View>
   );
 }
 
-/**
- * 左侧圆形 AI 入口（文案占位）
- */
-function GlassCircleButton({
-  onPress,
-  blurTargetRef,
-}: {
-  onPress: () => void;
-  blurTargetRef: RefObject<View | null> | null;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="农屿AI"
-      onPress={onPress}
-      style={styles.aiShell}
-    >
-      <GlassBlur
-        intensity={tokens.blurIntensity}
-        tint="light"
-        blurMethod="dimezisBlurViewSdk31Plus"
-        {...(blurTargetRef ? { blurTarget: blurTargetRef } : {})}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.glassOverlay} pointerEvents="none" />
-      <Text style={styles.aiText} numberOfLines={2}>
-        农屿AI
-      </Text>
-    </Pressable>
-  );
+/** 按屏宽缩放底栏尺寸，并夹在合理区间内 */
+function resolveTabBarMetrics(windowWidth: number): TabBarMetrics {
+  const scale = clamp(windowWidth / base.baselineWidth, 0.88, 1.12);
+
+  return {
+    horizontalInset: clamp(
+      windowWidth * base.horizontalInsetRatio,
+      base.horizontalInsetMin,
+      base.horizontalInsetMax,
+    ),
+    bottomGap: clamp(base.bottomGap * scale, base.bottomGapMin, base.bottomGapMax),
+    aiGap: clamp(base.aiGap * scale, base.aiGapMin, base.aiGapMax),
+    aiSize: clamp(base.aiSize * scale, base.aiSizeMin, base.aiSizeMax),
+    height: clamp(base.height * scale, base.heightMin, base.heightMax),
+    iconSize: clamp(base.iconSize * scale, base.iconSizeMin, base.iconSizeMax),
+    labelSize: clamp(base.labelSize * scale, base.labelSizeMin, base.labelSizeMax),
+    aiFontSize: clamp(11 * scale, 10, 12),
+  };
 }
 
-/** 从 Expo Router segments 解析当前 Tab */
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 function resolveActiveTab(segments: string[]): TabKey {
   const last = segments[segments.length - 1];
   if (last === "home" || last === "course" || last === "center" || last === "mine") {
@@ -185,84 +185,35 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: tokens.aiGap,
   },
-  aiShell: {
-    width: tokens.aiSize,
-    height: tokens.aiSize,
-    borderRadius: tokens.aiSize / 2,
-    overflow: "hidden",
+  aiContent: {
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderColor: tokens.glassBorder,
-    ...Platform.select({
-      ios: {
-        shadowColor: tokens.shadowColor,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 1,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-      default: {},
-    }),
   },
   aiText: {
-    fontSize: 11,
     fontWeight: "700",
     color: lightTokens.color.brand,
     textAlign: "center",
-    lineHeight: 14,
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
-  capsuleShell: {
-    height: tokens.height,
+  capsule: {
+    flex: 1,
     borderRadius: lightTokens.radius.full,
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderColor: tokens.glassBorder,
-    ...Platform.select({
-      ios: {
-        shadowColor: tokens.shadowColor,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 1,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-      default: {},
-    }),
-  },
-  glassOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: tokens.glassFill,
   },
   capsuleRow: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 2,
-    paddingVertical: 6,
-  },
-  iconDisc: {
-    width: tokens.activeDiscSize,
-    height: tokens.activeDiscSize,
-    borderRadius: tokens.activeDiscSize / 2,
-    alignItems: "center",
-    justifyContent: "center",
+    gap: 3,
+    paddingVertical: 8,
   },
   label: {
-    fontSize: tokens.labelSize,
     fontWeight: "600",
   },
 });

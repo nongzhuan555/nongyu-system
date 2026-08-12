@@ -3,16 +3,16 @@
  * 负责从考试安排页面提取学生的考试时间、地点、座位号等信息
  */
 
-import { extractSegments, parseTable } from '../utils/html';
+import { extractSegments, parseTable } from "../utils/html";
 
 /**
  * 考试信息项定义
  */
 export interface ExamItem {
-  courseName?: string;       // 课程名称
-  examTime?: string;         // 考试时间
-  examRoom?: string;         // 考试地点/教室
-  seatNumber?: string;       // 座位号
+  courseName?: string; // 课程名称
+  examTime?: string; // 考试时间
+  examRoom?: string; // 考试地点/教室
+  seatNumber?: string; // 座位号
   assessmentMethod?: string; // 考核方式（如：闭卷）
 }
 
@@ -20,13 +20,13 @@ export interface ExamItem {
  * 考试提取结果接口
  */
 export interface ExamResult {
-  result: ExamItem[];                  // 考试安排列表
-  success: boolean;                    // 提取状态
+  result: ExamItem[]; // 考试安排列表
+  success: boolean; // 提取状态
 }
 
 /**
  * 考试信息提取器
- * 
+ *
  * 核心逻辑：
  * 1. 扫描页面中包含考试关键字的表格
  * 2. 识别表头列索引
@@ -34,7 +34,7 @@ export interface ExamResult {
  *
  * @param html 原始 HTML 字符串内容
  * @returns 清洗后的考试结果对象
- * 
+ *
  * @example
  * const result = extractExamInfo(html);
  * if (result.success) {
@@ -43,7 +43,7 @@ export interface ExamResult {
  */
 export const extractExamInfo = (html: string): ExamResult => {
   // 基础校验
-  if (!html || typeof html !== 'string') {
+  if (!html || typeof html !== "string") {
     return { result: [], success: false };
   }
 
@@ -58,7 +58,7 @@ export const extractExamInfo = (html: string): ExamResult => {
   const header = grid.find((row) => row.some((cell) => cell)) || [];
   // 识别列索引
   const cols = detectColumns(header);
-  
+
   const items: ExamItem[] = [];
   const headerIndex = grid.indexOf(header);
 
@@ -90,16 +90,16 @@ export const extractExamInfo = (html: string): ExamResult => {
  * 通过关键字匹配得分最高的表格被认为是目标表格
  */
 function findExamTable(html: string): { grid: string[][] } | null {
-  const tables = extractSegments(html, 'table');
-  const headerKeywords = ['课程', '时间', '地点', '座号', '考试'];
-  
+  const tables = extractSegments(html, "table");
+  const headerKeywords = ["课程", "时间", "地点", "座号", "考试"];
+
   let bestGrid: string[][] | null = null;
   let maxScore = -1;
 
   for (const tableHtml of tables) {
     const grid = parseTable(tableHtml);
     const header = grid.find((r) => r.some((c) => c)) || [];
-    
+
     // 计算当前表格的关键字匹配得分
     const score = header.reduce((acc, cell) => {
       return acc + (headerKeywords.some((k) => cell.includes(k)) ? 1 : 0);
@@ -118,15 +118,16 @@ function findExamTable(html: string): { grid: string[][] } | null {
  * 识别表头列索引
  */
 function detectColumns(header: string[]): Record<string, number> {
-  const normalized = header.map((h) => h.replace(/\s+/g, '').replace(/：|:/g, '').toLowerCase());
-  const findIdx = (keywords: string[]) => normalized.findIndex((h) => keywords.some((k) => h.includes(k)));
+  const normalized = header.map((h) => h.replace(/\s+/g, "").replace(/：|:/g, "").toLowerCase());
+  const findIdx = (keywords: string[]) =>
+    normalized.findIndex((h) => keywords.some((k) => h.includes(k)));
 
   return {
-    courseName: findIdx(['课程名称', '课程名', '课程']),
-    examTime: findIdx(['考试时间', '时间']),
-    examRoom: findIdx(['考试地点', '地点', '教室']),
-    seatNumber: findIdx(['座位号', '座号']),
-    assessmentMethod: findIdx(['考核方式', '考试方式']),
+    courseName: findIdx(["课程名称", "课程名", "课程"]),
+    examTime: findIdx(["考试时间", "时间"]),
+    examRoom: findIdx(["考试地点", "地点", "教室"]),
+    seatNumber: findIdx(["座位号", "座号"]),
+    assessmentMethod: findIdx(["考核方式", "考试方式"]),
   };
 }
 
@@ -134,6 +135,6 @@ function detectColumns(header: string[]): Record<string, number> {
  * 安全提取单元格内容
  */
 function pickCell(row: string[], index: number): string {
-  if (index < 0 || index >= row.length) return '';
-  return (row[index] || '').trim();
+  if (index < 0 || index >= row.length) return "";
+  return (row[index] || "").trim();
 }

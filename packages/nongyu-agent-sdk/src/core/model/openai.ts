@@ -4,8 +4,8 @@ import type {
   GenerateResult,
   StreamDelta,
   ModelMessage,
-} from '../../types/model';
-import { request } from '../../shared/network';
+} from "../../types/model";
+import { request } from "../../shared/network";
 
 /**
  * OpenAI 兼容协议适配器
@@ -30,7 +30,7 @@ export class OpenAIProvider implements ModelProvider {
   private headers: Record<string, string>;
 
   constructor(config: OpenAIConfig) {
-    this.baseURL = config.baseURL.replace(/\/$/, '');
+    this.baseURL = config.baseURL.replace(/\/$/, "");
     this.apiKey = config.apiKey;
     this.model = config.model;
     this.headers = config.headers ?? {};
@@ -45,7 +45,7 @@ export class OpenAIProvider implements ModelProvider {
           content: string | null;
           tool_calls?: Array<{
             id: string;
-            type: 'function';
+            type: "function";
             function: { name: string; arguments: string };
           }>;
         };
@@ -57,14 +57,14 @@ export class OpenAIProvider implements ModelProvider {
         total_tokens: number; // 总令牌数
       };
     }>(`${this.baseURL}/chat/completions`, {
-      method: 'POST',
+      method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify(body),
     });
 
     const choice = response.choices[0];
     if (!choice) {
-      throw new Error('模型未返回任何选择');
+      throw new Error("模型未返回任何选择");
     }
 
     return {
@@ -79,9 +79,9 @@ export class OpenAIProvider implements ModelProvider {
     const body = this.buildRequestBody(config, true);
 
     const response = await fetch(`${this.baseURL}/chat/completions`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${this.apiKey}`,
         ...this.headers,
       },
@@ -95,11 +95,11 @@ export class OpenAIProvider implements ModelProvider {
 
     const reader = response.body?.getReader();
     if (!reader) {
-      throw new Error('响应 body 不可读');
+      throw new Error("响应 body 不可读");
     }
 
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
 
     try {
       while (true) {
@@ -107,13 +107,13 @@ export class OpenAIProvider implements ModelProvider {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
 
         for (const line of lines) {
           const trimmed = line.trim();
-          if (!trimmed || trimmed === 'data: [DONE]') continue;
-          if (!trimmed.startsWith('data: ')) continue;
+          if (!trimmed || trimmed === "data: [DONE]") continue;
+          if (!trimmed.startsWith("data: ")) continue;
 
           try {
             const json = JSON.parse(trimmed.slice(6));
@@ -137,10 +137,7 @@ export class OpenAIProvider implements ModelProvider {
     }
   }
 
-  private buildRequestBody(
-    config: GenerateConfig,
-    stream: boolean,
-  ): Record<string, unknown> {
+  private buildRequestBody(config: GenerateConfig, stream: boolean): Record<string, unknown> {
     const body: Record<string, unknown> = {
       model: this.model,
       messages: config.messages.map(convertMessage),
@@ -152,7 +149,7 @@ export class OpenAIProvider implements ModelProvider {
     if (config.stop) body.stop = config.stop;
     if (config.tools && config.tools.length > 0) {
       body.tools = config.tools;
-      body.tool_choice = 'auto';
+      body.tool_choice = "auto";
     }
 
     return body;
@@ -160,7 +157,7 @@ export class OpenAIProvider implements ModelProvider {
 
   private getHeaders(): Record<string, string> {
     return {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
       ...this.headers,
     };
@@ -173,9 +170,9 @@ function convertMessage(msg: ModelMessage): Record<string, unknown> {
     content: msg.content,
   };
 
-  if (msg.role === 'tool') {
+  if (msg.role === "tool") {
     // tool 角色消息必须有 name 字段（DeepSeek 等厂商强制要求）
-    result.name = msg.name ?? '';
+    result.name = msg.name ?? "";
     if (msg.tool_call_id) result.tool_call_id = msg.tool_call_id;
   } else {
     if (msg.name) result.name = msg.name;

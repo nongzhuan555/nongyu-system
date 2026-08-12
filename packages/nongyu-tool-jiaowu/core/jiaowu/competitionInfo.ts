@@ -3,33 +3,33 @@
  * 从教务首页获取竞赛通知列表
  */
 
-import { extractCompetitionInfo } from '../extractor/competitionInfoExtractor';
-import type { NoticeItem, NoticeResult } from '../extractor/competitionInfoExtractor';
-import { fetchJiaowuHtml } from '../utils';
+import { extractCompetitionInfo } from "../extractor/competitionInfoExtractor";
+import type { NoticeItem, NoticeResult } from "../extractor/competitionInfoExtractor";
+import { fetchJiaowuHtml } from "../utils";
 
 export type { NoticeItem, NoticeResult };
 
 /**
  * 教务网首页 URL（竞赛通知嵌在此页中）
  */
-const INDEX_URL = 'https://jiaowu.sicau.edu.cn/web/web/web/index.asp';
+const INDEX_URL = "https://jiaowu.sicau.edu.cn/web/web/web/index.asp";
 
 /**
  * 获取教务网竞赛通知列表。
- * 
+ *
  * 从教务首页抓取 HTML，定位并解析竞赛通知区域内的所有条目。
- * 
+ *
  * 使用场景：
  * 1. 农屿App教务通知页面以此获取教务网首页竞赛通知数据渲染成列表，点击列表可跳转教务网竞赛通知详情页
  * 2. nongyu-agent将此作为tool调用用于获取教务网首页竞赛通知数据，用以回答用户提出的与教务网竞赛通知相关的问题
- * 
+ *
  * @returns 成功返回 `{ success: true, result: NoticeItem[] }`，失败返回 `{ success: false, result: [] }`
- * 
+ *
  * @example 基本调用
  * ```ts
  * const info = await getCompetitionInfo();
  * ```
- * 
+ *
  * @example 成功示例
  * ```ts
  * const info = await getCompetitionInfo();
@@ -54,7 +54,7 @@ const INDEX_URL = 'https://jiaowu.sicau.edu.cn/web/web/web/index.asp';
  * //   success: true
  * // }
  * ```
- * 
+ *
  * @example 失败示例
  * ```ts
  * // 网络异常或未登录时
@@ -70,7 +70,7 @@ export const getCompetitionInfo = async (): Promise<NoticeResult> => {
     const html = await fetchJiaowuHtml(INDEX_URL);
     return extractCompetitionInfo(html);
   } catch (error) {
-    console.error('获取竞赛通知失败:', error);
+    console.error("获取竞赛通知失败:", error);
     return { result: [], success: false };
   }
 };

@@ -2,29 +2,29 @@
  * 课表查询模块
  */
 
-import { extractCourseInfo } from '../extractor';
-import { fetchJiaowuHtml } from '../utils';
+import { extractCourseInfo } from "../extractor";
+import { fetchJiaowuHtml } from "../utils";
 
 /**
  * 教务网班级课表查询页面 URL
  */
 const COURSE_INFO_URL =
-  'https://jiaowu.sicau.edu.cn/xuesheng/gongxuan/gongxuan/kbbanji.asp?title_id1=4';
+  "https://jiaowu.sicau.edu.cn/xuesheng/gongxuan/gongxuan/kbbanji.asp?title_id1=4";
 
 /**
  * 获取学生本学期的课程安排。
- * 
+ *
  * 使用场景：
  * 1. 农屿app内课表页面供学生查看自己的课程安排。
  * 2. nongyu-agent将此作为tool调用，用于获取当前用户的课程安排，但实际使用场景中agent使用的课表工具优先从本地缓存中读取，兜底时再调用此tool。
- * 
+ *
  * @returns 成功返回 `{ success: true, result: CourseItem[] }`，失败返回 `{ success: false, result: [] }`
- * 
+ *
  * @example 基本调用
  * ```ts
  * const courses = await getCourseInfo();
  * ```
- * 
+ *
  * @example 成功示例
  * ```ts
  * const courses = await getCourseInfo();
@@ -82,7 +82,7 @@ const COURSE_INFO_URL =
  * //   success: true
  * // }
  * ```
- * 
+ *
  * @example 失败示例
  * ```ts
  * // 网络异常或未登录时
@@ -98,7 +98,7 @@ export const getCourseInfo = async () => {
     const html = await fetchJiaowuHtml(COURSE_INFO_URL);
     return extractCourseInfo(html);
   } catch (error) {
-    console.error('获取课表信息失败:', error);
+    console.error("获取课表信息失败:", error);
     return {
       result: [],
       success: false,

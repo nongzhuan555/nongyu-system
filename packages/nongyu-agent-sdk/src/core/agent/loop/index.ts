@@ -1,10 +1,17 @@
-import type { AgentInput, AgentOutput, StepContext, RunConfig, ToolApprovalConfig, ToolCallRecord } from '../../../types/agent';
-import type { Message } from '../../../types/message';
-import type { ModelProvider, ToolSchema } from '../../../types/model';
-import type { Tool } from '../../../types/tool';
-import type { AgentStreamChunk } from '../../../types/stream';
-import { EventBus } from '../../events';
-import { stopConditions, type StopCondition } from './stop-conditions';
+import type {
+  AgentInput,
+  AgentOutput,
+  StepContext,
+  RunConfig,
+  ToolApprovalConfig,
+  ToolCallRecord,
+} from "../../../types/agent";
+import type { Message } from "../../../types/message";
+import type { ModelProvider, ToolSchema } from "../../../types/model";
+import type { Tool } from "../../../types/tool";
+import type { AgentStreamChunk } from "../../../types/stream";
+import { EventBus } from "../../events";
+import { stopConditions, type StopCondition } from "./stop-conditions";
 
 /**
  * Agent 运行循环引擎
@@ -53,12 +60,11 @@ export class AgentLoop {
     this.toolApproval = runConfig?.toolApproval;
     this.maxSteps = runConfig?.maxSteps ?? 20;
     this.prepareStepHook = runConfig?.prepareStep ?? (async (ctx) => ctx);
-    this.stopWhen = runConfig?.stopWhen ?? stopConditions.any(
-      stopConditions.modelFinished(),
-      stopConditions.stepCountIs(this.maxSteps),
-    );
+    this.stopWhen =
+      runConfig?.stopWhen ??
+      stopConditions.any(stopConditions.modelFinished(), stopConditions.stepCountIs(this.maxSteps));
     this.toolSchemas = Array.from(tools.values()).map((tool) => ({
-      type: 'function' as const,
+      type: "function" as const,
       function: {
         name: tool.name,
         description: tool.description,
@@ -84,7 +90,7 @@ export class AgentLoop {
     let totalTokens = 0;
     let stepNumber = 0;
 
-    this.events.emit('agent:start', { agentName: this.agentName, input });
+    this.events.emit("agent:start", { agentName: this.agentName, input });
 
     try {
       while (!this.stopped) {
@@ -101,27 +107,28 @@ export class AgentLoop {
         const model = ctx.model ?? this.model;
 
         // 发射 step:start
-        this.events.emit('step:start', {
+        this.events.emit("step:start", {
           agentName: this.agentName,
           stepNumber,
           messages: ctx.messages,
         });
 
         // 构建系统提示词
-        const systemMessages = [
-          { role: 'system' as const, content: this.systemPrompt },
-        ];
+        const systemMessages = [{ role: "system" as const, content: this.systemPrompt }];
 
         // 调用 LLM
         const result = await model.generateText({
           model: model.model,
-          messages: [...systemMessages, ...ctx.messages.map(m => ({
-            role: m.role as 'user' | 'assistant' | 'tool',
-            content: m.content,
-            tool_call_id: m.toolCallId,
-            name: m.name,
-            tool_calls: m.toolCalls,
-          }))],
+          messages: [
+            ...systemMessages,
+            ...ctx.messages.map((m) => ({
+              role: m.role as "user" | "assistant" | "tool",
+              content: m.content,
+              tool_call_id: m.toolCallId,
+              name: m.name,
+              tool_calls: m.toolCalls,
+            })),
+          ],
           tools: this.toolSchemas,
           temperature: this._runConfig?.temperature,
         });
@@ -131,8 +138,8 @@ export class AgentLoop {
         // 添加 assistant 消息
         const assistantMsg: Message = {
           id: this.generateId(),
-          role: 'assistant',
-          content: result.content ?? '',
+          role: "assistant",
+          content: result.content ?? "",
           timestamp: Date.now(),
           toolCalls: result.toolCalls.length > 0 ? result.toolCalls : undefined,
         };
@@ -141,10 +148,10 @@ export class AgentLoop {
         // 判断是否有工具调用
         if (result.toolCalls.length > 0) {
           // 工具调用路径
-          this.events.emit('step:complete', {
+          this.events.emit("step:complete", {
             agentName: this.agentName,
             stepNumber,
-            type: 'tool_call',
+            type: "tool_call",
             tokensUsed: result.usage.total_tokens,
           });
 
@@ -165,7 +172,7 @@ export class AgentLoop {
               const toolResult = `错误：未找到工具 "${tc.function.name}"`;
               messages.push({
                 id: this.generateId(),
-                role: 'tool',
+                role: "tool",
                 content: toolResult,
                 toolCallId: tc.id,
                 timestamp: Date.now(),
@@ -175,7 +182,7 @@ export class AgentLoop {
 
             // 检查审批——在 tool:call 事件之前
             if (tool.needsApproval(input)) {
-              this.events.emit('tool:approval-required', {
+              this.events.emit("tool:approval-required", {
                 agentName: this.agentName,
                 toolName: tc.function.name,
                 input,
@@ -187,7 +194,7 @@ export class AgentLoop {
                 const skipResult = `工具 "${tc.function.name}" 调用已被拒绝`;
                 messages.push({
                   id: this.generateId(),
-                  role: 'tool',
+                  role: "tool",
                   content: skipResult,
                   toolCallId: tc.id,
                   name: tc.function.name,
@@ -198,7 +205,7 @@ export class AgentLoop {
             }
 
             // 审批通过后，emit tool:call
-            this.events.emit('tool:call', {
+            this.events.emit("tool:call", {
               agentName: this.agentName,
               toolName: tc.function.name,
               input,
@@ -209,7 +216,7 @@ export class AgentLoop {
               const output = await tool.execute(input, {
                 abortSignal: this.abortController!.signal,
                 emit: (event, data) => {
-                  this.events.emit('tool:result' as any, {
+                  this.events.emit("tool:result" as any, {
                     agentName: this.agentName,
                     toolName: tc.function.name,
                     output: { event, data },
@@ -220,7 +227,7 @@ export class AgentLoop {
               });
 
               const duration = Date.now() - startTime;
-              this.events.emit('tool:result', {
+              this.events.emit("tool:result", {
                 agentName: this.agentName,
                 toolName: tc.function.name,
                 output,
@@ -236,14 +243,14 @@ export class AgentLoop {
 
               messages.push({
                 id: this.generateId(),
-                role: 'tool',
-                content: typeof output === 'string' ? output : JSON.stringify(output),
+                role: "tool",
+                content: typeof output === "string" ? output : JSON.stringify(output),
                 toolCallId: tc.id,
                 name: tc.function.name,
                 timestamp: Date.now(),
               });
             } catch (error) {
-              this.events.emit('tool:error', {
+              this.events.emit("tool:error", {
                 agentName: this.agentName,
                 toolName: tc.function.name,
                 error: error instanceof Error ? error : new Error(String(error)),
@@ -251,7 +258,7 @@ export class AgentLoop {
 
               messages.push({
                 id: this.generateId(),
-                role: 'tool',
+                role: "tool",
                 content: `工具执行出错: ${error instanceof Error ? error.message : String(error)}`,
                 toolCallId: tc.id,
                 name: tc.function.name,
@@ -265,26 +272,26 @@ export class AgentLoop {
         }
 
         // 纯文本路径 - 完成
-        this.events.emit('step:complete', {
+        this.events.emit("step:complete", {
           agentName: this.agentName,
           stepNumber,
-          type: 'text',
+          type: "text",
           tokensUsed: result.usage.total_tokens,
         });
-        this.events.emit('text:complete', {
+        this.events.emit("text:complete", {
           agentName: this.agentName,
-          text: result.content ?? '',
+          text: result.content ?? "",
         });
 
         const output: AgentOutput = {
-          content: result.content ?? '',
+          content: result.content ?? "",
           steps: stepNumber,
           tokensUsed: totalTokens,
           messages,
           toolCalls: toolCallRecords,
         };
 
-        this.events.emit('agent:complete', {
+        this.events.emit("agent:complete", {
           agentName: this.agentName,
           output,
           totalSteps: stepNumber,
@@ -295,13 +302,13 @@ export class AgentLoop {
       }
 
       // 被停止
-      this.events.emit('agent:stop', {
+      this.events.emit("agent:stop", {
         agentName: this.agentName,
         stepNumber,
       });
 
       return {
-        content: '',
+        content: "",
         steps: stepNumber,
         tokensUsed: totalTokens,
         messages,
@@ -309,7 +316,7 @@ export class AgentLoop {
       };
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.events.emit('agent:error', {
+      this.events.emit("agent:error", {
         agentName: this.agentName,
         error: err,
         stepNumber,
@@ -329,7 +336,7 @@ export class AgentLoop {
     let totalTokens = 0;
     let stepNumber = 0;
 
-    yield { type: 'step:start', stepNumber: 0 };
+    yield { type: "step:start", stepNumber: 0 };
 
     try {
       let currentResponseContent: string | null = null;
@@ -347,25 +354,26 @@ export class AgentLoop {
         ctx = await this.prepareStepHook(ctx);
         const model = ctx.model ?? this.model;
 
-        yield { type: 'step:start', stepNumber };
+        yield { type: "step:start", stepNumber };
 
-        const systemMessages = [
-          { role: 'system' as const, content: this.systemPrompt },
-        ];
+        const systemMessages = [{ role: "system" as const, content: this.systemPrompt }];
 
         // 流式调用
-        let fullText = '';
+        let fullText = "";
         let toolCallsAccum: any[] = [];
 
         for await (const delta of model.streamText({
           model: model.model,
-          messages: [...systemMessages, ...ctx.messages.map(m => ({
-            role: m.role as 'system' | 'user' | 'assistant' | 'tool',
-            content: m.content,
-            tool_call_id: m.toolCallId,
-            name: m.name,
-            tool_calls: m.toolCalls,
-          }))],
+          messages: [
+            ...systemMessages,
+            ...ctx.messages.map((m) => ({
+              role: m.role as "system" | "user" | "assistant" | "tool",
+              content: m.content,
+              tool_call_id: m.toolCallId,
+              name: m.name,
+              tool_calls: m.toolCalls,
+            })),
+          ],
           tools: this.toolSchemas,
           temperature: this._runConfig?.temperature,
         })) {
@@ -374,7 +382,7 @@ export class AgentLoop {
           if (delta.content) {
             fullText += delta.content;
             yield {
-              type: 'text:delta' as const,
+              type: "text:delta" as const,
               delta: delta.content,
               fullText,
             };
@@ -394,7 +402,7 @@ export class AgentLoop {
                   if (!cur.function) cur.function = {};
                   if (tc.function.name) cur.function.name = tc.function.name;
                   if (tc.function.arguments) {
-                    cur.function.arguments = (cur.function.arguments ?? '') + tc.function.arguments;
+                    cur.function.arguments = (cur.function.arguments ?? "") + tc.function.arguments;
                   }
                 }
               }
@@ -412,8 +420,8 @@ export class AgentLoop {
           // 添加 assistant 消息（包含 tool_calls），确保下一轮上下文完整
           messages.push({
             id: this.generateId(),
-            role: 'assistant',
-            content: fullText || '',
+            role: "assistant",
+            content: fullText || "",
             toolCalls: toolCallsAccum,
             timestamp: Date.now(),
           });
@@ -425,7 +433,7 @@ export class AgentLoop {
             const tool = this.tools.get(tc.function.name);
             let input: unknown;
             try {
-              input = JSON.parse(tc.function.arguments ?? '{}');
+              input = JSON.parse(tc.function.arguments ?? "{}");
             } catch {
               input = tc.function.arguments;
             }
@@ -434,7 +442,7 @@ export class AgentLoop {
 
             // 检查审批——在 tool:call 之前
             if (tool.needsApproval(input)) {
-              this.events.emit('tool:approval-required', {
+              this.events.emit("tool:approval-required", {
                 agentName: this.agentName,
                 toolName: tc.function.name,
                 input,
@@ -444,7 +452,7 @@ export class AgentLoop {
               if (!approved) {
                 messages.push({
                   id: this.generateId(),
-                  role: 'tool',
+                  role: "tool",
                   content: `工具 "${tc.function.name}" 调用已被拒绝`,
                   toolCallId: tc.id,
                   timestamp: Date.now(),
@@ -455,7 +463,7 @@ export class AgentLoop {
 
             // 审批通过后，emit tool:call
             yield {
-              type: 'tool:call',
+              type: "tool:call",
               toolName: tc.function.name,
               input,
             };
@@ -470,7 +478,7 @@ export class AgentLoop {
 
               const duration = Date.now() - startTime;
               yield {
-                type: 'tool:result',
+                type: "tool:result",
                 toolName: tc.function.name,
                 output,
                 duration,
@@ -485,15 +493,15 @@ export class AgentLoop {
 
               messages.push({
                 id: this.generateId(),
-                role: 'tool',
-                content: typeof output === 'string' ? output : JSON.stringify(output),
+                role: "tool",
+                content: typeof output === "string" ? output : JSON.stringify(output),
                 toolCallId: tc.id,
                 name: tc.function.name,
                 timestamp: Date.now(),
               });
             } catch (error) {
               yield {
-                type: 'agent:error',
+                type: "agent:error",
                 error: error instanceof Error ? error : new Error(String(error)),
               };
             }
@@ -507,7 +515,7 @@ export class AgentLoop {
         // 完成
         currentResponseContent = fullText;
         yield {
-          type: 'agent:complete',
+          type: "agent:complete",
           content: fullText,
           totalSteps: stepNumber,
           totalTokens,
@@ -517,14 +525,14 @@ export class AgentLoop {
       }
 
       yield {
-        type: 'agent:complete',
-        content: currentResponseContent ?? '',
+        type: "agent:complete",
+        content: currentResponseContent ?? "",
         totalSteps: stepNumber,
         totalTokens,
       };
     } catch (error) {
       yield {
-        type: 'agent:error',
+        type: "agent:error",
         error: error instanceof Error ? error : new Error(String(error)),
       };
     }
@@ -534,7 +542,7 @@ export class AgentLoop {
     return [
       {
         id: this.generateId(),
-        role: 'user',
+        role: "user",
         content: prompt,
         timestamp: Date.now(),
       },

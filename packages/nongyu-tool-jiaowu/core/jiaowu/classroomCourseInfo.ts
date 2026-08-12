@@ -3,28 +3,26 @@
  * 查询指定教室在某学期的课程安排
  */
 
-import { extractClassroomCourseInfo } from '../extractor/classroomCourseInfoExtractor';
+import { extractClassroomCourseInfo } from "../extractor/classroomCourseInfoExtractor";
 import type {
   ClassroomCourseItem,
   ClassroomCourseSlot,
   ClassroomCourseResult,
   ClassroomCourseInfoResult,
-} from '../extractor/classroomCourseInfoExtractor';
-import { fetchJiaowuHtml } from '../utils';
-import { getClassroomInfo } from './classroomInfo';
+} from "../extractor/classroomCourseInfoExtractor";
+import { fetchJiaowuHtml } from "../utils";
+import { getClassroomInfo } from "./classroomInfo";
 
 /**
  * 教务网教室课表详情页基础 URL
  * bianhao 参数从教室列表页获取
  */
-const CLASSROOM_COURSE_BASE_URL =
-  'https://jiaowu.sicau.edu.cn/web/web/js_kb_cha/kbjshi_new.asp';
+const CLASSROOM_COURSE_BASE_URL = "https://jiaowu.sicau.edu.cn/web/web/js_kb_cha/kbjshi_new.asp";
 
 /**
  * 教务网教室搜索页 URL（用作课表详情页请求的 Referer，避免反爬）
  */
-const CLASSROOM_SEARCH_URL =
-  'https://jiaowu.sicau.edu.cn/web/web/js_kb_cha/jshi_new.asp';
+const CLASSROOM_SEARCH_URL = "https://jiaowu.sicau.edu.cn/web/web/js_kb_cha/jshi_new.asp";
 
 export type {
   ClassroomCourseItem,
@@ -57,30 +55,30 @@ export const getClassroomCourseInfo = async (
     });
     return extractClassroomCourseInfo(html);
   } catch (error) {
-    console.error('获取教室课程信息失败:', error);
+    console.error("获取教室课程信息失败:", error);
     return { result: null, success: false };
   }
 };
 
 /**
  * 根据教室名称搜索并获取课表。
- * 
+ *
  * 流程：
  * 1. 调用 getClassroomInfo 搜索教室列表
  * 2. 按教室名称精确匹配，获取 classroomId
  * 3. 调用 getClassroomCourseInfo 获取课表详情
- * 
+ *
  * 使用场景：
  * 1. 暂不考虑用于农屿app专门页面展示，只用于给agent做tool用于查看特定教室课表
- * 
+ *
  * @param name - 教室名称（如：10-A104）
  * @returns 成功返回 `{ success: true, result: { classroomName, semester, slots } }`，失败返回 `{ success: false, result: null }`
- * 
+ *
  * @example 基本调用
  * ```ts
  * const info = await getClassroomCourseInfoByName('10-A104');
  * ```
- * 
+ *
  * @example 成功示例
  * ```ts
  * const info = await getClassroomCourseInfoByName('10-A104');
@@ -124,7 +122,7 @@ export const getClassroomCourseInfo = async (
  * //   success: true
  * // }
  * ```
- * 
+ *
  * @example 失败示例
  * ```ts
  * // 未找到该教室或网络异常时
@@ -136,16 +134,14 @@ export const getClassroomCourseInfo = async (
  * ```
  */
 export const getClassroomCourseInfoByName = async (
-  name: string
+  name: string,
 ): Promise<ClassroomCourseInfoResult> => {
   try {
     // 1. 搜索教室
     const searchResult = await getClassroomInfo(name);
 
     // 2. 按教室名称精确匹配
-    const match = searchResult.result?.find(
-      (item) => item.location === name
-    );
+    const match = searchResult.result?.find((item) => item.location === name);
     if (!match) {
       console.error(`未找到教室: ${name}`);
       return { result: null, success: false };
@@ -155,7 +151,7 @@ export const getClassroomCourseInfoByName = async (
     const referer = `${CLASSROOM_SEARCH_URL}?bj=${encodeURIComponent(name)}&shou1=`;
     return getClassroomCourseInfo(match.classroomId, referer);
   } catch (error) {
-    console.error('获取教室课程信息失败:', error);
+    console.error("获取教室课程信息失败:", error);
     return { result: null, success: false };
   }
 };

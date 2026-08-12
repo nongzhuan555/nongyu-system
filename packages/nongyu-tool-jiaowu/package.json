@@ -2,13 +2,15 @@
   "name": "nongyu-tool-jiaowu",
   "version": "1.0.0",
   "description": "农屿教务系统工具库",
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "test": "npx tsx test.ts",
-    "lint": "oxlint .",
-    "type-check": "tsc --noEmit"
-  },
+  "keywords": [
+    "agent",
+    "jiaowu",
+    "sicau",
+    "tool"
+  ],
+  "license": "ISC",
+  "author": "TangLei",
+  "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,18 +20,16 @@
       "import": "./dist/index.js"
     }
   },
-  "keywords": [
-    "sicau",
-    "jiaowu",
-    "agent",
-    "tool"
-  ],
-  "author": "TangLei",
-  "license": "ISC",
-  "type": "module",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "npx tsx test.ts",
+    "lint": "oxlint .",
+    "type-check": "tsc --noEmit"
+  },
   "dependencies": {
+    "axios": "catalog:",
     "buffer": "catalog:",
-    "iconv-lite": "catalog:",
-    "axios": "catalog:"
+    "iconv-lite": "catalog:"
   }
 }

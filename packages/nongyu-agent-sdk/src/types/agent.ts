@@ -1,9 +1,9 @@
-import type { Tool } from './tool';
-import type { AgentContext, ContextConfig as ContextManagerConfig } from './context';
-import type { ModelProvider } from './model';
-import type { AgentEventMap, AgentEventHandler } from './events';
-import type { AgentStreamChunk } from './stream';
-import type { Message } from './message';
+import type { Tool } from "./tool";
+import type { AgentContext, ContextConfig as ContextManagerConfig } from "./context";
+import type { ModelProvider } from "./model";
+import type { AgentEventMap, AgentEventHandler } from "./events";
+import type { AgentStreamChunk } from "./stream";
+import type { Message } from "./message";
 
 // ===== Agent 配置 =====
 
@@ -75,13 +75,13 @@ export interface ToolCallRecord {
 // ===== Agent 状态 =====
 
 export type AgentStatus =
-  | 'idle'
-  | 'thinking'
-  | 'streaming'
-  | 'tool-calling'
-  | 'completed'
-  | 'stopped'
-  | 'error';
+  | "idle"
+  | "thinking"
+  | "streaming"
+  | "tool-calling"
+  | "completed"
+  | "stopped"
+  | "error";
 
 // ===== Agent 状态 =====
 export interface AgentState {

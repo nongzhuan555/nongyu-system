@@ -3,7 +3,7 @@
  */
 
 /** 生成唯一 ID */
-export function generateId(prefix: string = 'id'): string {
+export function generateId(prefix: string = "id"): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
@@ -23,5 +23,5 @@ export function safeJsonParse<T = unknown>(str: string): T | null {
 
 /** 判断是否为可中止错误 */
 export function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === 'AbortError';
+  return error instanceof DOMException && error.name === "AbortError";
 }

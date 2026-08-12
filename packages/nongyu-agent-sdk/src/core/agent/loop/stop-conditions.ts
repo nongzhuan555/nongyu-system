@@ -1,4 +1,4 @@
-import type { StepContext } from '../../../types/agent';
+import type { StepContext } from "../../../types/agent";
 
 export type StopCondition = (ctx: StepContext) => boolean | Promise<boolean>;
 
@@ -13,12 +13,12 @@ export const stopConditions = {
 
   /** 模型返回 final 状态时停止 */
   modelFinished(): StopCondition {
-    return (ctx) => ctx.finishReason === 'stop';
+    return (ctx) => ctx.finishReason === "stop";
   },
 
   /** 模型因长度截断时也停止 */
   modelTruncated(): StopCondition {
-    return (ctx) => ctx.finishReason === 'length';
+    return (ctx) => ctx.finishReason === "length";
   },
 
   /** 任意条件满足即停止 */

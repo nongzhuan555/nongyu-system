@@ -4,8 +4,8 @@
  * 通过 DuckDuckGo 静态 HTML 端点搜索互联网内容，
  * 无需 API Key，返回标题、链接和摘要。
  */
-import { z } from 'zod';
-import { tool } from '../index';
+import { z } from "zod";
+import { tool } from "../index";
 
 /** 单条搜索结果 */
 interface SearchResultItem {
@@ -40,10 +40,10 @@ function parseResults(html: string): SearchResultItem[] {
 
     // DDG 使用协议相对 URL: //example.com → https://example.com
     let url = linkMatch[1];
-    if (url.startsWith('//')) url = 'https:' + url;
+    if (url.startsWith("//")) url = "https:" + url;
 
     const title = stripHtml(linkMatch[2]).trim();
-    const snippet = snippetMatch ? stripHtml(snippetMatch[1]).trim() : '';
+    const snippet = snippetMatch ? stripHtml(snippetMatch[1]).trim() : "";
 
     if (title) {
       results.push({ title, url, snippet });
@@ -56,28 +56,24 @@ function parseResults(html: string): SearchResultItem[] {
 /** 去除 HTML 标签和常见空白实体 */
 function stripHtml(html: string): string {
   return html
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#x27;/g, "'")
     .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ');
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ");
 }
 
 export const webSearchTool = tool({
-  name: 'web_search',
+  name: "web_search",
   description:
-    '通过 DuckDuckGo 搜索引擎搜索互联网内容。返回标题、URL 和网页摘要片段。适用于获取实时信息、新闻、资讯等。',
+    "通过 DuckDuckGo 搜索引擎搜索互联网内容。返回标题、URL 和网页摘要片段。适用于获取实时信息、新闻、资讯等。",
   inputSchema: z.object({
-    query: z.string().describe('搜索关键词，支持中文和英文'),
-    maxResults: z
-      .number()
-      .optional()
-      .default(10)
-      .describe('最大返回结果数，默认 10'),
+    query: z.string().describe("搜索关键词，支持中文和英文"),
+    maxResults: z.number().optional().default(10).describe("最大返回结果数，默认 10"),
   }),
   async execute({ query, maxResults }) {
     const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
@@ -86,10 +82,10 @@ export const webSearchTool = tool({
     try {
       response = await fetch(url, {
         headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-          Accept: 'text/html,application/xhtml+xml',
-          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml",
+          "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
         },
         signal: AbortSignal.timeout(10_000),
       });

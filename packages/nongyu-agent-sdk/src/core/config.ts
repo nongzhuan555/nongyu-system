@@ -8,8 +8,8 @@
  * 如果未配置 key 和 url，后续操作将抛出错误（后续可扩展为后端转发）。
  */
 
-import { OpenAIProvider } from './model/openai';
-import type { ModelProvider } from '../types/model';
+import { OpenAIProvider } from "./model/openai";
+import type { ModelProvider } from "../types/model";
 
 export interface SDKConfig {
   /** API 密钥 */
@@ -20,8 +20,7 @@ export interface SDKConfig {
   model: string;
 }
 
-const MISSING_CONFIG_ERROR =
-  '请先调用 configure({ apiKey, baseURL, model }) 配置 SDK。';
+const MISSING_CONFIG_ERROR = "请先调用 configure({ apiKey, baseURL, model }) 配置 SDK。";
 
 let _config: SDKConfig | null = null;
 

@@ -1,5 +1,5 @@
-import mitt, { type Emitter } from 'mitt';
-import type { AgentEventMap, AgentEvent, AgentEventHandler } from '../../types/events';
+import mitt, { type Emitter } from "mitt";
+import type { AgentEventMap, AgentEvent, AgentEventHandler } from "../../types/events";
 
 /**
  * 基于 mitt 的 Agent 事件总线

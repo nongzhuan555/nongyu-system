@@ -1,11 +1,18 @@
-import type { Agent, AgentConfig, AgentState, AgentStatus, AgentInput, AgentOutput } from '../../types/agent';
-import type { AgentEventMap, AgentEventHandler } from '../../types/events';
-import type { AgentStreamChunk } from '../../types/stream';
-import type { Tool } from '../../types/tool';
-import type { ModelProvider } from '../../types/model';
-import { EventBus } from '../events';
-import { AgentLoop } from './loop';
-import { agentAsTool } from './sub-agent';
+import type {
+  Agent,
+  AgentConfig,
+  AgentState,
+  AgentStatus,
+  AgentInput,
+  AgentOutput,
+} from "../../types/agent";
+import type { AgentEventMap, AgentEventHandler } from "../../types/events";
+import type { AgentStreamChunk } from "../../types/stream";
+import type { Tool } from "../../types/tool";
+import type { ModelProvider } from "../../types/model";
+import { EventBus } from "../events";
+import { AgentLoop } from "./loop";
+import { agentAsTool } from "./sub-agent";
 
 /**
  * Agent 内部实现类
@@ -52,7 +59,7 @@ export class AgentImpl implements Agent {
 
     // 初始化状态
     this._state = {
-      status: 'idle',
+      status: "idle",
       currentStep: 0,
       totalTokens: 0,
       messages: [],
@@ -69,11 +76,11 @@ export class AgentImpl implements Agent {
     );
 
     // 监听状态变更事件，更新状态
-    this.events.on('agent:start', () => this.updateStatus('thinking'));
-    this.events.on('tool:call', () => this.updateStatus('tool-calling'));
-    this.events.on('agent:complete', () => this.updateStatus('completed'));
-    this.events.on('agent:stop', () => this.updateStatus('stopped'));
-    this.events.on('agent:error', () => this.updateStatus('error'));
+    this.events.on("agent:start", () => this.updateStatus("thinking"));
+    this.events.on("tool:call", () => this.updateStatus("tool-calling"));
+    this.events.on("agent:complete", () => this.updateStatus("completed"));
+    this.events.on("agent:stop", () => this.updateStatus("stopped"));
+    this.events.on("agent:error", () => this.updateStatus("error"));
   }
 
   get state(): Readonly<AgentState> {
@@ -82,7 +89,7 @@ export class AgentImpl implements Agent {
 
   async complete(input: AgentInput): Promise<AgentOutput> {
     this.resetState();
-    this.updateStatus('thinking');
+    this.updateStatus("thinking");
 
     try {
       const result = await this.loop.run(input);
@@ -91,7 +98,7 @@ export class AgentImpl implements Agent {
       this._state.currentStep = result.steps;
       return result;
     } catch (error) {
-      this.updateStatus('error');
+      this.updateStatus("error");
       this._state.error = error instanceof Error ? error : new Error(String(error));
       throw error;
     }
@@ -99,22 +106,22 @@ export class AgentImpl implements Agent {
 
   async *stream(input: AgentInput): AsyncIterable<AgentStreamChunk> {
     this.resetState();
-    this.updateStatus('streaming');
+    this.updateStatus("streaming");
 
     try {
       for await (const chunk of this.loop.runStream(input)) {
-        if (chunk.type === 'agent:complete') {
+        if (chunk.type === "agent:complete") {
           this._state.currentStep = chunk.totalSteps;
           this._state.totalTokens = chunk.totalTokens;
-          this.updateStatus('completed');
-        } else if (chunk.type === 'agent:error') {
-          this.updateStatus('error');
+          this.updateStatus("completed");
+        } else if (chunk.type === "agent:error") {
+          this.updateStatus("error");
           this._state.error = chunk.error;
         }
         yield chunk;
       }
     } catch (error) {
-      this.updateStatus('error');
+      this.updateStatus("error");
       this._state.error = error instanceof Error ? error : new Error(String(error));
       throw error;
     }
@@ -122,7 +129,7 @@ export class AgentImpl implements Agent {
 
   stop(): void {
     this.loop.stop();
-    this.updateStatus('stopped');
+    this.updateStatus("stopped");
   }
 
   use(tool: Tool): this {
@@ -153,7 +160,7 @@ export class AgentImpl implements Agent {
 
   private updateStatus(status: AgentStatus): void {
     this._state.status = status;
-    this.events.emit('state:change', {
+    this.events.emit("state:change", {
       agentName: this.name,
       state: { ...this._state },
     });
@@ -161,7 +168,7 @@ export class AgentImpl implements Agent {
 
   private resetState(): void {
     this._state = {
-      status: 'idle',
+      status: "idle",
       currentStep: 0,
       totalTokens: 0,
       messages: [],

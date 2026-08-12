@@ -1,6 +1,6 @@
-import type { z } from 'zod';
-import type { Tool, ToolContext, ToolDefinition } from '../../types/tool';
-import { zodToJsonSchema } from './json-schema';
+import type { z } from "zod";
+import type { Tool, ToolContext, ToolDefinition } from "../../types/tool";
+import { zodToJsonSchema } from "./json-schema";
 
 /**
  * Tool 内部实现类
@@ -21,7 +21,7 @@ class ToolImpl<TInput extends z.ZodTypeAny, TOutput> implements Tool<TInput, TOu
     // 处理工具审批
     if (def.needsApproval === undefined) {
       this._needsApproval = () => false; // 默认不需要审批
-    } else if (typeof def.needsApproval === 'boolean') {
+    } else if (typeof def.needsApproval === "boolean") {
       this._needsApproval = () => def.needsApproval as boolean;
     } else {
       this._needsApproval = def.needsApproval;
@@ -63,5 +63,5 @@ export function tool<TInput extends z.ZodTypeAny, TOutput = unknown>(
   return new ToolImpl(def);
 }
 
-export { zodToJsonSchema } from './json-schema';
-export { ToolRegistry } from './registry';
+export { zodToJsonSchema } from "./json-schema";
+export { ToolRegistry } from "./registry";

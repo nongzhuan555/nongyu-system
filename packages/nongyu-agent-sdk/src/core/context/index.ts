@@ -1,12 +1,7 @@
-import type { Message } from '../../types/message';
-import type {
-  ContextManager,
-  AgentContext,
-  ContextConfig,
-  TokenStats,
-} from '../../types/context';
-import type { ModelUsage } from '../../types/model';
-import { TrimmingStrategy } from './strategies/trimming';
+import type { Message } from "../../types/message";
+import type { ContextManager, AgentContext, ContextConfig, TokenStats } from "../../types/context";
+import type { ModelUsage } from "../../types/model";
+import { TrimmingStrategy } from "./strategies/trimming";
 
 const DEFAULT_MAX_TOKENS = 8000;
 const DEFAULT_KEEP_LAST_N_TURNS = 6;
@@ -22,7 +17,9 @@ export class ContextManagerImpl implements ContextManager {
   private systemContent: string;
   private messages: Message[] = [];
   private summary: string | undefined;
-  private config: Required<Omit<ContextConfig, 'summaryModel'>> & { summaryModel?: ContextConfig['summaryModel'] };
+  private config: Required<Omit<ContextConfig, "summaryModel">> & {
+    summaryModel?: ContextConfig["summaryModel"];
+  };
   private stats: TokenStats;
   private sessionId: string;
   private agentName: string;
@@ -30,11 +27,11 @@ export class ContextManagerImpl implements ContextManager {
   constructor(systemPrompt: string, config: ContextConfig = {} as ContextConfig) {
     this.systemContent = systemPrompt;
     this.sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    this.agentName = '';
+    this.agentName = "";
 
     this.config = {
       maxTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
-      strategy: config.strategy ?? 'trimming',
+      strategy: config.strategy ?? "trimming",
       keepLastNTurns: config.keepLastNTurns ?? DEFAULT_KEEP_LAST_N_TURNS,
       compactThreshold: config.compactThreshold ?? DEFAULT_COMPACT_THRESHOLD,
       summaryModel: config.summaryModel,
@@ -64,7 +61,7 @@ export class ContextManagerImpl implements ContextManager {
     }
 
     return {
-      system: { role: 'system', content: this.systemContent },
+      system: { role: "system", content: this.systemContent },
       messages: [...this.messages],
       metadata: {
         sessionId: this.sessionId,
@@ -93,13 +90,13 @@ export class ContextManagerImpl implements ContextManager {
     const _beforeTokens = this.stats.lastPromptTokens;
 
     switch (this.config.strategy) {
-      case 'trimming':
+      case "trimming":
         await this.applyTrimming();
         break;
-      case 'summarization':
+      case "summarization":
         // Phase 5 实现
         break;
-      case 'hybrid':
+      case "hybrid":
         // Phase 5 实现
         break;
     }
@@ -113,7 +110,7 @@ export class ContextManagerImpl implements ContextManager {
 
   private async applyTrimming(): Promise<void> {
     const strategy = new TrimmingStrategy(this.config.keepLastNTurns);
-    const systemMessage = { role: 'system' as const, content: this.systemContent };
+    const systemMessage = { role: "system" as const, content: this.systemContent };
     const result = await strategy.apply(systemMessage, this.messages, this.summary);
     this.messages = result.messages;
     this.summary = result.summary;
@@ -139,5 +136,5 @@ export function createContextManager(
   return new ContextManagerImpl(systemPrompt, config);
 }
 
-export { TrimmingStrategy } from './strategies/trimming';
-export { TokenStatsTracker } from './token-stats';
+export { TrimmingStrategy } from "./strategies/trimming";
+export { TokenStatsTracker } from "./token-stats";

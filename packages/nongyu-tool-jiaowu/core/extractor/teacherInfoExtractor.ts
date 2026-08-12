@@ -3,36 +3,36 @@
  * 负责从教务教师简历页面 (jiaoshishow.asp) 提取教师基本信息
  */
 
-import { stripTags } from '../utils/html';
+import { stripTags } from "../utils/html";
 
 /**
  * 教师个人信息字段定义
  */
 export interface TeacherInfo {
-  name?: string;            // 教师姓名
-  gender?: string;          // 性别
-  campus?: string;          // 所在校区
-  department?: string;      // 所在部门
-  joinDate?: string;        // 来校时间
-  ethnicity?: string;       // 民族
-  education?: string;       // 学历
-  degree?: string;          // 学位
-  title?: string;           // 职称
-  partyPosition?: string;   // 党政职务
-  teachingUnit?: string;    // 任课单位
-  section?: string;         // 所属系室
-  graduateSchool?: string;  // 毕业学校
-  graduateMajor?: string;   // 毕业专业
-  officePhone?: string;     // 办公电话
-  mobilePhone?: string;     // 移动电话
-  officeAddress?: string;   // 办公地址
-  qq?: string;              // QQ号码
-  email?: string;           // 电子邮件
-  mainCourses?: string;     // 主要承担课程
+  name?: string; // 教师姓名
+  gender?: string; // 性别
+  campus?: string; // 所在校区
+  department?: string; // 所在部门
+  joinDate?: string; // 来校时间
+  ethnicity?: string; // 民族
+  education?: string; // 学历
+  degree?: string; // 学位
+  title?: string; // 职称
+  partyPosition?: string; // 党政职务
+  teachingUnit?: string; // 任课单位
+  section?: string; // 所属系室
+  graduateSchool?: string; // 毕业学校
+  graduateMajor?: string; // 毕业专业
+  officePhone?: string; // 办公电话
+  mobilePhone?: string; // 移动电话
+  officeAddress?: string; // 办公地址
+  qq?: string; // QQ号码
+  email?: string; // 电子邮件
+  mainCourses?: string; // 主要承担课程
   researchDirection?: string; // 研究方向
-  achievements?: string;    // 主要成果及获奖情况
-  teacherMessage?: string;  // 教师寄语
-  updateDate?: string;      // 最近更新日期
+  achievements?: string; // 主要成果及获奖情况
+  teacherMessage?: string; // 教师寄语
+  updateDate?: string; // 最近更新日期
 }
 
 /**
@@ -61,7 +61,7 @@ export interface TeacherInfoResult {
  * }
  */
 export const extractTeacherInfo = (html: string): TeacherInfoResult => {
-  if (!html || typeof html !== 'string' || html.includes('登录超时')) {
+  if (!html || typeof html !== "string" || html.includes("登录超时")) {
     return { result: null, success: false };
   }
 
@@ -85,20 +85,18 @@ function parseStyleKeyValue(html: string): Record<string, string> {
   const result: Record<string, string> = {};
 
   // 定位包含"教师个人基本信息"的表格
-  const tableMatch = html.match(
-    /<table[^>]*>[\s\S]*?教师个人基本信息[\s\S]*?<\/table>/i
-  );
+  const tableMatch = html.match(/<table[^>]*>[\s\S]*?教师个人基本信息[\s\S]*?<\/table>/i);
   const targetHtml = tableMatch ? tableMatch[0] : html;
 
   // 提取所有 style7（标签）和 style6（值）的单元格
-  const labelMatches = extractTagContents(targetHtml, 'style7');
-  const valueMatches = extractTagContents(targetHtml, 'style6');
+  const labelMatches = extractTagContents(targetHtml, "style7");
+  const valueMatches = extractTagContents(targetHtml, "style6");
 
   // 跳过空标签和更新日期单元格
   const labels: string[] = [];
   for (const t of labelMatches) {
     const text = t.trim();
-    if (text && text !== '教师个人基本信息') {
+    if (text && text !== "教师个人基本信息") {
       labels.push(text);
     }
   }
@@ -108,7 +106,7 @@ function parseStyleKeyValue(html: string): Record<string, string> {
   for (const v of valueMatches) {
     const text = v.trim();
     // 跳过纯日期的居中对齐单元格（最近更新日期）
-    if (text.startsWith('(最近更新日期')) {
+    if (text.startsWith("(最近更新日期")) {
       // 提取更新日期作为单独字段
       const dateMatch = text.match(/最近更新日期[：:]\s*([^)]+)/);
       if (dateMatch) {
@@ -136,10 +134,7 @@ function parseStyleKeyValue(html: string): Record<string, string> {
  * 提取类名匹配的 td 标签中的纯文本内容
  */
 function extractTagContents(html: string, className: string): string[] {
-  const regex = new RegExp(
-    `<td[^>]*class\\s*=\\s*"?${className}[^>]*>([\\s\\S]*?)</td>`,
-    'gi'
-  );
+  const regex = new RegExp(`<td[^>]*class\\s*=\\s*"?${className}[^>]*>([\\s\\S]*?)</td>`, "gi");
   const results: string[] = [];
   let match: RegExpExecArray | null;
   while ((match = regex.exec(html)) !== null) {
@@ -153,36 +148,34 @@ function extractTagContents(html: string, className: string): string[] {
  */
 function mapToTeacherFields(data: Record<string, string>): TeacherInfo {
   const find = (...keywords: string[]) => {
-    const entry = Object.entries(data).find(([k]) =>
-      keywords.some((kw) => k.includes(kw))
-    );
+    const entry = Object.entries(data).find(([k]) => keywords.some((kw) => k.includes(kw)));
     return entry ? entry[1] : undefined;
   };
 
   return {
-    name: find('教师姓名'),
-    gender: find('性别'),
-    campus: find('所在校区', '校区'),
-    department: find('所在部门', '部门'),
-    joinDate: find('来校时间'),
-    ethnicity: find('民族'),
-    education: find('学历'),
-    degree: find('学位'),
-    title: find('职称'),
-    partyPosition: find('党政职务'),
-    teachingUnit: find('任课单位'),
-    section: find('所属系室'),
-    graduateSchool: find('毕业学校'),
-    graduateMajor: find('毕业专业'),
-    officePhone: find('办公电话'),
-    mobilePhone: find('移动电话'),
-    officeAddress: find('办公地址'),
-    qq: find('QQ号码', 'QQ'),
-    email: find('电子邮件', '邮箱'),
-    mainCourses: find('主要承担课程', '承担课程'),
-    researchDirection: find('研究方向'),
-    achievements: find('主要成果', '获奖情况'),
-    teacherMessage: find('教师寄语'),
-    updateDate: find('更新日期'),
+    name: find("教师姓名"),
+    gender: find("性别"),
+    campus: find("所在校区", "校区"),
+    department: find("所在部门", "部门"),
+    joinDate: find("来校时间"),
+    ethnicity: find("民族"),
+    education: find("学历"),
+    degree: find("学位"),
+    title: find("职称"),
+    partyPosition: find("党政职务"),
+    teachingUnit: find("任课单位"),
+    section: find("所属系室"),
+    graduateSchool: find("毕业学校"),
+    graduateMajor: find("毕业专业"),
+    officePhone: find("办公电话"),
+    mobilePhone: find("移动电话"),
+    officeAddress: find("办公地址"),
+    qq: find("QQ号码", "QQ"),
+    email: find("电子邮件", "邮箱"),
+    mainCourses: find("主要承担课程", "承担课程"),
+    researchDirection: find("研究方向"),
+    achievements: find("主要成果", "获奖情况"),
+    teacherMessage: find("教师寄语"),
+    updateDate: find("更新日期"),
   };
 }

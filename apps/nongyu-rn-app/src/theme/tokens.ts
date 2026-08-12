@@ -1,20 +1,10 @@
+import { resolveColorPalette } from "./resolveColor";
+
 /**
- * 设计 Token（川农新绿默认主题）
- * 后续可扩展樱花浅粉 / 暗黑 / 跟随系统
+ * 设计 Token
+ * 默认：川农新绿浅色（v3 色板）；樱花 / 暗色数据见 palettes，切换待设置页接入
  */
-export const lightTokens = {
-  color: {
-    brand: "#2E7D32",
-    brandMuted: "#E8F5E9",
-    background: "#F7FBF7",
-    surface: "#FFFFFF",
-    text: "#1B1B1B",
-    textSecondary: "#5F6B5F",
-    border: "#D7E3D7",
-    danger: "#C62828",
-    /** 选中圆底上的图标色 */
-    onBrand: "#FFFFFF",
-  },
+const layoutTokens = {
   space: {
     xs: 4,
     sm: 8,
@@ -26,7 +16,6 @@ export const lightTokens = {
     sm: 8,
     md: 12,
     lg: 16,
-    /** 胶囊 / 正圆 */
     full: 999,
   },
   fontSize: {
@@ -35,22 +24,50 @@ export const lightTokens = {
     lg: 20,
     xl: 24,
   },
-  /** 悬浮底栏（玻璃拟态） */
+  /**
+   * 悬浮底栏基准值（约 390 宽）
+   * 毛玻璃目标：偏毛 —— 背后内容不可清晰辨认，仅能感到色块/光影变化
+   */
   tabBar: {
-    horizontalInset: 14,
-    bottomGap: 8,
-    aiSize: 58,
-    aiGap: 10,
-    capsuleWidthRatio: 0.7,
-    height: 64,
-    blurIntensity: 64,
-    glassFill: "rgba(255, 255, 255, 0.55)",
-    glassBorder: "rgba(255, 255, 255, 0.65)",
+    baselineWidth: 390,
+    horizontalInsetRatio: 0.04,
+    horizontalInsetMin: 12,
+    horizontalInsetMax: 20,
+    bottomGap: 16,
+    bottomGapMin: 14,
+    bottomGapMax: 22,
+    aiGap: 6,
+    aiGapMin: 4,
+    aiGapMax: 8,
+    aiSize: 56,
+    aiSizeMin: 52,
+    aiSizeMax: 64,
+    height: 60,
+    heightMin: 56,
+    heightMax: 68,
+    /** 高强度模糊（iOS intensity 越大越糊；取上限附近） */
+    blurIntensity: 100,
+    /** Android 模糊衰减，越小越糊；再压一档 */
+    blurReductionFactor: 0.5,
+    /** 霜面白膜：进一步压透视，背后仅留光影感 */
+    glassFill: "rgba(255, 255, 255, 0.68)",
+    glassBorder: "rgba(255, 255, 255, 0.72)",
     shadowColor: "rgba(27, 43, 27, 0.18)",
-    iconSize: 20,
-    activeDiscSize: 36,
+    iconSize: 22,
+    iconSizeMin: 20,
+    iconSizeMax: 24,
     labelSize: 10,
+    labelSizeMin: 9,
+    labelSizeMax: 11,
   },
 } as const;
 
-export type ThemeTokens = typeof lightTokens;
+export const tokens = {
+  color: resolveColorPalette("green", false),
+  ...layoutTokens,
+};
+
+/** 兼容现有 `import { lightTokens }`：等同默认川农新绿浅色 */
+export const lightTokens = tokens;
+
+export type ThemeTokens = typeof tokens;

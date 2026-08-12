@@ -1,4 +1,4 @@
-import type { Tool } from '../../types/tool';
+import type { Tool } from "../../types/tool";
 
 /**
  * 工具注册表
@@ -38,7 +38,7 @@ export class ToolRegistry {
 
   /** 获取所有工具的 JSON Schema 列表（供 LLM 使用） */
   getToolSchemas(): Array<{
-    type: 'function';
+    type: "function";
     function: {
       name: string;
       description: string;
@@ -46,7 +46,7 @@ export class ToolRegistry {
     };
   }> {
     return Array.from(this.tools.values()).map((tool) => ({
-      type: 'function' as const,
+      type: "function" as const,
       function: {
         name: tool.name,
         description: tool.description,

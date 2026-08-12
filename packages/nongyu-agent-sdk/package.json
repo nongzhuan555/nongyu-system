@@ -20,6 +20,20 @@
     "test": "tsx test/test.ts",
     "debug": "tsx test/debug-cli.ts"
   },
+  "dependencies": {
+    "axios": "catalog:",
+    "iconv-lite": "catalog:",
+    "mitt": "catalog:",
+    "nongyu-tool-jiaowu": "workspace:*",
+    "nongyu-tool-second": "workspace:*",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "tsx": "^4.19.2"
+  },
   "peerDependencies": {
     "react": "catalog:"
   },
@@ -27,19 +41,5 @@
     "react": {
       "optional": true
     }
-  },
-  "dependencies": {
-    "axios": "catalog:",
-    "iconv-lite": "catalog:",
-    "mitt": "catalog:",
-    "zod": "^3.23.0",
-    "nongyu-tool-jiaowu": "workspace:*",
-    "nongyu-tool-second": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/node": "^22.13.1",
-    "@types/react": "catalog:",
-    "react": "catalog:",
-    "tsx": "^4.19.2"
   }
 }

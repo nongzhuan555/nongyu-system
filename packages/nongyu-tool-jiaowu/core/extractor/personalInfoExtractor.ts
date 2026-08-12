@@ -3,28 +3,28 @@
  * 负责从教务学生档案页面 (bjiben.asp) 提取基本信息
  */
 
-import { stripTags } from '../utils/html';
+import { stripTags } from "../utils/html";
 
 /**
  * 教务个人信息字段定义
  */
 export interface PersonalInfo {
-  name?: string;           // 姓名
-  studentId?: string;      // 学号
-  gender?: string;         // 性别
-  college?: string;        // 学院/系别
-  major?: string;          // 专业
-  grade?: string;          // 年级
-  className?: string;      // 班级
-  identity?: string;       // 培养层次（如：本科）
-  studentStatus?: string;  // 学籍状态（如：在读）
+  name?: string; // 姓名
+  studentId?: string; // 学号
+  gender?: string; // 性别
+  college?: string; // 学院/系别
+  major?: string; // 专业
+  grade?: string; // 年级
+  className?: string; // 班级
+  identity?: string; // 培养层次（如：本科）
+  studentStatus?: string; // 学籍状态（如：在读）
   enrollmentDate?: string; // 入学日期
-  ethnicity?: string;      // 民族
-  politicalStatus?: string;// 政治面貌
-  phone?: string;          // 个人电话
-  examId?: string;         // 考生号
-  homeAddress?: string;    // 家庭通讯地址
-  campus?: string;         // 校区
+  ethnicity?: string; // 民族
+  politicalStatus?: string; // 政治面貌
+  phone?: string; // 个人电话
+  examId?: string; // 考生号
+  homeAddress?: string; // 家庭通讯地址
+  campus?: string; // 校区
 }
 
 /**
@@ -37,14 +37,14 @@ export interface PersonalInfoResult {
 
 /**
  * 教务网个人信息提取器
- * 
+ *
  * 解析 bjiben.asp 页面的 tablebody 表格结构：
  * - 表头行 (class=g_column) 包含字段名
  * - 数据行 (class=g_body_2) 包含对应值
  *
  * @param html 原始 HTML 字符串内容
  * @returns 包含提取结果和成功状态的对象
- * 
+ *
  * @example
  * const { result, success } = extractPersonalInfo(html);
  * if (success) {
@@ -52,7 +52,7 @@ export interface PersonalInfoResult {
  * }
  */
 export const extractPersonalInfo = (html: string): PersonalInfoResult => {
-  if (!html || typeof html !== 'string' || html.includes('登录超时')) {
+  if (!html || typeof html !== "string" || html.includes("登录超时")) {
     return { result: null, success: false };
   }
 
@@ -137,7 +137,7 @@ function parseTablePairs(html: string): Record<string, string> {
     const cells = cellMatches.map((cell) => stripTags(cell));
 
     for (let i = 0; i + 1 < cells.length; i += 2) {
-      const key = cells[i].replace(/[:：]\s*$/, '').trim();
+      const key = cells[i].replace(/[:：]\s*$/, "").trim();
       const value = cells[i + 1].trim();
       if (key && value && !result[key]) {
         result[key] = value;
@@ -180,15 +180,15 @@ function parseWelcomeLine(html: string): Record<string, string> {
     const line = welcomeMatch[0];
 
     const nameMatch = line.match(/欢迎您[：:]\s*([^，,\s]+)\s*[，,]/);
-    if (nameMatch) result['姓名'] = nameMatch[1];
+    if (nameMatch) result["姓名"] = nameMatch[1];
 
     const patterns = [
-      { key: '学号', regex: /学号[：:]\s*([0-9A-Za-z_-]+)/ },
-      { key: '身份', regex: /身份[：:]\s*([^\s/，,]+)/ },
-      { key: '校区', regex: /校区[：:]\s*([^\s/，,]+)/ },
-      { key: '学院', regex: /学院[：:]\s*([^\s/，,]+)/ },
-      { key: '年级', regex: /年级[：:]\s*([0-9]{4})/ },
-      { key: '专业', regex: /专业[：:]\s*([^\s/（(，,]+)/ },
+      { key: "学号", regex: /学号[：:]\s*([0-9A-Za-z_-]+)/ },
+      { key: "身份", regex: /身份[：:]\s*([^\s/，,]+)/ },
+      { key: "校区", regex: /校区[：:]\s*([^\s/，,]+)/ },
+      { key: "学院", regex: /学院[：:]\s*([^\s/，,]+)/ },
+      { key: "年级", regex: /年级[：:]\s*([0-9]{4})/ },
+      { key: "专业", regex: /专业[：:]\s*([^\s/（(，,]+)/ },
     ];
 
     patterns.forEach(({ key, regex }) => {
@@ -210,10 +210,10 @@ function cleanRawValues(data: Record<string, string>): Record<string, string> {
   const cleaned: Record<string, string> = {};
 
   Object.entries(data).forEach(([key, value]) => {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       cleaned[key] = value
-        .replace(/（[^）]*）/g, '')
-        .replace(/\([^)]*\)/g, '')
+        .replace(/（[^）]*）/g, "")
+        .replace(/\([^)]*\)/g, "")
         .trim();
     }
   });
@@ -231,21 +231,21 @@ function mapToStandardFields(data: Record<string, string>): PersonalInfo {
   };
 
   return {
-    name: find(['姓名', '学生姓名']),
-    studentId: find(['学号', '学生学号']),
-    gender: find(['性别']),
-    college: find(['系别', '学院', '院系']),
-    major: find(['专业', '主修专业']),
-    grade: find(['年级', '入学年份']),
-    className: find(['班级', '新班级']),
-    identity: find(['培养层次', '身份', '学生类型', '类别']),
-    studentStatus: find(['学籍状态']),
-    enrollmentDate: find(['入学日期']),
-    ethnicity: find(['民族']),
-    politicalStatus: find(['政治面貌']),
-    phone: find(['个人电话']),
-    examId: find(['考生号']),
-    homeAddress: find(['家庭通讯地址']),
-    campus: find(['校区']),
+    name: find(["姓名", "学生姓名"]),
+    studentId: find(["学号", "学生学号"]),
+    gender: find(["性别"]),
+    college: find(["系别", "学院", "院系"]),
+    major: find(["专业", "主修专业"]),
+    grade: find(["年级", "入学年份"]),
+    className: find(["班级", "新班级"]),
+    identity: find(["培养层次", "身份", "学生类型", "类别"]),
+    studentStatus: find(["学籍状态"]),
+    enrollmentDate: find(["入学日期"]),
+    ethnicity: find(["民族"]),
+    politicalStatus: find(["政治面貌"]),
+    phone: find(["个人电话"]),
+    examId: find(["考生号"]),
+    homeAddress: find(["家庭通讯地址"]),
+    campus: find(["校区"]),
   };
 }

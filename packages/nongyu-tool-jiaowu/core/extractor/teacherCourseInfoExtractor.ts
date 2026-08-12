@@ -9,7 +9,7 @@
  *   多门课以 ---- 分隔
  */
 
-import { stripTags } from '../utils/html';
+import { stripTags } from "../utils/html";
 
 /**
  * 教师课表中的一门课程
@@ -76,7 +76,7 @@ export interface TeacherCourseInfoResult {
  * - 格内多门课以 -------------------- 分隔
  */
 export const extractTeacherCourseInfo = (html: string): TeacherCourseInfoResult => {
-  if (!html || typeof html !== 'string' || html.includes('登录超时')) {
+  if (!html || typeof html !== "string" || html.includes("登录超时")) {
     return { result: null, success: false };
   }
 
@@ -101,7 +101,7 @@ function parseTeacherTitle(html: string): { teacherName: string; semester: strin
 
   // 备选：匹配四川农业大学格式
   const semMatch = html.match(/四川农业大学\s*(\d{4}-\d{4}-\d)/);
-  return { teacherName: '', semester: semMatch ? semMatch[1] : '' };
+  return { teacherName: "", semester: semMatch ? semMatch[1] : "" };
 }
 
 /**
@@ -114,29 +114,31 @@ function parseCourseTable(
   cellParser: (cellHtml: string) => TeacherCourseItem[],
 ): TeacherCourseSlot[] {
   const tableMatch = html.match(
-    /课程[^<]*<[^>]*>[\s\S]*?<table[^>]*border\s*=\s*"?1[^>]*>([\s\S]*?)<\/table>/i
+    /课程[^<]*<[^>]*>[\s\S]*?<table[^>]*border\s*=\s*"?1[^>]*>([\s\S]*?)<\/table>/i,
   );
   if (!tableMatch) return [];
 
   const tableHtml = tableMatch[1];
   const trMatches = tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
   const slots: TeacherCourseSlot[] = [];
-  let currentPeriod = '';
+  let currentPeriod = "";
 
   for (let i = 1; i < trMatches.length; i++) {
     const trHtml = trMatches[i];
     const tds = trHtml.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
 
     // 检查 rowspan 时段标签
-    const firstTdContent = tds[0] || '';
+    const firstTdContent = tds[0] || "";
     const periodMatch = firstTdContent.match(/rowspan[^>]*>([\s\S]*?)</i);
     if (periodMatch) {
       currentPeriod = stripTags(periodMatch[1]).trim();
     }
 
     const slotTdIdx = periodMatch ? 1 : 0;
-    const slotText = stripTags(tds[slotTdIdx] || '').replace(/\s+/g, '').trim();
-    if (!slotText.includes('节')) continue;
+    const slotText = stripTags(tds[slotTdIdx] || "")
+      .replace(/\s+/g, "")
+      .trim();
+    if (!slotText.includes("节")) continue;
 
     const courseStart = slotTdIdx + 1;
     for (let d = 0; d < 7; d++) {
@@ -184,7 +186,7 @@ function parseCourseTable(
  */
 function parseTeacherCellCourses(cellHtml: string): TeacherCourseItem[] {
   const text = stripTags(cellHtml).trim();
-  if (!text || text === '&nbsp;') return [];
+  if (!text || text === "&nbsp;") return [];
 
   // 按 -------------------- 拆分为多门课
   const chunks = text.split(/[-－—]{4,}/);
@@ -195,7 +197,7 @@ function parseTeacherCellCourses(cellHtml: string): TeacherCourseItem[] {
     if (!trimmed) continue;
 
     const lines = trimmed
-      .split('\n')
+      .split("\n")
       .map((s) => s.trim())
       .filter(Boolean);
 
@@ -207,13 +209,23 @@ function parseTeacherCellCourses(cellHtml: string): TeacherCourseItem[] {
     // 解析课程名中的性质和班号
     // 格式：课程名_性质_班号  或  课程名_性质班号_分组号
     let courseName = firstLine;
-    let courseType = '';
-    let classId = '';
+    let courseType = "";
+    let classId = "";
 
     // 尝试按 _ 分割，识别性质关键词
-    const underscoreParts = firstLine.split('_');
+    const underscoreParts = firstLine.split("_");
     if (underscoreParts.length >= 2) {
-      const typeKeywords = ['必修', '选修', '限选', '任选', '公选', '专业方向课', '专业基础课', '通识实践', '实践教学'];
+      const typeKeywords = [
+        "必修",
+        "选修",
+        "限选",
+        "任选",
+        "公选",
+        "专业方向课",
+        "专业基础课",
+        "通识实践",
+        "实践教学",
+      ];
 
       for (let k = 1; k < underscoreParts.length; k++) {
         const part = underscoreParts[k];
@@ -221,8 +233,8 @@ function parseTeacherCellCourses(cellHtml: string): TeacherCourseItem[] {
         const exactMatch = typeKeywords.find((t) => part === t);
         if (exactMatch) {
           courseType = exactMatch;
-          classId = underscoreParts.slice(k + 1).join('_');
-          courseName = underscoreParts.slice(0, k).join('_');
+          classId = underscoreParts.slice(k + 1).join("_");
+          courseName = underscoreParts.slice(0, k).join("_");
           break;
         }
         // 匹配 "关键词+数字" 模式（如 "必修4192023" → type=必修, rest=4192023）
@@ -230,8 +242,8 @@ function parseTeacherCellCourses(cellHtml: string): TeacherCourseItem[] {
         if (prefixMatch) {
           courseType = prefixMatch;
           const rest = part.slice(prefixMatch.length);
-          classId = [rest, ...underscoreParts.slice(k + 1)].filter(Boolean).join('_');
-          courseName = underscoreParts.slice(0, k).join('_');
+          classId = [rest, ...underscoreParts.slice(k + 1)].filter(Boolean).join("_");
+          courseName = underscoreParts.slice(0, k).join("_");
           break;
         }
       }
@@ -239,26 +251,26 @@ function parseTeacherCellCourses(cellHtml: string): TeacherCourseItem[] {
 
     // 剩余行的解析
     let isExperiment = false;
-    let location = '';
-    let weekRange = '';
-    let weekPattern = '';
+    let location = "";
+    let weekRange = "";
+    let weekPattern = "";
     let isContinuous = false;
-    let hoursUnit = '';
+    let hoursUnit = "";
 
     for (let j = 1; j < lines.length; j++) {
       const line = lines[j];
 
-      if (line === '(实验)' || line.includes('实验')) {
+      if (line === "(实验)" || line.includes("实验")) {
         isExperiment = true;
-      } else if (line.includes('校区') || line.includes('：') && !/^\d/.test(line)) {
+      } else if (line.includes("校区") || (line.includes("：") && !/^\d/.test(line))) {
         location = line;
       } else if (/^\d+[-~]\d+$/.test(line)) {
         weekRange = line;
-      } else if (line.startsWith('周') || line.includes('周')) {
+      } else if (line.startsWith("周") || line.includes("周")) {
         // 周行的各种修饰符
-        if (line.includes('单周')) weekPattern = '单';
-        else if (line.includes('双周')) weekPattern = '双';
-        if (line.includes('连堂')) isContinuous = true;
+        if (line.includes("单周")) weekPattern = "单";
+        else if (line.includes("双周")) weekPattern = "双";
+        if (line.includes("连堂")) isContinuous = true;
         // 提取学时
         const hoursMatch = line.match(/(\d+学时)/);
         if (hoursMatch) hoursUnit = hoursMatch[1];
@@ -303,7 +315,7 @@ export interface TeacherSearchResult {
  * 解析 id="grid" 表格：序号 | 校区 | 部门 | 姓名 | 查看(含 bianhao)
  */
 export const extractTeacherSearchResults = (html: string): TeacherSearchResult => {
-  if (!html || typeof html !== 'string') {
+  if (!html || typeof html !== "string") {
     return { result: null, success: false };
   }
 
@@ -312,9 +324,7 @@ export const extractTeacherSearchResults = (html: string): TeacherSearchResult =
 };
 
 function parseSearchGrid(html: string): TeacherSearchItem[] {
-  const tableMatch = html.match(
-    /<table[^>]*id\s*=\s*"?grid[^>]*>([\s\S]*?)<\/table>/i
-  );
+  const tableMatch = html.match(/<table[^>]*id\s*=\s*"?grid[^>]*>([\s\S]*?)<\/table>/i);
   if (!tableMatch) return [];
 
   const tableHtml = tableMatch[1];
@@ -325,22 +335,25 @@ function parseSearchGrid(html: string): TeacherSearchItem[] {
   while (true) {
     const rowMatch = rowRegex.exec(tableHtml);
     if (!rowMatch) break;
-    if (isHeader) { isHeader = false; continue; }
+    if (isHeader) {
+      isHeader = false;
+      continue;
+    }
 
     const rowHtml = rowMatch[1];
     const cells = rowHtml.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
     const values = cells.map((cell) => stripTags(cell));
     if (values.length < 5) continue;
 
-    const linkCell = cells[cells.length - 1] || '';
+    const linkCell = cells[cells.length - 1] || "";
     const bianhaoMatch = linkCell.match(/bianhao=([^&\s"']+)/i);
-    const bianhao = bianhaoMatch ? bianhaoMatch[1] : '';
+    const bianhao = bianhaoMatch ? bianhaoMatch[1] : "";
 
     const item: TeacherSearchItem = {
-      index: values[0]?.trim() || '',
-      campus: values[1]?.trim() || '',
-      department: values[2]?.trim() || '',
-      name: values[3]?.trim() || '',
+      index: values[0]?.trim() || "",
+      campus: values[1]?.trim() || "",
+      department: values[2]?.trim() || "",
+      name: values[3]?.trim() || "",
       bianhao,
     };
 

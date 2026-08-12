@@ -3,7 +3,7 @@
  * 负责从教务教室课表详情页 (kbjshi_new.asp) 提取指定教室的课程安排
  */
 
-import { stripTags } from '../utils/html';
+import { stripTags } from "../utils/html";
 
 /**
  * 单条教室课程记录（一门课在某时间段的安排）
@@ -57,7 +57,7 @@ export interface ClassroomCourseInfoResult {
 /**
  * 星期映射：索引 -> 中文名
  */
-const DAY_NAMES = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
+const DAY_NAMES = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"];
 
 /**
  * 教室课程信息提取器
@@ -72,7 +72,7 @@ const DAY_NAMES = ['星期一', '星期二', '星期三', '星期四', '星期�
  * @returns 教室课程结果
  */
 export const extractClassroomCourseInfo = (html: string): ClassroomCourseInfoResult => {
-  if (!html || typeof html !== 'string' || html.includes('登录超时')) {
+  if (!html || typeof html !== "string" || html.includes("登录超时")) {
     return { result: null, success: false };
   }
 
@@ -91,10 +91,10 @@ export const extractClassroomCourseInfo = (html: string): ClassroomCourseInfoRes
  */
 function parseTitle(html: string): { classroomName: string; semester: string } {
   const titleMatch = html.match(/课程表\s*\(([^)]+)\)/);
-  const classroomName = titleMatch ? titleMatch[1].trim() : '';
+  const classroomName = titleMatch ? titleMatch[1].trim() : "";
 
   const semMatch = html.match(/四川农业大学\s*(\d{4}-\d{4}-\d)\s*课程表/);
-  const semester = semMatch ? semMatch[1] : '';
+  const semester = semMatch ? semMatch[1] : "";
 
   return { classroomName, semester };
 }
@@ -113,7 +113,7 @@ function parseTitle(html: string): { classroomName: string; semester: string } {
 function parseCourseTable(html: string): ClassroomCourseSlot[] {
   // 定位课表表格：包含课程表标题的那个 bordered 表格
   const tableMatch = html.match(
-    /课程表[^<]*<[^>]*>[\s\S]*?<table[^>]*border\s*=\s*"?1[^>]*>([\s\S]*?)<\/table>/i
+    /课程表[^<]*<[^>]*>[\s\S]*?<table[^>]*border\s*=\s*"?1[^>]*>([\s\S]*?)<\/table>/i,
   );
   if (!tableMatch) return [];
 
@@ -122,7 +122,7 @@ function parseCourseTable(html: string): ClassroomCourseSlot[] {
   // 提取所有 TR
   const trMatches = tableHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
   const slots: ClassroomCourseSlot[] = [];
-  let currentPeriod = '';
+  let currentPeriod = "";
 
   // 跳过表头行（第一行含"星期一"）
   for (let i = 1; i < trMatches.length; i++) {
@@ -130,7 +130,7 @@ function parseCourseTable(html: string): ClassroomCourseSlot[] {
     const tds = trHtml.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
 
     // 检查是否有 rowspan 的时段 td（如 rowspan=2>上午）
-    const firstTdContent = tds[0] || '';
+    const firstTdContent = tds[0] || "";
     const periodMatch = firstTdContent.match(/rowspan[^>]*>([\s\S]*?)</i);
     if (periodMatch) {
       currentPeriod = stripTags(periodMatch[1]).trim();
@@ -138,11 +138,11 @@ function parseCourseTable(html: string): ClassroomCourseSlot[] {
 
     // 确定节次标识：有 rowspan 时 targetTd=tds[1]，否则 targetTd=tds[0]
     const slotTdIdx = periodMatch ? 1 : 0;
-    const slotTdContent = tds[slotTdIdx] || '';
-    const slotText = stripTags(slotTdContent).replace(/\s+/g, '').trim();
+    const slotTdContent = tds[slotTdIdx] || "";
+    const slotText = stripTags(slotTdContent).replace(/\s+/g, "").trim();
 
     // 跳过非节次行（如表头）
-    if (!slotText.includes('节')) continue;
+    if (!slotText.includes("节")) continue;
 
     // 课程列从 slotTdIdx+1 开始，共7列
     const courseStart = slotTdIdx + 1;
@@ -184,7 +184,7 @@ function parseCellCourses(cellHtml: string): ClassroomCourseItem[] {
 
   // 提取所有非空行
   const allLines = text
-    .split('\n')
+    .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
 
@@ -197,7 +197,7 @@ function parseCellCourses(cellHtml: string): ClassroomCourseItem[] {
   const isWeekRange = (s: string) => /^\d+[-~]\d+/.test(s);
   const isStudentCount = (s: string) => /^\d+人?$/.test(s);
   const isCourseType = (s: string) =>
-    ['必修', '选修', '限选', '任选', '公选'].some((t) => s === t || s.startsWith(t));
+    ["必修", "选修", "限选", "任选", "公选"].some((t) => s === t || s.startsWith(t));
   const isTeacherLine = (s: string) => /[（(](单|双)[）)]/.test(s);
 
   const courses: ClassroomCourseItem[] = [];
@@ -213,31 +213,36 @@ function parseCellCourses(cellHtml: string): ClassroomCourseItem[] {
     const courseName = allLines[i];
 
     // 往前找教师（课程名后一行可能是教师，但也可能中间有空行）
-    let teacher = '';
-    let weekPattern = '';
+    let teacher = "";
+    let weekPattern = "";
     let teacherIdx = i + 1;
     if (teacherIdx < allLines.length && isTeacherLine(allLines[teacherIdx])) {
       const raw = allLines[teacherIdx];
       const m = raw.match(/[（(](单|双)[）)]/);
-      weekPattern = m ? m[1] : '';
-      teacher = raw.replace(/[（(][单双][）)]/, '').trim();
-    } else if (teacherIdx < allLines.length && !isWeekRange(allLines[teacherIdx]) && !isStudentCount(allLines[teacherIdx]) && !isCourseType(allLines[teacherIdx])) {
+      weekPattern = m ? m[1] : "";
+      teacher = raw.replace(/[（(][单双][）)]/, "").trim();
+    } else if (
+      teacherIdx < allLines.length &&
+      !isWeekRange(allLines[teacherIdx]) &&
+      !isStudentCount(allLines[teacherIdx]) &&
+      !isCourseType(allLines[teacherIdx])
+    ) {
       // 教师行可能没有 (单)/(双)
       teacher = allLines[teacherIdx];
     }
 
     // 在后面行中找周范围、人数、课程性质
-    let weekRange = '';
-    let studentCount = '';
-    let courseType = '';
+    let weekRange = "";
+    let studentCount = "";
+    let courseType = "";
     const searchStart = teacher ? teacherIdx + 1 : i + 1;
 
     for (let j = searchStart; j < allLines.length; j++) {
       const line = allLines[j];
       if (!weekRange && isWeekRange(line)) {
-        weekRange = line.replace('周', '').trim();
+        weekRange = line.replace("周", "").trim();
       } else if (!studentCount && isStudentCount(line)) {
-        studentCount = line.replace('人', '');
+        studentCount = line.replace("人", "");
       } else if (!courseType && isCourseType(line)) {
         courseType = line;
         // 找到课程性质就说明这⻔课解析完毕
@@ -266,9 +271,7 @@ function parseCellCourses(cellHtml: string): ClassroomCourseItem[] {
 /**
  * 将课表槽位按星期分组的工具函数
  */
-export const groupByDay = (
-  slots: ClassroomCourseSlot[]
-): Record<number, ClassroomCourseSlot[]> => {
+export const groupByDay = (slots: ClassroomCourseSlot[]): Record<number, ClassroomCourseSlot[]> => {
   const grouped: Record<number, ClassroomCourseSlot[]> = {};
   for (const s of slots) {
     if (!grouped[s.dayOfWeek]) grouped[s.dayOfWeek] = [];
@@ -282,7 +285,7 @@ export const groupByDay = (
  */
 export const getCoursesByDay = (
   slots: ClassroomCourseSlot[],
-  dayOfWeek: number
+  dayOfWeek: number,
 ): ClassroomCourseSlot[] => {
   return slots.filter((s) => s.dayOfWeek === dayOfWeek);
 };

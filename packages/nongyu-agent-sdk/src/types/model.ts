@@ -1,7 +1,7 @@
 // ===== 模型消息 =====
 
 export interface ModelMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
   tool_call_id?: string;
   tool_calls?: ToolCall[];
@@ -10,7 +10,7 @@ export interface ModelMessage {
 
 export interface ToolCall {
   id: string;
-  type: 'function';
+  type: "function";
   function: {
     name: string;
     arguments: string;
@@ -20,7 +20,7 @@ export interface ToolCall {
 // ===== 模型使用统计 =====
 
 export interface ModelUsage {
-  prompt_tokens: number;  // 输入令牌数
+  prompt_tokens: number; // 输入令牌数
   completion_tokens: number; // 输出令牌数
   total_tokens: number; // 总令牌数
 }
@@ -43,7 +43,7 @@ export interface GenerateConfig {
 }
 
 export interface ToolSchema {
-  type: 'function';
+  type: "function";
   function: {
     name: string;
     description: string;

@@ -3,25 +3,24 @@
  * 从教务开课计划页面获取当前学期的课程汇总开课目录
  */
 
-import { extractKaikeInfo } from '../extractor/kaikeInfoExtractor';
-import type { KaikeItem, KaikeResult, KaikeInfoResult } from '../extractor/kaikeInfoExtractor';
-import { fetchJiaowuHtml } from '../utils';
+import { extractKaikeInfo } from "../extractor/kaikeInfoExtractor";
+import type { KaikeItem, KaikeResult, KaikeInfoResult } from "../extractor/kaikeInfoExtractor";
+import { fetchJiaowuHtml } from "../utils";
 
 export type { KaikeItem, KaikeResult, KaikeInfoResult };
 
 /**
  * 开课目录页 URL
  */
-const KAIKE_URL = 'https://jiaowu.sicau.edu.cn/xuesheng/gongxuan/gongxuan/kai.asp';
+const KAIKE_URL = "https://jiaowu.sicau.edu.cn/xuesheng/gongxuan/gongxuan/kai.asp";
 
 /**
  * 开课信息查询参数
  */
 const KAIKE_PARAMS = {
-  "y":1, // 页码
-  "ww_f":"", // 教师名字
-}
-
+  y: 1, // 页码
+  ww_f: "", // 教师名字
+};
 
 /**
  * 获取开课目录
@@ -45,7 +44,7 @@ export const getKaikeInfo = async (): Promise<KaikeInfoResult> => {
     const html = await fetchJiaowuHtml(KAIKE_URL);
     return extractKaikeInfo(html);
   } catch (error) {
-    console.error('获取开课目录失败:', error);
+    console.error("获取开课目录失败:", error);
     return { result: null, success: false };
   }
 };

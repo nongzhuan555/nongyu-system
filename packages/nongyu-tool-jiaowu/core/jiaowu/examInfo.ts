@@ -2,30 +2,30 @@
  * 考试安排业务模块
  */
 
-import { extractExamInfo } from '../extractor';
-import { fetchJiaowuHtml } from '../utils';
+import { extractExamInfo } from "../extractor";
+import { fetchJiaowuHtml } from "../utils";
 
 /**
  * 教务网考试安排查询页面 URL
  */
-const EXAM_INFO_URL = 'https://jiaowu.sicau.edu.cn/xuesheng/kao/kao/xuesheng.asp?title_id1=01';
+const EXAM_INFO_URL = "https://jiaowu.sicau.edu.cn/xuesheng/kao/kao/xuesheng.asp?title_id1=01";
 
 /**
  * 获取学生的考试安排记录。
- * 
+ *
  * 从教务网考试安排查询页面抓取 HTML，定位并解析所有考试安排数据。
- * 
+ *
  * 使用场景：
  * 1. 农屿App考试安排页面以此获取教务网考试安排数据渲染成列表，同时也渲染在课表视图的最后一周
  * 2. nongyu-agent将此作为tool调用用于获取教务网考试安排数据，用以回答用户个人考试安排相关问题，此工具只在临近期末前有效，且此工具被用户调用的频率预计较低
- * 
+ *
  * @returns 成功返回 `{ success: true, result: ExamItem[] }`，失败返回 `{ success: false, result: [] }`
- * 
+ *
  * @example 基本调用
  * ```ts
  * const exams = await getExamInfo();
  * ```
- * 
+ *
  * @example 成功示例
  * ```ts
  * const exams = await getExamInfo();
@@ -56,7 +56,7 @@ const EXAM_INFO_URL = 'https://jiaowu.sicau.edu.cn/xuesheng/kao/kao/xuesheng.asp
  * //   success: true
  * // }
  * ```
- * 
+ *
  * @example 失败示例
  * ```ts
  * // 网络异常或未登录时
@@ -72,10 +72,10 @@ export const getExamInfo = async () => {
     const html = await fetchJiaowuHtml(EXAM_INFO_URL);
     return extractExamInfo(html);
   } catch (error) {
-    console.error('获取考试安排失败:', error);
+    console.error("获取考试安排失败:", error);
     return {
       result: [],
       success: false,
     };
   }
-}
+};

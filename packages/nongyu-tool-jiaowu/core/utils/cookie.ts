@@ -8,22 +8,22 @@
  * 格式通常为：ASPSESSIONIDXXXXXXXX=YYYYYYYYYYYYYYYYYYYYYYYY
  * 该 Cookie 用于教务系统的身份验证，在有效期内无需重新登录
  */
-let globalCookie = '';
+let globalCookie = "";
 
 /**
  * 获取当前存储的全局 Cookie
- * 
+ *
  * @returns 当前有效的 Cookie 字符串
  */
 export const getCookie = () => {
   return globalCookie;
-}
+};
 
 /**
  * 设置或更新全局 Cookie
- * 
+ *
  * @param cookie 新的 Cookie 字符串
  */
 export const setCookie = (cookie: string) => {
   globalCookie = cookie;
-}
+};

@@ -3,7 +3,7 @@
  * 负责从教务培养方案页面 (jjihua.asp) 提取课程列表
  */
 
-import { stripTags } from '../utils/html';
+import { stripTags } from "../utils/html";
 
 /**
  * 单门课程信息
@@ -57,7 +57,7 @@ export interface PlanInfoResult {
 
 /**
  * 培养方案提取器
- * 
+ *
  * 解析 jjihua.asp 页面的 tablebody 表格：
  * - 标题行 (class=g_title) 为方案名称
  * - 表头行 (class=g_column) 定义 24 列字段
@@ -68,7 +68,7 @@ export interface PlanInfoResult {
  * @returns 包含方案标题和课程列表的结果对象
  */
 export const extractPlanInfo = (html: string): PlanInfoResult => {
-  if (!html || typeof html !== 'string' || html.includes('登录超时')) {
+  if (!html || typeof html !== "string" || html.includes("登录超时")) {
     return { result: null, success: false };
   }
 
@@ -84,7 +84,7 @@ export const extractPlanInfo = (html: string): PlanInfoResult => {
  */
 function parseTitle(html: string): string {
   const titleMatch = html.match(/class\s*=\s*"?g_title[^>]*>([\s\S]*?)<\/td>/i);
-  return titleMatch ? stripTags(titleMatch[1]) : '';
+  return titleMatch ? stripTags(titleMatch[1]) : "";
 }
 
 /**
@@ -131,30 +131,30 @@ function parseTablebodyRows(html: string): PlanCourse[] {
 function mapRowToCourse(values: string[], startIdx: number): PlanCourse | null {
   if (values.length <= startIdx) return null;
 
-  const courseCode = values[startIdx]?.trim() || '';
+  const courseCode = values[startIdx]?.trim() || "";
   if (!courseCode) return null;
 
   // 周学时：索引 12~21（一~十学期），从 startIdx 偏移
   const weeklyHoursStart = startIdx + 11;
   const weeklyHours: string[] = [];
   for (let i = 0; i < 10; i++) {
-    weeklyHours.push(values[weeklyHoursStart + i]?.trim() || '');
+    weeklyHours.push(values[weeklyHoursStart + i]?.trim() || "");
   }
 
   return {
     courseCode,
-    courseName: values[startIdx + 1]?.trim() || '',
-    englishName: values[startIdx + 2]?.trim() || '',
-    courseType: values[startIdx + 3]?.trim() || '',
-    courseSystem: values[startIdx + 4]?.trim() || '',
-    credits: values[startIdx + 5]?.trim() || '',
-    totalHours: values[startIdx + 6]?.trim() || '',
-    lectureHours: values[startIdx + 7]?.trim() || '',
-    labHours: values[startIdx + 8]?.trim() || '',
-    practiceHours: values[startIdx + 9]?.trim() || '',
-    selfStudyHours: values[startIdx + 10]?.trim() || '',
+    courseName: values[startIdx + 1]?.trim() || "",
+    englishName: values[startIdx + 2]?.trim() || "",
+    courseType: values[startIdx + 3]?.trim() || "",
+    courseSystem: values[startIdx + 4]?.trim() || "",
+    credits: values[startIdx + 5]?.trim() || "",
+    totalHours: values[startIdx + 6]?.trim() || "",
+    lectureHours: values[startIdx + 7]?.trim() || "",
+    labHours: values[startIdx + 8]?.trim() || "",
+    practiceHours: values[startIdx + 9]?.trim() || "",
+    selfStudyHours: values[startIdx + 10]?.trim() || "",
     weeklyHours,
-    execSemester: values[startIdx + 21]?.trim() || '',
+    execSemester: values[startIdx + 21]?.trim() || "",
   };
 }
 

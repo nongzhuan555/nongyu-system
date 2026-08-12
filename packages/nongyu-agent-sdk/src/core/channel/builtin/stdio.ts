@@ -5,14 +5,14 @@
  * 仅支持 Node.js 环境 (使用 readline 模块)。
  */
 
-import * as readline from 'node:readline';
+import * as readline from "node:readline";
 import type {
   ChannelPlugin,
   ChannelMeta,
   ChannelCapabilities,
   InboundEnvelope,
   OutboundEnvelope,
-} from '../../../types/channel';
+} from "../../../types/channel";
 
 export interface StdioChannelOptions {
   /** 通道 ID，默认 'stdio' */
@@ -47,11 +47,11 @@ export class StdioChannel implements ChannelPlugin {
   private messageSeq = 0;
 
   private static readonly DEFAULTS: StdioChannelResolvedOptions = {
-    id: 'stdio',
-    name: '控制台',
-    prompt: '\n> ',
-    agentPrefix: '\n[Agent] ',
-    exitCommand: '/exit',
+    id: "stdio",
+    name: "控制台",
+    prompt: "\n> ",
+    agentPrefix: "\n[Agent] ",
+    exitCommand: "/exit",
   };
 
   constructor(options: StdioChannelOptions = {}) {
@@ -66,7 +66,7 @@ export class StdioChannel implements ChannelPlugin {
     this.meta = {
       id: this.options.id,
       name: this.options.name,
-      description: '标准输入输出控制台交互通道，用于本地调试',
+      description: "标准输入输出控制台交互通道，用于本地调试",
     };
 
     this.conversationId = `${this.meta.id}:session_${Date.now()}`;
@@ -84,23 +84,23 @@ export class StdioChannel implements ChannelPlugin {
     this.rl.setPrompt(this.options.prompt);
     this.rl.prompt();
 
-    this.rl.on('line', (line: string) => {
+    this.rl.on("line", (line: string) => {
       this.handleLine(line);
     });
 
-    this.rl.on('close', () => {
+    this.rl.on("close", () => {
       this.running = false;
     });
 
     // 监听 SIGINT (Ctrl+C)
-    process.on('SIGINT', () => {
-      this.println('\n收到中断信号，正在退出...');
+    process.on("SIGINT", () => {
+      this.println("\n收到中断信号，正在退出...");
       this.stop();
     });
 
     // 等待 rl 关闭
     await new Promise<void>((resolve) => {
-      this.rl!.on('close', resolve);
+      this.rl!.on("close", resolve);
     });
   }
 
@@ -135,20 +135,20 @@ export class StdioChannel implements ChannelPlugin {
 
     for await (const chunk of stream) {
       switch (chunk.chunkType) {
-        case 'text:delta':
+        case "text:delta":
           // 文本增量：直接写入，不换行
           process.stdout.write(chunk.content);
           break;
-        case 'tool:call':
+        case "tool:call":
           this.println(`\n  [🔧 调用工具] ${chunk.content}`);
           break;
-        case 'tool:result':
+        case "tool:result":
           this.println(`  [✅ 工具返回] ${chunk.content}`);
           break;
-        case 'info':
+        case "info":
           this.println(`\n  [ℹ] ${chunk.content}`);
           break;
-        case 'final':
+        case "final":
         default:
           // 最终块或无标记块：换行输出
           if (chunk.content) {
@@ -159,7 +159,7 @@ export class StdioChannel implements ChannelPlugin {
     }
 
     // 流结束后换行，恢复输入提示
-    process.stdout.write('\n');
+    process.stdout.write("\n");
     if (this.rl && this.running) {
       this.rl.prompt();
     }
@@ -176,7 +176,7 @@ export class StdioChannel implements ChannelPlugin {
 
     // 退出命令
     if (trimmed === this.options.exitCommand) {
-      this.println('再见！');
+      this.println("再见！");
       await this.stop();
       return;
     }
@@ -187,8 +187,8 @@ export class StdioChannel implements ChannelPlugin {
       channel: this.meta.id,
       conversationId: this.conversationId,
       from: {
-        id: 'console-user',
-        name: 'Console',
+        id: "console-user",
+        name: "Console",
       },
       text: trimmed,
       timestamp: Date.now(),
@@ -198,7 +198,7 @@ export class StdioChannel implements ChannelPlugin {
 
     if (this.messageHandler) {
       try {
-        this.println(''); // 换行
+        this.println(""); // 换行
         await this.messageHandler(envelope);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -206,21 +206,21 @@ export class StdioChannel implements ChannelPlugin {
         this.rl?.prompt();
       }
     } else {
-      this.println('\n[提示] 未注册消息处理器，请先配置 Agent');
+      this.println("\n[提示] 未注册消息处理器，请先配置 Agent");
       this.rl?.prompt();
     }
   }
 
   private printWelcome(): void {
-    this.println('═══════════════════════════════════════');
-    this.println('  农屿 Agent SDK - 控制台调试通道');
-    this.println('═══════════════════════════════════════');
+    this.println("═══════════════════════════════════════");
+    this.println("  农屿 Agent SDK - 控制台调试通道");
+    this.println("═══════════════════════════════════════");
     this.println(`  输入消息与 Agent 对话`);
     this.println(`  输入 "${this.options.exitCommand}" 退出`);
-    this.println('═══════════════════════════════════════');
+    this.println("═══════════════════════════════════════");
   }
 
   private println(text: string): void {
-    process.stdout.write(text + '\n');
+    process.stdout.write(text + "\n");
   }
 }

@@ -2,29 +2,29 @@
  * 教务通知业务模块
  */
 
-import { extractTeachingNotices } from '../extractor';
-import { extractCompetitionInfo } from '../extractor/competitionInfoExtractor';
-import { fetchJiaowuHtml } from '../utils';
+import { extractTeachingNotices } from "../extractor";
+import { extractCompetitionInfo } from "../extractor/competitionInfoExtractor";
+import { fetchJiaowuHtml } from "../utils";
 
 /**
  * 教务网通知公告页面 URL
  */
-const NOTICE_URL = 'https://jiaowu.sicau.edu.cn/web/web/web/index.asp';
+const NOTICE_URL = "https://jiaowu.sicau.edu.cn/web/web/web/index.asp";
 
 /**
  * 获取教务网最新通知信息（含教学通知与竞赛通知合并列表）。
- * 
+ *
  * 使用场景：
  * 1. 农屿App教务通知页面以此获取教务网首页通知数据渲染成列表，点击列表可跳转教务通知详情页
  * 2. nongyu-agent将此作为tool调用用于获取教务网首页通知数据，用以回答用户提出的与教务网通知相关的问题
- * 
+ *
  * @returns 成功返回 `{ success: true, result: NoticeItem[] }`，失败返回 `{ success: false, result: [] }`
- * 
+ *
  * @example 基本调用
  * ```ts
  * const noticeResult = await getNoticeInfo();
  * ```
- * 
+ *
  * @example 成功示例
  * ```ts
  * const noticeResult = await getNoticeInfo();
@@ -49,7 +49,7 @@ const NOTICE_URL = 'https://jiaowu.sicau.edu.cn/web/web/web/index.asp';
  * //   success: true
  * // }
  * ```
- * 
+ *
  * @example 失败示例
  * ```ts
  * // 网络异常或未登录时
@@ -67,20 +67,37 @@ export const getNoticeInfo = async () => {
     const competitionResult = extractCompetitionInfo(html);
 
     // 合并两个通知列表
-    const allNotices = [
-      ...teachingResult.result,
-      ...competitionResult.result,
-    ];
+    const allNotices = [...teachingResult.result, ...competitionResult.result];
 
     return {
       result: allNotices,
       success: teachingResult.success || competitionResult.success,
     };
   } catch (error) {
-    console.error('获取教务通知失败:', error);
+    console.error("获取教务通知失败:", error);
     return {
       result: [],
       success: false,
     };
   }
-}
+};
+
+/**
+ * 仅获取教学通知（不含竞赛）。
+ *
+ * 使用场景：农屿 App 教务通知页专用数据源，避免与竞赛页重复。
+ *
+ * @returns 成功返回 `{ success: true, result: NoticeItem[] }`，失败返回 `{ success: false, result: [] }`
+ */
+export const getTeachingNoticeInfo = async () => {
+  try {
+    const html = await fetchJiaowuHtml(NOTICE_URL);
+    return extractTeachingNotices(html);
+  } catch (error) {
+    console.error("获取教学通知失败:", error);
+    return {
+      result: [],
+      success: false,
+    };
+  }
+};

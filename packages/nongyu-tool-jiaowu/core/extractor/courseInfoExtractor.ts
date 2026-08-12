@@ -3,25 +3,25 @@
  * 负责从课表查询页面提取学生的本学期课程安排
  */
 
-import { parseTable } from '../utils/html';
+import { parseTable } from "../utils/html";
 
 /**
  * 课表信息项定义
  */
 export interface CourseItem {
-  campus?: string;          // 校区
-  courseName?: string;      // 课程名称
-  courseId?: string;        // 课程编号
-  weeks?: string;           // 周次（如：1-16）
-  classroom?: string;       // 上课教室
-  scheduleTime?: string;    // 上课时间（如：3-3,3-4）
-  credit?: string;          // 学分
-  hours?: string;           // 学时
-  weeklyHours?: string;     // 周学时
-  labHours?: string;        // 实验周学时
-  assessmentMethod?: string;// 考核方法
-  teacher?: string;         // 任课教师
-  enrollmentType?: string;  // 选课方式（如：初修）
+  campus?: string; // 校区
+  courseName?: string; // 课程名称
+  courseId?: string; // 课程编号
+  weeks?: string; // 周次（如：1-16）
+  classroom?: string; // 上课教室
+  scheduleTime?: string; // 上课时间（如：3-3,3-4）
+  credit?: string; // 学分
+  hours?: string; // 学时
+  weeklyHours?: string; // 周学时
+  labHours?: string; // 实验周学时
+  assessmentMethod?: string; // 考核方法
+  teacher?: string; // 任课教师
+  enrollmentType?: string; // 选课方式（如：初修）
   blendedTeaching?: string; // 混合式教学
 }
 
@@ -30,7 +30,7 @@ export interface CourseItem {
  */
 export interface CourseResult {
   result: CourseItem[]; // 课程列表
-  success: boolean;     // 提取状态
+  success: boolean; // 提取状态
 }
 
 /**
@@ -52,7 +52,7 @@ export interface CourseResult {
  */
 export const extractCourseInfo = (html: string): CourseResult => {
   // 基础内容校验
-  if (!html || typeof html !== 'string') {
+  if (!html || typeof html !== "string") {
     return { result: [], success: false };
   }
 
@@ -113,27 +113,25 @@ export const extractCourseInfo = (html: string): CourseResult => {
  */
 function detectColumns(header: string[]): Record<string, number> {
   // 规范化表头文字：移除空白符、冒号，并转为小写
-  const normalized = header.map((h) =>
-    h.replace(/\s+/g, '').replace(/：|:/g, '').toLowerCase(),
-  );
+  const normalized = header.map((h) => h.replace(/\s+/g, "").replace(/：|:/g, "").toLowerCase());
   const findIdx = (keywords: string[]) =>
     normalized.findIndex((h) => keywords.some((k) => h.includes(k)));
 
   return {
-    campus: findIdx(['校区']),
-    courseName: findIdx(['课程名称', '课程名', '课程']),
-    courseId: findIdx(['编号', '课程编号']),
-    weeks: findIdx(['周次', '上课周次']),
-    classroom: findIdx(['教室', '上课教室']),
-    scheduleTime: findIdx(['上课时间', '时间']),
-    credit: findIdx(['学分']),
-    hours: findIdx(['学时']),
-    weeklyHours: findIdx(['周学时']),
-    labHours: findIdx(['实验周学时']),
-    assessmentMethod: findIdx(['考核方法', '考核方式']),
-    teacher: findIdx(['教师', '任课教师']),
-    enrollmentType: findIdx(['选课方式']),
-    blendedTeaching: findIdx(['混合式教学']),
+    campus: findIdx(["校区"]),
+    courseName: findIdx(["课程名称", "课程名", "课程"]),
+    courseId: findIdx(["编号", "课程编号"]),
+    weeks: findIdx(["周次", "上课周次"]),
+    classroom: findIdx(["教室", "上课教室"]),
+    scheduleTime: findIdx(["上课时间", "时间"]),
+    credit: findIdx(["学分"]),
+    hours: findIdx(["学时"]),
+    weeklyHours: findIdx(["周学时"]),
+    labHours: findIdx(["实验周学时"]),
+    assessmentMethod: findIdx(["考核方法", "考核方式"]),
+    teacher: findIdx(["教师", "任课教师"]),
+    enrollmentType: findIdx(["选课方式"]),
+    blendedTeaching: findIdx(["混合式教学"]),
   };
 }
 
@@ -145,6 +143,6 @@ function detectColumns(header: string[]): Record<string, number> {
  * @returns 单元格文本或空字符串
  */
 function pickCell(row: string[], index: number): string {
-  if (index < 0 || index >= row.length) return '';
-  return (row[index] || '').trim();
+  if (index < 0 || index >= row.length) return "";
+  return (row[index] || "").trim();
 }

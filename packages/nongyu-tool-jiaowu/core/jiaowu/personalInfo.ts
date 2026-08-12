@@ -2,27 +2,27 @@
  * 个人信息业务模块
  */
 
-import { extractPersonalInfo } from '../extractor';
-import { fetchJiaowuHtml } from '../utils';
+import { extractPersonalInfo } from "../extractor";
+import { fetchJiaowuHtml } from "../utils";
 
 /**
  * 教务网个人信息页面 URL
  */
-const PERSONAL_INFO_URL = 'https://jiaowu.sicau.edu.cn/xuesheng/dangan/banji/bjiben.asp';
+const PERSONAL_INFO_URL = "https://jiaowu.sicau.edu.cn/xuesheng/dangan/banji/bjiben.asp";
 
 /**
  * 获取当前登录学生的个人信息。
- * 
+ *
  * 使用场景：
  * 1. 农屿App登录后，获取当前登录学生的个人信息，个人信息存本地，同时存到数据库
- * 
+ *
  * @returns 成功返回 `{ success: true, result: PersonalInfo }`，失败返回 `{ success: false, result: null }`
- * 
+ *
  * @example 基本调用
  * ```ts
  * const info = await getPersonalInfo();
  * ```
- * 
+ *
  * @example 成功示例
  * ```ts
  * const info = await getPersonalInfo();
@@ -48,7 +48,7 @@ const PERSONAL_INFO_URL = 'https://jiaowu.sicau.edu.cn/xuesheng/dangan/banji/bji
  * //   success: true
  * // }
  * ```
- * 
+ *
  * @example 失败示例 - 未登录或网络异常
  * ```ts
  * const info = await getPersonalInfo();
@@ -63,10 +63,10 @@ export const getPersonalInfo = async () => {
     const html = await fetchJiaowuHtml(PERSONAL_INFO_URL);
     return extractPersonalInfo(html);
   } catch (error) {
-    console.error('获取个人信息失败:', error);
+    console.error("获取个人信息失败:", error);
     return {
       result: null,
       success: false,
     };
   }
-}
+};

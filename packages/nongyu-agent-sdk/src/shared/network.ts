@@ -6,7 +6,7 @@
  */
 
 export interface RequestOptions {
-  method: 'GET' | 'POST'; // 只用 GET 和 POST 方法
+  method: "GET" | "POST"; // 只用 GET 和 POST 方法
   headers?: Record<string, string>;
   body?: string;
   signal?: AbortSignal;
@@ -16,10 +16,7 @@ export interface RequestOptions {
 /**
  * 发起 HTTP 请求并解析 JSON 响应
  */
-export async function request<T = unknown>(
-  url: string,
-  options: RequestOptions,
-): Promise<T> {
+export async function request<T = unknown>(url: string, options: RequestOptions): Promise<T> {
   const controller = new AbortController();
   const signal = options.signal ?? controller.signal;
 

@@ -1,32 +1,17 @@
 // ===== 核心 =====
-export {
-  createAgent,
-  AgentImpl,
-} from './core/agent';
+export { createAgent, AgentImpl } from "./core/agent";
 
-export { buildSystemPrompt } from './core/prompt';
+export { buildSystemPrompt } from "./core/prompt";
 
-export {
-  tool,
-  ToolRegistry,
-  zodToJsonSchema,
-} from './core/tool';
+export { tool, ToolRegistry, zodToJsonSchema } from "./core/tool";
 
-export {
-  EventBus,
-} from './core/events';
+export { EventBus } from "./core/events";
 
-export {
-  AgentLoop,
-} from './core/agent/loop';
+export { AgentLoop } from "./core/agent/loop";
 
-export {
-  stopConditions,
-} from './core/agent/loop/stop-conditions';
+export { stopConditions } from "./core/agent/loop/stop-conditions";
 
-export {
-  agentAsTool,
-} from './core/agent/sub-agent';
+export { agentAsTool } from "./core/agent/sub-agent";
 
 // ===== 配置 =====
 export {
@@ -35,12 +20,10 @@ export {
   isConfigured,
   resetConfig,
   createOpenAI,
-} from './core/config';
+} from "./core/config";
 
 // ===== 模型 =====
-export {
-  OpenAIProvider,
-} from './core/model';
+export { OpenAIProvider } from "./core/model";
 
 // ===== 上下文 =====
 export {
@@ -48,25 +31,17 @@ export {
   ContextManagerImpl,
   TrimmingStrategy,
   TokenStatsTracker,
-} from './core/context';
+} from "./core/context";
 
 // ===== 通道 =====
-export { Gateway } from './core/channel/gateway';
-export { StdioChannel } from './core/channel/builtin/stdio';
-export type { StdioChannelOptions } from './core/channel/builtin/stdio';
+export { Gateway } from "./core/channel/gateway";
+export { StdioChannel } from "./core/channel/builtin/stdio";
+export type { StdioChannelOptions } from "./core/channel/builtin/stdio";
 
 // ===== 工具函数 =====
-export {
-  generateId,
-  delay,
-  safeJsonParse,
-  isAbortError,
-} from './shared/utils';
+export { generateId, delay, safeJsonParse, isAbortError } from "./shared/utils";
 
-export {
-  createAbortSignal,
-  combineAbortSignals,
-} from './shared/abort';
+export { createAbortSignal, combineAbortSignals } from "./shared/abort";
 
 // ===== 类型 =====
 export type {
@@ -122,16 +97,10 @@ export type {
   ChannelPlugin,
   InboundEnvelope,
   OutboundEnvelope,
-} from './types';
+} from "./types";
 
 // ===== React Hooks（使用方需自行安装 react >=18）=====
-export { useAgentChat } from './hooks';
-export type {
-  ChatMessage,
-  UseAgentChatConfig,
-  UseAgentChatReturn,
-} from './hooks';
+export { useAgentChat } from "./hooks";
+export type { ChatMessage, UseAgentChatConfig, UseAgentChatReturn } from "./hooks";
 
-export type {
-  SDKConfig,
-} from './core/config';
+export type { SDKConfig } from "./core/config";

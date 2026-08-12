@@ -27,9 +27,9 @@ export interface InboundEnvelope {
 export interface OutboundEnvelope {
   conversationId: string;
   content: string;
-  format?: 'text' | 'markdown';
+  format?: "text" | "markdown";
   /** 流式块类型，用于通道区分输出方式 */
-  chunkType?: 'text:delta' | 'tool:call' | 'tool:result' | 'info' | 'final';
+  chunkType?: "text:delta" | "tool:call" | "tool:result" | "info" | "final";
 }
 
 // 渠道插件

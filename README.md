@@ -9,7 +9,7 @@
 ```plaintext
 │  AGENTS.md（Agent开发指导文档）
 │  README.md（仓库说明文档）
-│  
+│
 ├─apps
 │  ├─nongyu-node-server（农屿后端-单体node应用）
 │  ├─nongyu-rn-app（农屿用户端-react native应用）
@@ -23,6 +23,3 @@
     ├─nongyu-tool-jiaowu（农屿工具-川农教务）
     └─nongyu-tool-second（农屿工具-川农二课）
 ```
-
-
-

@@ -1,5 +1,5 @@
 export class SecondTool {
   async getScore() {
-    return 'Second tool score';
+    return "Second tool score";
   }
 }

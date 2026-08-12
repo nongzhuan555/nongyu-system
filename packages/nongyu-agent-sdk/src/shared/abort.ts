@@ -20,9 +20,7 @@ export function createAbortSignal(timeoutMs?: number): {
 }
 
 /** 将多个 AbortSignal 合并为一个（任一触发则触发） */
-export function combineAbortSignals(
-  ...signals: (AbortSignal | undefined)[]
-): AbortSignal {
+export function combineAbortSignals(...signals: (AbortSignal | undefined)[]): AbortSignal {
   const controller = new AbortController();
 
   for (const signal of signals) {
@@ -31,7 +29,7 @@ export function combineAbortSignals(
       controller.abort(signal.reason);
       return controller.signal;
     }
-    signal.addEventListener('abort', () => controller.abort(signal.reason));
+    signal.addEventListener("abort", () => controller.abort(signal.reason));
   }
 
   return controller.signal;
