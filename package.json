@@ -41,7 +41,7 @@
       "oxlint",
       "oxfmt --write"
     ],
-    "*.{json,md,yml,yaml,css,html}": [
+    "*.{json,md,css,html}": [
       "oxfmt --write"
     ]
   },
