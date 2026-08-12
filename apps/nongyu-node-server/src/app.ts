@@ -1,0 +1,56 @@
+import express from "express";
+import cors from "cors";
+import { getEnv } from "./config/env.js";
+import { getPool } from "./lib/db.js";
+import { errorHandler, requestIdMiddleware } from "./middlewares/common.js";
+import { ok } from "./lib/response.js";
+import { asyncHandler } from "./middlewares/common.js";
+import { adminAuthRouter, appAuthRouter } from "./modules/auth/routes.js";
+import { adminUsersRouter, appUsersRouter } from "./modules/users/routes.js";
+import { appSettingsRouter } from "./modules/settings/routes.js";
+import { adminPostsRouter, appMyPostsRouter, appPostsRouter } from "./modules/posts/routes.js";
+import { adminVersionsRouter, appVersionsRouter } from "./modules/versions/routes.js";
+import { adminDashboardRouter } from "./modules/dashboard/routes.js";
+
+export function createApp() {
+  const env = getEnv();
+  const app = express();
+
+  app.use(requestIdMiddleware);
+  app.use(
+    cors({
+      origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN.split(",").map((s) => s.trim()),
+    }),
+  );
+  app.use(express.json({ limit: "2mb" }));
+
+  app.get(
+    "/health",
+    asyncHandler(async (_req, res) => {
+      let db: "up" | "down" = "down";
+      try {
+        await getPool().query("SELECT 1");
+        db = "up";
+      } catch {
+        db = "down";
+      }
+      ok(res, { status: "ok", db });
+    }),
+  );
+
+  app.use("/api/app/auth", appAuthRouter);
+  app.use("/api/app/users/me/posts", appMyPostsRouter);
+  app.use("/api/app/users", appUsersRouter);
+  app.use("/api/app/settings", appSettingsRouter);
+  app.use("/api/app/posts", appPostsRouter);
+  app.use("/api/app/versions", appVersionsRouter);
+
+  app.use("/api/admin/auth", adminAuthRouter);
+  app.use("/api/admin/users", adminUsersRouter);
+  app.use("/api/admin/posts", adminPostsRouter);
+  app.use("/api/admin/app-versions", adminVersionsRouter);
+  app.use("/api/admin/dashboard", adminDashboardRouter);
+
+  app.use(errorHandler);
+  return app;
+}

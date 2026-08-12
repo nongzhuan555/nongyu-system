@@ -1,0 +1,159 @@
+import { z } from "zod";
+import { withTransaction } from "../../lib/db.js";
+import { AppError, ErrorCodes } from "../../lib/errors.js";
+import { signAppToken, signAdminToken } from "../../lib/jwt.js";
+import { hashPassword, verifyPassword } from "../../lib/password.js";
+import { parseGender, studentNoSchema } from "../../lib/util.js";
+import { insertDefaultSettings } from "../settings/repo.js";
+import {
+  findUserById,
+  findUserByStudentNo,
+  insertUser,
+  logoutAppUser,
+  updateUserOnAppLogin,
+} from "../users/repo.js";
+import { toAppUserProfile } from "../users/mapper.js";
+
+export const appLoginSchema = z.object({
+  studentNo: studentNoSchema,
+  name: z.string().min(1).max(64),
+  major: z.string().max(128).optional().nullable(),
+  college: z.string().max(128).optional().nullable(),
+  className: z.string().max(128).optional().nullable(),
+  grade: z.string().max(32).optional().nullable(),
+  gender: z.union([z.number(), z.string()]).optional(),
+  hometown: z.string().max(64).optional().nullable(),
+  campus: z.string().max(64).optional().nullable(),
+  qq: z.string().max(20).optional().nullable(),
+  deviceId: z.string().min(1).max(128),
+  deviceBrand: z.string().max(64).optional().nullable(),
+  deviceModel: z.string().max(128).optional().nullable(),
+  deviceOs: z.string().max(64).optional().nullable(),
+});
+
+export async function appLogin(body: z.infer<typeof appLoginSchema>) {
+  const gender = parseGender(body.gender);
+  const result = await withTransaction(async (conn) => {
+    const existing = await findUserByStudentNo(body.studentNo, conn);
+    if (existing && existing.status !== 1) {
+      throw new AppError(ErrorCodes.ACCOUNT_DISABLED, "账号已禁用", 403);
+    }
+
+    let userId: number;
+    let isNewUser = false;
+
+    if (!existing) {
+      isNewUser = true;
+      userId = await insertUser(
+        {
+          studentNo: body.studentNo,
+          name: body.name,
+          major: body.major ?? null,
+          college: body.college ?? null,
+          className: body.className ?? null,
+          grade: body.grade ?? null,
+          gender,
+          hometown: body.hometown ?? null,
+          campus: body.campus ?? null,
+          qq: body.qq ?? null,
+          deviceId: body.deviceId,
+          deviceBrand: body.deviceBrand ?? null,
+          deviceModel: body.deviceModel ?? null,
+          deviceOs: body.deviceOs ?? null,
+        },
+        conn,
+      );
+      await insertDefaultSettings(userId, conn);
+    } else {
+      userId = existing.id;
+      const keepQq = existing.qq && existing.qq.length > 0 ? existing.qq : (body.qq ?? null);
+      await updateUserOnAppLogin(
+        existing.id,
+        {
+          name: body.name,
+          major: body.major ?? null,
+          college: body.college ?? null,
+          className: body.className ?? null,
+          grade: body.grade ?? null,
+          gender,
+          hometown: body.hometown ?? null,
+          campus: body.campus ?? null,
+          keepQq,
+          deviceId: body.deviceId,
+          deviceBrand: body.deviceBrand ?? null,
+          deviceModel: body.deviceModel ?? null,
+          deviceOs: body.deviceOs ?? null,
+        },
+        conn,
+      );
+    }
+
+    const user = await findUserById(userId, conn);
+    if (!user) throw new AppError(ErrorCodes.INTERNAL, "用户写入失败", 500);
+    return { user, isNewUser };
+  });
+
+  const token = await signAppToken({
+    uid: result.user.id,
+    studentNo: result.user.student_no,
+    tokenVersion: result.user.token_version,
+    deviceId: body.deviceId,
+  });
+
+  return {
+    token,
+    isNewUser: result.isNewUser,
+    user: toAppUserProfile(result.user),
+  };
+}
+
+export async function appLogout(userId: number) {
+  await logoutAppUser(userId);
+}
+
+export const adminLoginSchema = z.object({
+  studentNo: studentNoSchema,
+  adminPassword: z.string().min(1),
+  loginType: z.enum(["browser", "in_app"]).optional().default("browser"),
+});
+
+export async function adminLogin(body: z.infer<typeof adminLoginSchema>) {
+  const user = await findUserByStudentNo(body.studentNo);
+  if (!user) {
+    throw new AppError(ErrorCodes.USER_NOT_FOUND, "用户不存在，请先在 App 登录注册", 404);
+  }
+  if (user.role !== 1) {
+    throw new AppError(ErrorCodes.ADMIN_REQUIRED, "需要管理员权限", 403);
+  }
+  if (user.status !== 1) {
+    throw new AppError(ErrorCodes.ACCOUNT_DISABLED, "账号已禁用", 403);
+  }
+  if (!user.admin_password_hash) {
+    throw new AppError(ErrorCodes.ADMIN_PASSWORD_WRONG, "管理员密码错误", 403);
+  }
+  const ok = await verifyPassword(body.adminPassword, user.admin_password_hash);
+  if (!ok) {
+    throw new AppError(ErrorCodes.ADMIN_PASSWORD_WRONG, "管理员密码错误", 403);
+  }
+  const token = await signAdminToken({
+    uid: user.id,
+    studentNo: user.student_no,
+  });
+  return {
+    token,
+    loginType: body.loginType,
+    user: {
+      id: Number(user.id),
+      studentNo: user.student_no,
+      name: user.name,
+      role: 1 as const,
+    },
+  };
+}
+
+export async function hashAdminPassword(plain: string) {
+  if (plain.length < 8) {
+    throw new AppError(ErrorCodes.VALIDATION, "管理员密码至少 8 位", 400);
+  }
+  return hashPassword(plain);
+}

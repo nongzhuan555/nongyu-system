@@ -12,6 +12,7 @@ old-code/
 
 # 环境变量文件
 .env
+.env.test
 .env.local
 .env.development.local
 .env.test.local
