@@ -35,3 +35,19 @@ export function pageParams(page?: number, pageSize?: number) {
   const ps = Math.min(100, Math.max(1, pageSize ?? 20));
   return { page: p, pageSize: ps, offset: (p - 1) * ps };
 }
+
+/** 转义 SQL LIKE 通配符，配合 `ESCAPE '\\\\'` 按字面匹配 */
+export function escapeLikePattern(raw: string): string {
+  return raw.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+/** 列表 keyword：trim；空则 undefined；超长抛校验错误 */
+export function normalizeListKeyword(input: unknown): string | undefined {
+  if (input === undefined || input === null) return undefined;
+  const trimmed = String(input).trim();
+  if (!trimmed) return undefined;
+  if (trimmed.length > 64) {
+    throw new AppError(ErrorCodes.VALIDATION, "keyword 长度须为 1–64", 400);
+  }
+  return trimmed;
+}

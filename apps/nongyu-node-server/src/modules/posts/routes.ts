@@ -5,7 +5,7 @@ import { requireAdminAuth, requireAppAuth } from "../../middlewares/auth.js";
 import { ok } from "../../lib/response.js";
 import { AppError, ErrorCodes } from "../../lib/errors.js";
 import { toIsoUtc, toIsoUtcRequired } from "../../lib/time.js";
-import { pageParams, previewText } from "../../lib/util.js";
+import { pageParams, previewText, normalizeListKeyword } from "../../lib/util.js";
 import { countUsers } from "../users/repo.js";
 import {
   findPostById,
@@ -53,14 +53,17 @@ appPostsRouter.get(
       .object({
         postType: z.enum(["announcement", "feedback", "courtyard"]),
         subtype: z.string().optional(),
+        keyword: z.string().optional(),
         page: z.coerce.number().optional(),
         pageSize: z.coerce.number().optional(),
       })
       .parse(req.query);
+    const keyword = normalizeListKeyword(query.keyword);
     const { page, pageSize, offset } = pageParams(query.page, query.pageSize);
     const { rows, total } = await listPosts({
       postType: query.postType,
       subtype: query.subtype,
+      keyword,
       offset,
       pageSize,
     });
@@ -198,6 +201,7 @@ adminPostsRouter.get(
       .object({
         postType: z.enum(["announcement", "feedback", "courtyard"]).optional(),
         subtype: z.string().optional(),
+        keyword: z.string().optional(),
         page: z.coerce.number().optional(),
         pageSize: z.coerce.number().optional(),
         includeDeleted: z
@@ -206,11 +210,13 @@ adminPostsRouter.get(
           .transform((v) => v === true || v === "true"),
       })
       .parse(req.query);
+    const keyword = normalizeListKeyword(query.keyword);
     const { page, pageSize, offset } = pageParams(query.page, query.pageSize);
     const totalUsers = await countUsers();
     const { rows, total } = await listPosts({
       postType: query.postType,
       subtype: query.subtype,
+      keyword,
       includeDeleted: query.includeDeleted,
       offset,
       pageSize,
