@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { getPersonalInfo } from "nongyu-tool-jiaowu";
-import Toast from "react-native-toast-message";
+import { toast } from "@/components/ui/toast";
 import { appAuthLogin, appAuthLogout } from "@/api/appAuth";
 import { clearCredentials, saveCredentials } from "@/storage/secureCredentials";
 import { clearSessionSnapshot, saveSessionSnapshot } from "@/storage/mmkv";
@@ -52,7 +52,9 @@ export async function performJiaowuLogin(
   if (!personal.success || !personal.result) {
     return {
       ok: false,
-      message: personal.message || "获取个人档案失败，请稍后重试",
+      message:
+        ("message" in personal && typeof personal.message === "string" && personal.message) ||
+        "获取个人档案失败，请稍后重试",
       nodeOk: false,
     };
   }
@@ -97,10 +99,8 @@ export async function performJiaowuLogin(
     nodeOk = true;
   } catch (err) {
     const message = err instanceof Error ? err.message : "农屿服务未接通";
-    Toast.show({
-      type: "info",
-      text1: "农屿 Token 未签发",
-      text2: `${message}（本地教务会话仍可用）`,
+    toast.info("农屿 Token 未签发", {
+      description: `${message}（本地教务会话仍可用）`,
     });
   }
 

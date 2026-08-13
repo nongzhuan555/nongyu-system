@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
-import Toast from "react-native-toast-message";
+import { toast } from "@/components/ui/toast";
 import { lightTokens } from "@/theme/tokens";
 import { performJiaowuLogin } from "@/modules/jiaowu/auth/performJiaowuLogin";
 
@@ -31,17 +31,13 @@ export function JiaowuLoginForm({ onSuccess, compact }: JiaowuLoginFormProps) {
         queryClient,
       });
       if (!result.ok) {
-        Toast.show({
-          type: "error",
-          text1: "登录失败",
-          text2: result.message || "请检查学号密码",
+        toast.error("登录失败", {
+          description: result.message || "请检查学号密码",
         });
         return;
       }
-      Toast.show({
-        type: "success",
-        text1: "登录成功",
-        text2: result.nodeOk
+      toast.success("登录成功", {
+        description: result.nodeOk
           ? "教务会话与农屿 Token 均已就绪"
           : "仅本地教务会话（农屿 Token 未签发）",
       });

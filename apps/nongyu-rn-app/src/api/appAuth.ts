@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import * as Application from "expo-application";
 import * as Device from "expo-device";
 import { API_BASE_URL } from "@/config/env";
+import { parseApiResponse } from "@/api/appClient";
 import { appStorage } from "@/storage/mmkv";
 
 /** 教务档案摘要（提交给 Node，不含教务密码） */
@@ -21,12 +22,6 @@ export type AppAuthLoginResult = {
   token: string;
   isNewUser: boolean;
   user: Record<string, unknown>;
-};
-
-type ApiEnvelope<T> = {
-  code: number;
-  message: string;
-  data: T | null;
 };
 
 const DEVICE_ID_KEY = "session:device_id";
@@ -53,32 +48,6 @@ async function resolveDeviceId(): Promise<string> {
   const resolved = id || `device-${Platform.OS}-${Date.now()}`;
   appStorage.set(DEVICE_ID_KEY, resolved);
   return resolved;
-}
-
-/**
- * 解析统一响应包；业务失败抛出带 message 的 Error
- * @param allowNullData 登出等接口成功时 data 可为 null
- */
-async function parseApiResponse<T>(
-  response: Response,
-  options?: { allowNullData?: boolean },
-): Promise<T> {
-  let json: ApiEnvelope<T> | null = null;
-  try {
-    json = (await response.json()) as ApiEnvelope<T>;
-  } catch {
-    throw new Error(`农屿接口响应非 JSON (HTTP ${response.status})`);
-  }
-
-  if (!response.ok || json.code !== 0) {
-    throw new Error(json.message || `农屿接口失败 (HTTP ${response.status}, code=${json.code})`);
-  }
-
-  if (json.data == null && !options?.allowNullData) {
-    throw new Error(json.message || "农屿接口响应缺少 data");
-  }
-
-  return json.data as T;
 }
 
 /**

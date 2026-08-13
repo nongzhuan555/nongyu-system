@@ -69,6 +69,15 @@ export default function RootLayout() {
             options={{ title: "培养方案", headerShown: false }}
           />
           <Stack.Screen name="home/second" options={{ title: "二课系统", headerShown: false }} />
+          <Stack.Screen
+            name="center/post/[id]"
+            options={{ title: "帖子详情", headerShown: false }}
+          />
+          <Stack.Screen name="center/compose" options={{ title: "发帖", headerShown: false }} />
+          <Stack.Screen name="mine/posts" options={{ title: "我的帖子", headerShown: false }} />
+          <Stack.Screen name="mine/settings" options={{ title: "设置", headerShown: false }} />
+          <Stack.Screen name="mine/comments" options={{ title: "我的评论", headerShown: false }} />
+          <Stack.Screen name="mine/replies" options={{ title: "我的回复", headerShown: false }} />
           <Stack.Screen name="login" options={{ title: "登录", presentation: "modal" }} />
         </Stack>
       </JiaowuBootstrapGate>

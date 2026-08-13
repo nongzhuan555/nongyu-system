@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import Toast from "react-native-toast-message";
+import { toast } from "@/components/ui/toast";
 import { lightTokens } from "@/theme/tokens";
 import { useSessionStore } from "@/stores/session";
 import { JiaowuServiceList } from "@/modules/jiaowu/components/JiaowuServiceList";
@@ -22,7 +22,7 @@ export function JiaowuHomeScreen() {
 
   const handleLogout = async () => {
     await performJiaowuLogout(queryClient);
-    Toast.show({ type: "success", text1: "已退出登录" });
+    toast.success("已退出登录");
   };
 
   return (

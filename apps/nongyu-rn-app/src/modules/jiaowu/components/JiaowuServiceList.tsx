@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import Toast from "react-native-toast-message";
+import { toast } from "@/components/ui/toast";
 import { lightTokens } from "@/theme/tokens";
 import { JIAOWU_SERVICES, type JiaowuServiceItem } from "@/modules/jiaowu/constants/services";
 
@@ -17,11 +17,7 @@ export function JiaowuServiceList({ isAuthenticated }: JiaowuServiceListProps) {
 
   const onPress = (item: JiaowuServiceItem) => {
     if (item.requireAuth && !isAuthenticated) {
-      Toast.show({
-        type: "info",
-        text1: "需要登录",
-        text2: "请先使用教务学号密码登录",
-      });
+      toast.info("需要登录", { description: "请先使用教务学号密码登录" });
       return;
     }
     router.push(item.href);

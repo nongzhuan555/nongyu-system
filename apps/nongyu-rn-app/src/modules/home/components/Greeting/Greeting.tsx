@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
   wrap: {
     width: "100%",
     paddingHorizontal: lightTokens.space.md,
-    paddingTop: lightTokens.space.sm,
+    paddingTop: 0,
     paddingBottom: 4,
   },
   text: {

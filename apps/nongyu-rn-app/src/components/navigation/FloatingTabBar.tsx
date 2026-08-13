@@ -1,10 +1,23 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useSegments, type Href } from "expo-router";
-import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+  type LayoutChangeEvent,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { lightTokens } from "@/theme/tokens";
+import { AiTipBubble } from "./AiTipBubble";
 import { GlassPanel } from "./GlassPanel";
+import { TabLiquidIndicator, type TabIndicatorFrame } from "./TabLiquidIndicator";
+import { useAiTipBubble } from "./useAiTipBubble";
+
+const NONGYU_AI_AVATAR = require("../../../assets/nongyuai.jpg");
 
 /** 与 src/modules 目录命名对齐 */
 type TabKey = "home" | "course" | "center" | "mine";
@@ -14,6 +27,13 @@ type TabItem = {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   href: Href;
+};
+
+type TabLayout = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 };
 
 const TABS: TabItem[] = [
@@ -53,11 +73,11 @@ type TabBarMetrics = {
   height: number;
   iconSize: number;
   labelSize: number;
-  aiFontSize: number;
 };
 
 /**
  * 悬浮底栏：左侧「农屿AI」圆钮 + 右侧毛玻璃胶囊 Tab
+ * 选中态：独立椭圆毛玻璃指示器（与大栏兄弟叠放）+ 水滴滑动动效
  */
 export function FloatingTabBar() {
   const router = useRouter();
@@ -65,8 +85,30 @@ export function FloatingTabBar() {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const metrics = useMemo(() => resolveTabBarMetrics(windowWidth), [windowWidth]);
+  const [tabLayouts, setTabLayouts] = useState<Partial<Record<TabKey, TabLayout>>>({});
+  const { visible: tipVisible, hideTip } = useAiTipBubble();
 
   const activeTab = resolveActiveTab(segments);
+  const indicatorFrame = useMemo(
+    () => resolveIndicatorFrame(tabLayouts[activeTab], metrics.height),
+    [tabLayouts, activeTab, metrics.height],
+  );
+
+  const openAi = useCallback(() => {
+    hideTip();
+    router.push("/ai" as Href);
+  }, [hideTip, router]);
+
+  const onTabLayout = useCallback((key: TabKey, event: LayoutChangeEvent) => {
+    const { x, y, width, height } = event.nativeEvent.layout;
+    setTabLayouts((prev) => {
+      const cur = prev[key];
+      if (cur && cur.x === x && cur.y === y && cur.width === width && cur.height === height) {
+        return prev;
+      }
+      return { ...prev, [key]: { x, y, width, height } };
+    });
+  }, []);
 
   return (
     <View
@@ -80,63 +122,66 @@ export function FloatingTabBar() {
       ]}
     >
       <View style={[styles.row, { gap: metrics.aiGap }]} pointerEvents="box-none">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="农屿AI"
-          onPress={() => router.push("/ai" as Href)}
-        >
-          <GlassPanel
-            style={{
-              width: metrics.aiSize,
-              height: metrics.aiSize,
-              borderRadius: metrics.aiSize / 2,
-            }}
-            contentStyle={styles.aiContent}
-          >
-            <Text
-              style={[
-                styles.aiText,
-                { fontSize: metrics.aiFontSize, lineHeight: metrics.aiFontSize + 3 },
-              ]}
-              numberOfLines={2}
+        <View style={styles.aiAnchor}>
+          <AiTipBubble visible={tipVisible} onPressTip={openAi} onDismiss={hideTip} />
+          <Pressable accessibilityRole="button" accessibilityLabel="农屿AI" onPress={openAi}>
+            <GlassPanel
+              style={{
+                width: metrics.aiSize,
+                height: metrics.aiSize,
+                borderRadius: metrics.aiSize / 2,
+              }}
+              contentStyle={styles.aiContent}
             >
-              农屿AI
-            </Text>
-          </GlassPanel>
-        </Pressable>
+              <Image
+                source={NONGYU_AI_AVATAR}
+                style={styles.aiAvatar}
+                resizeMode="cover"
+                accessibilityIgnoresInvertColors
+              />
+            </GlassPanel>
+          </Pressable>
+        </View>
 
-        <GlassPanel
-          style={[styles.capsule, { height: metrics.height }]}
-          contentStyle={styles.capsuleRow}
-        >
-          {TABS.map((tab) => {
-            const focused = tab.key === activeTab;
-            const accent = focused ? lightTokens.color.brand : lightTokens.color.textSecondary;
-            return (
-              <Pressable
-                key={tab.key}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: focused }}
-                onPress={() => router.navigate(tab.href)}
-                style={styles.tabItem}
-              >
-                <Ionicons name={tab.icon} size={metrics.iconSize} color={accent} />
-                <Text
-                  style={[
-                    styles.label,
-                    {
-                      color: accent,
-                      fontSize: metrics.labelSize,
-                      fontWeight: focused ? "700" : "600",
-                    },
-                  ]}
+        <View style={[styles.capsuleShell, { height: metrics.height }]}>
+          <View style={styles.capsuleGlassHost} pointerEvents="none">
+            <GlassPanel style={styles.capsuleGlass} />
+          </View>
+          <View style={styles.capsuleRow}>
+            <TabLiquidIndicator frame={indicatorFrame} />
+            {TABS.map((tab) => {
+              const focused = tab.key === activeTab;
+              const accent = focused ? lightTokens.color.brand : lightTokens.color.textSecondary;
+              return (
+                <Pressable
+                  key={tab.key}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: focused }}
+                  onPress={() => router.navigate(tab.href)}
+                  onLayout={(e) => onTabLayout(tab.key, e)}
+                  style={styles.tabItem}
                 >
-                  {tab.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </GlassPanel>
+                  <Ionicons name={tab.icon} size={metrics.iconSize} color={accent} />
+                  <Text
+                    style={[
+                      styles.label,
+                      {
+                        color: accent,
+                        fontSize: metrics.labelSize,
+                        lineHeight: metrics.labelSize,
+                        fontWeight: focused ? "700" : "600",
+                        // Android：去掉字下额外留白，避免选中椭圆观感下边距更大
+                        includeFontPadding: false,
+                      },
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -158,7 +203,22 @@ function resolveTabBarMetrics(windowWidth: number): TabBarMetrics {
     height: clamp(base.height * scale, base.heightMin, base.heightMax),
     iconSize: clamp(base.iconSize * scale, base.iconSizeMin, base.iconSizeMax),
     labelSize: clamp(base.labelSize * scale, base.labelSizeMin, base.labelSizeMax),
-    aiFontSize: clamp(11 * scale, 10, 12),
+  };
+}
+
+function resolveIndicatorFrame(
+  layout: TabLayout | undefined,
+  capsuleHeight: number,
+): TabIndicatorFrame | null {
+  if (!layout || layout.width <= 0 || capsuleHeight <= 0) return null;
+  const insetV = base.activeInsetV;
+  const insetH = base.activeInsetH;
+  // 相对整条胶囊上下等距内缩，避免跟 Pressable 内容高度/字体边距耦合导致视觉不对称
+  return {
+    x: layout.x + insetH,
+    y: insetV,
+    width: Math.max(0, layout.width - insetH * 2),
+    height: Math.max(0, capsuleHeight - insetV * 2),
   };
 }
 
@@ -186,32 +246,59 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  aiAnchor: {
+    position: "relative",
+    zIndex: 30,
+    overflow: "visible",
+  },
   aiContent: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+    borderRadius: lightTokens.radius.full,
   },
-  aiText: {
-    fontWeight: "700",
-    color: lightTokens.color.brand,
-    textAlign: "center",
-    letterSpacing: 0.4,
+  aiAvatar: {
+    width: "100%",
+    height: "100%",
   },
-  capsule: {
+  capsuleShell: {
     flex: 1,
+    borderRadius: lightTokens.radius.full,
+    overflow: "hidden",
+  },
+  capsuleGlassHost: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  capsuleGlass: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     borderRadius: lightTokens.radius.full,
   },
   capsuleRow: {
-    flex: 1,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "stretch",
     paddingHorizontal: 6,
+    zIndex: 1,
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
-    paddingVertical: 8,
+    zIndex: 2,
   },
   label: {
     fontWeight: "600",

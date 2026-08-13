@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Animated, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { HOME_FIELD_CHROME } from "@/modules/home/constants/fieldChrome";
 import { lightTokens } from "@/theme/tokens";
 
 type SkeletonBoxProps = {
@@ -56,13 +57,16 @@ export function SkeletonBox({
 }
 
 /**
- * 通知栏同尺寸骨架（无白底，与正式态对齐）
+ * 通知栏骨架：与网站搜索框同形（共用 HOME_FIELD_CHROME）
  */
 export function NoticeBarSkeleton() {
   return (
     <View style={styles.noticeSkel}>
-      <SkeletonBox width={28} height={28} borderRadius={10} />
-      <SkeletonBox height={13} style={styles.noticeLine} />
+      <View style={styles.noticeFrost} pointerEvents="none" />
+      <View style={styles.noticeRow}>
+        <SkeletonBox width={15} height={15} borderRadius={4} />
+        <SkeletonBox height={13} style={styles.noticeLine} />
+      </View>
     </View>
   );
 }
@@ -75,12 +79,24 @@ const styles = StyleSheet.create({
     marginHorizontal: lightTokens.space.md,
     marginTop: 2,
     marginBottom: lightTokens.space.md,
-    paddingHorizontal: 2,
-    paddingVertical: 6,
+    height: HOME_FIELD_CHROME.height,
+    borderRadius: HOME_FIELD_CHROME.radius,
+    overflow: "hidden",
+    borderWidth: HOME_FIELD_CHROME.borderWidth,
+    borderColor: HOME_FIELD_CHROME.borderColor,
+    backgroundColor: "transparent",
+  },
+  noticeFrost: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: HOME_FIELD_CHROME.frost,
+  },
+  noticeRow: {
+    flex: 1,
+    height: HOME_FIELD_CHROME.height,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    minHeight: 40,
+    paddingHorizontal: 12,
+    gap: 8,
   },
   noticeLine: {
     flex: 1,

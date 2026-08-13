@@ -2,69 +2,93 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, type Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { NoticeBarSkeleton } from "@/components/skeleton/SkeletonBox";
+import { HOME_FIELD_CHROME } from "@/modules/home/constants/fieldChrome";
 import { useNoticeBootstrap } from "@/modules/home/hooks/useNoticeBootstrap";
 import { lightTokens } from "@/theme/tokens";
 
 /**
- * 通知栏：无白底卡片，文案叠在首页背景上
+ * 通知栏：与网站搜索框同形。
+ * 铁律：无真实公告时展示 FIXED_NOTICE 占位文案，禁止 return null 整栏隐藏。
  */
 export function NoticeBar() {
   const router = useRouter();
   const { loading, notice } = useNoticeBootstrap();
 
-  if (loading || !notice) {
+  if (loading) {
     return <NoticeBarSkeleton />;
   }
 
-  const display = `【${notice.typeLabel}】${notice.title}`;
+  // notice 恒有值（真实或占位），此处不再判空隐藏
+  const openNotice = () => {
+    if (!notice.isPlaceholder && notice.id != null) {
+      router.push(`/center/post/${notice.id}` as Href);
+      return;
+    }
+    router.push("/home/notice" as Href);
+  };
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="打开通知"
-      style={({ pressed }) => [styles.wrap, pressed && styles.pressed]}
-      onPress={() => router.push("/home/notice" as Href)}
+      accessibilityLabel={`打开通知：${notice.title}`}
+      style={({ pressed }) => [styles.shell, pressed && styles.pressed]}
+      onPress={openNotice}
     >
-      <View style={styles.badge}>
-        <Ionicons name="megaphone" size={13} color={lightTokens.color.onBrand} />
+      <View style={styles.frost} pointerEvents="none" />
+      <View style={styles.row}>
+        <Ionicons
+          name="megaphone-outline"
+          size={15}
+          color={lightTokens.color.textSecondary}
+          style={styles.icon}
+        />
+        <Text style={styles.text} numberOfLines={1} ellipsizeMode="tail">
+          {notice.title}
+        </Text>
+        <Ionicons name="chevron-forward" size={14} color={lightTokens.color.textSecondary} />
       </View>
-      <Text style={styles.text} numberOfLines={1} ellipsizeMode="tail">
-        {display}
-      </Text>
-      <Ionicons name="chevron-forward" size={14} color={lightTokens.color.textSecondary} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  shell: {
     marginHorizontal: lightTokens.space.md,
     marginTop: 2,
     marginBottom: lightTokens.space.md,
-    paddingHorizontal: 2,
-    paddingVertical: 6,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    minHeight: 40,
+    height: HOME_FIELD_CHROME.height,
+    borderRadius: HOME_FIELD_CHROME.radius,
+    overflow: "hidden",
+    borderWidth: HOME_FIELD_CHROME.borderWidth,
+    borderColor: HOME_FIELD_CHROME.borderColor,
+    backgroundColor: "transparent",
   },
   pressed: {
     opacity: 0.72,
   },
-  badge: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
+  frost: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: HOME_FIELD_CHROME.frost,
+  },
+  row: {
+    flex: 1,
+    height: HOME_FIELD_CHROME.height,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: lightTokens.color.brand,
+    paddingHorizontal: 12,
+  },
+  icon: {
+    marginRight: 8,
   },
   text: {
     flex: 1,
     fontSize: 13,
-    fontWeight: "500",
-    letterSpacing: 0.1,
     color: lightTokens.color.text,
+    paddingVertical: 0,
     backgroundColor: "transparent",
   },
 });

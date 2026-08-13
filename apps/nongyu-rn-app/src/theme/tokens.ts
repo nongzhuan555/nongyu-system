@@ -26,7 +26,7 @@ const layoutTokens = {
   },
   /**
    * 悬浮底栏基准值（约 390 宽）
-   * 毛玻璃目标：偏毛 —— 背后内容不可清晰辨认，仅能感到色块/光影变化
+   * 毛玻璃：真模糊 + 薄霜 —— 看不清背后文字，但滚动时能明显感到底下色块/光影在变；忌做成实心白块
    */
   tabBar: {
     baselineWidth: 390,
@@ -39,20 +39,27 @@ const layoutTokens = {
     aiGap: 6,
     aiGapMin: 4,
     aiGapMax: 8,
-    aiSize: 56,
-    aiSizeMin: 52,
-    aiSizeMax: 64,
-    height: 60,
-    heightMin: 56,
-    heightMax: 68,
-    /** 高强度模糊（iOS intensity 越大越糊；取上限附近） */
-    blurIntensity: 100,
-    /** Android 模糊衰减，越小越糊；再压一档 */
-    blurReductionFactor: 0.5,
-    /** 霜面白膜：进一步压透视，背后仅留光影感 */
-    glassFill: "rgba(255, 255, 255, 0.68)",
-    glassBorder: "rgba(255, 255, 255, 0.72)",
-    shadowColor: "rgba(27, 43, 27, 0.18)",
+    aiSize: 52,
+    aiSizeMin: 48,
+    aiSizeMax: 58,
+    height: 52,
+    heightMin: 48,
+    heightMax: 58,
+    blurIntensity: 8,
+    blurReductionFactor: 2.4,
+    glassFill: "rgba(255, 255, 255, 0.10)",
+    glassBorder: "rgba(255, 255, 255, 0.34)",
+    shadowColor: "rgba(27, 43, 27, 0.12)",
+    /** 选中椭圆：比大栏更糊；填充 = brandMuted × activeGlassFillAlpha */
+    activeBlurIntensity: 18,
+    activeBlurReductionFactor: 1.7,
+    /** brandMuted 霜膜透明度：略透才有玻璃感，过低会发虚 */
+    activeGlassFillAlpha: 0.45,
+    activeGlassFill: "rgba(212, 233, 223, 0.45)",
+    activeGlassBorder: "rgba(10, 124, 89, 0.28)",
+    /** 选中椭圆相对右侧大胶囊的上下等距内缩；左右相对 Tab 格内缩 */
+    activeInsetV: 5,
+    activeInsetH: 4,
     iconSize: 22,
     iconSizeMin: 20,
     iconSizeMax: 24,

@@ -2,8 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ComponentType, type ReactNode, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import Toast from "react-native-toast-message";
 import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
+import { AppToastHost } from "@/components/ui/toast";
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -36,7 +36,7 @@ export function AppProviders({ children }: AppProvidersProps) {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           {children}
-          <Toast />
+          <AppToastHost />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureRoot>

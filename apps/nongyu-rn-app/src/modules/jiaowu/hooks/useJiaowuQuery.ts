@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import Toast from "react-native-toast-message";
+import { toast } from "@/components/ui/toast";
 import { useSessionStore } from "@/stores/session";
 
 export type JiaowuResource =
@@ -73,10 +73,8 @@ export function useJiaowuQuery<T>({
     } catch (err) {
       if (query.data !== undefined) {
         const detail = err instanceof Error && err.message ? err.message : "请稍后重试";
-        Toast.show({
-          type: "error",
-          text1: "刷新失败",
-          text2: `已保留上次数据。${detail}`,
+        toast.error("刷新失败", {
+          description: `已保留上次数据。${detail}`,
         });
       }
     }
