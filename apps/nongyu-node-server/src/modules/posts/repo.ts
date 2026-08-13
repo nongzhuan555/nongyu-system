@@ -1,5 +1,6 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { getPool, withTransaction, type PoolConnection } from "../../lib/db.js";
+import { escapeLikePattern } from "../../lib/util.js";
 
 export type PostRow = {
   id: number;
@@ -34,6 +35,8 @@ export async function listPosts(params: {
   postType?: string;
   postTypes?: string[];
   subtype?: string;
+  /** 已 trim 的关键词；对 title/content 转义 LIKE */
+  keyword?: string;
   authorUserId?: number;
   includeDeleted?: boolean;
   offset: number;
@@ -51,6 +54,11 @@ export async function listPosts(params: {
   if (params.subtype) {
     where.push("p.subtype = ?");
     args.push(params.subtype);
+  }
+  if (params.keyword) {
+    const pattern = `%${escapeLikePattern(params.keyword)}%`;
+    where.push("(p.title LIKE ? ESCAPE '\\\\' OR p.content LIKE ? ESCAPE '\\\\')");
+    args.push(pattern, pattern);
   }
   if (params.authorUserId) {
     where.push("p.author_user_id = ?");

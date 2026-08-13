@@ -58,6 +58,100 @@ describe("posts.read", () => {
     expect(detail.body.data.viewCount).toBe(3);
     expect(detail.body.data.uniqueReaderCount).toBe(2);
   });
+
+  it("searches posts by keyword on title/content with type/subtype filters", async () => {
+    const user = await registerAppUser({ studentNo: "202311111", deviceId: "s1" });
+
+    await api()
+      .post("/api/app/posts")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        postType: "courtyard",
+        subtype: "life",
+        title: "标题含联调关键词",
+        content: "普通正文",
+      })
+      .expect(200);
+    await api()
+      .post("/api/app/posts")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        postType: "courtyard",
+        subtype: "life",
+        title: "另一标题",
+        content: "正文里有联调字样",
+      })
+      .expect(200);
+    await api()
+      .post("/api/app/posts")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        postType: "courtyard",
+        subtype: "study",
+        title: "联调但标签不同",
+        content: "x",
+      })
+      .expect(200);
+    await api()
+      .post("/api/app/posts")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        postType: "feedback",
+        subtype: "bug",
+        title: "联调反馈",
+        content: "y",
+      })
+      .expect(200);
+
+    const byTitleOrContent = await api()
+      .get("/api/app/posts")
+      .query({ postType: "courtyard", keyword: "联调" })
+      .set("Authorization", `Bearer ${user.token}`)
+      .expect(200);
+    expect(byTitleOrContent.body.code).toBe(0);
+    expect(byTitleOrContent.body.data.total).toBe(3);
+
+    const withSubtype = await api()
+      .get("/api/app/posts")
+      .query({ postType: "courtyard", subtype: "life", keyword: "联调" })
+      .set("Authorization", `Bearer ${user.token}`)
+      .expect(200);
+    expect(withSubtype.body.data.total).toBe(2);
+
+    const blankKeyword = await api()
+      .get("/api/app/posts")
+      .query({ postType: "courtyard", keyword: "   " })
+      .set("Authorization", `Bearer ${user.token}`)
+      .expect(200);
+    expect(blankKeyword.body.data.total).toBe(3);
+
+    const tooLong = await api()
+      .get("/api/app/posts")
+      .query({ postType: "courtyard", keyword: "k".repeat(65) })
+      .set("Authorization", `Bearer ${user.token}`)
+      .expect(400);
+    expect(tooLong.body.code).toBe(40001);
+
+    const literalPercent = await api()
+      .post("/api/app/posts")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        postType: "courtyard",
+        subtype: "life",
+        title: "含%百分号",
+        content: "z",
+      })
+      .expect(200);
+    expect(literalPercent.body.code).toBe(0);
+
+    const escaped = await api()
+      .get("/api/app/posts")
+      .query({ postType: "courtyard", keyword: "%" })
+      .set("Authorization", `Bearer ${user.token}`)
+      .expect(200);
+    expect(escaped.body.data.total).toBe(1);
+    expect(escaped.body.data.list[0].title).toContain("%");
+  });
 });
 
 describe("settings.users", () => {
