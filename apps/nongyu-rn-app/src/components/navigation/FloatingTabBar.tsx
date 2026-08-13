@@ -123,7 +123,12 @@ export function FloatingTabBar() {
     >
       <View style={[styles.row, { gap: metrics.aiGap }]} pointerEvents="box-none">
         <View style={styles.aiAnchor}>
-          <AiTipBubble visible={tipVisible} onPressTip={openAi} onDismiss={hideTip} />
+          <AiTipBubble
+            visible={tipVisible}
+            onPressTip={openAi}
+            onMute={hideTip}
+            onDismiss={hideTip}
+          />
           <Pressable accessibilityRole="button" accessibilityLabel="农屿AI" onPress={openAi}>
             <GlassPanel
               style={{

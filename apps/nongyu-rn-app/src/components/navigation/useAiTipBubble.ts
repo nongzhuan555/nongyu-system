@@ -96,4 +96,5 @@ export function useAiTipBubble(): UseAiTipBubbleResult {
 }
 
 export const AI_TIP_TEXT = "点击此处使用农屿AI功能";
+export const AI_TIP_MUTE_LABEL = "不再提醒";
 export const AI_TIP_DISMISS_LABEL = "我知道了";

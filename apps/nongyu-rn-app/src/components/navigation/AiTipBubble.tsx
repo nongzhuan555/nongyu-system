@@ -7,12 +7,16 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { lightTokens } from "@/theme/tokens";
-import { AI_TIP_DISMISS_LABEL, AI_TIP_TEXT } from "./useAiTipBubble";
+import { AI_TIP_DISMISS_LABEL, AI_TIP_MUTE_LABEL, AI_TIP_TEXT } from "./useAiTipBubble";
 
 type AiTipBubbleProps = {
   visible: boolean;
   /** 点击提示文案：进 AI */
   onPressTip: () => void;
+  /**
+   * 点击「不再提醒」：本版仅关闭气泡（持久化后续再接）
+   */
+  onMute: () => void;
   /** 点击「我知道了」：仅关闭 */
   onDismiss: () => void;
 };
@@ -23,7 +27,7 @@ type AiTipBubbleProps = {
  * 注意：父级 aiAnchor 仅约圆钮宽；Android 上绝对定位子视图若不给明确宽度，
  * 会吃到父宽导致文案被截断。
  */
-export function AiTipBubble({ visible, onPressTip, onDismiss }: AiTipBubbleProps) {
+export function AiTipBubble({ visible, onPressTip, onMute, onDismiss }: AiTipBubbleProps) {
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.9);
   const translateY = useSharedValue(6);
@@ -56,15 +60,26 @@ export function AiTipBubble({ visible, onPressTip, onDismiss }: AiTipBubbleProps
         >
           <Text style={styles.text}>{AI_TIP_TEXT}</Text>
         </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={AI_TIP_DISMISS_LABEL}
-          onPress={onDismiss}
-          style={styles.dismissBtn}
-          hitSlop={6}
-        >
-          <Text style={styles.dismissText}>{AI_TIP_DISMISS_LABEL}</Text>
-        </Pressable>
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={AI_TIP_MUTE_LABEL}
+            onPress={onMute}
+            style={styles.muteBtn}
+            hitSlop={6}
+          >
+            <Text style={styles.muteText}>{AI_TIP_MUTE_LABEL}</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={AI_TIP_DISMISS_LABEL}
+            onPress={onDismiss}
+            style={styles.dismissBtn}
+            hitSlop={6}
+          >
+            <Text style={styles.dismissText}>{AI_TIP_DISMISS_LABEL}</Text>
+          </Pressable>
+        </View>
       </View>
       <View style={styles.arrow} pointerEvents="none" />
     </Animated.View>
@@ -80,15 +95,15 @@ const styles = StyleSheet.create({
     bottom: "100%",
     marginBottom: 8,
     zIndex: 40,
-    // 明确宽度，避免被窄父级（AI 圆钮）卡住
-    width: 288,
+    // 明确宽度，避免被窄父级（AI 圆钮）卡住；含双按钮需更宽
+    width: 340,
     alignItems: "flex-start",
   },
   bubble: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    gap: 10,
+    gap: 8,
     backgroundColor: lightTokens.color.surface,
     borderRadius: lightTokens.radius.md,
     paddingLeft: 14,
@@ -111,6 +126,26 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: "600",
     color: lightTokens.color.text,
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 0,
+  },
+  muteBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: lightTokens.radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: lightTokens.color.outline,
+    backgroundColor: lightTokens.color.surface,
+  },
+  muteText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "600",
+    color: lightTokens.color.textSecondary,
   },
   dismissBtn: {
     paddingHorizontal: 10,
