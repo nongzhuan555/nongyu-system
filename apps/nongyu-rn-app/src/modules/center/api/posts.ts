@@ -39,13 +39,15 @@ export type LatestAnnouncement = {
 };
 
 /**
- * GET /api/app/posts —— 广场列表
+ * GET /api/app/posts —— 广场列表（可选 keyword 搜标题/正文）
  */
 export async function fetchPosts(params: {
   postType: PostType;
   page?: number;
   pageSize?: number;
   subtype?: string;
+  /** 1–64；空白视为未传 */
+  keyword?: string;
 }): Promise<PageResult<PostListItem>> {
   const q = new URLSearchParams({
     postType: params.postType,
@@ -53,6 +55,8 @@ export async function fetchPosts(params: {
     pageSize: String(params.pageSize ?? 20),
   });
   if (params.subtype) q.set("subtype", params.subtype);
+  const keyword = params.keyword?.trim();
+  if (keyword) q.set("keyword", keyword);
   return appFetch<PageResult<PostListItem>>(`/api/app/posts?${q.toString()}`);
 }
 

@@ -28,6 +28,8 @@ import { lightTokens } from "@/theme/tokens";
 type PostFeedListProps = {
   mode: "plaza" | "mine";
   postType?: PostType;
+  /** 广场关键词（title/content LIKE）；我的帖子忽略 */
+  keyword?: string;
   /** 广场 Tab 需要底栏留白；Stack 子页用安全区即可由外层处理 */
   withTabBarPadding?: boolean;
   emptyText?: string;
@@ -39,6 +41,7 @@ type PostFeedListProps = {
 export function PostFeedList({
   mode,
   postType,
+  keyword,
   withTabBarPadding,
   emptyText = "暂无内容",
 }: PostFeedListProps) {
@@ -47,11 +50,12 @@ export function PostFeedList({
   const scrollY = useSharedValue(0);
   const listPageY = useSharedValue(0);
   const isScrolling = useSharedValue(0);
+  const trimmedKeyword = keyword?.trim() || undefined;
 
   const queryKey =
     mode === "mine"
       ? (["posts", "me"] as const)
-      : (["posts", "list", postType ?? "announcement"] as const);
+      : (["posts", "list", postType ?? "announcement", trimmedKeyword ?? ""] as const);
 
   const query = useInfiniteQuery({
     queryKey,
@@ -65,6 +69,7 @@ export function PostFeedList({
         postType: postType!,
         page: pageParam,
         pageSize: 20,
+        keyword: trimmedKeyword,
       });
     },
     getNextPageParam: (last) => {
