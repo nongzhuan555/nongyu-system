@@ -9,7 +9,8 @@ export type JiaowuResource =
   | "score"
   | "rank"
   | "exam"
-  | "plan";
+  | "plan"
+  | "course";
 
 const STALE_MS: Record<JiaowuResource, number> = {
   notice: 3 * 60 * 1000,
@@ -19,6 +20,7 @@ const STALE_MS: Record<JiaowuResource, number> = {
   score: 15 * 60 * 1000,
   rank: 15 * 60 * 1000,
   plan: 15 * 60 * 1000,
+  course: 15 * 60 * 1000,
 };
 
 type ToolResult<T> = {

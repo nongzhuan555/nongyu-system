@@ -1,3 +1,4 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 import {
@@ -5,7 +6,7 @@ import {
   hexToRgba,
   type TabIndicatorFrame,
 } from "@/components/navigation/TabLiquidIndicator";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 export type SegmentTabItem<T extends string> = {
   key: T;
@@ -39,8 +40,10 @@ export function SegmentGlassTabs<T extends string>({
   value,
   onChange,
 }: SegmentGlassTabsProps<T>) {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const [layouts, setLayouts] = useState<Partial<Record<T, SegmentLayout>>>({});
-  const { brandMuted, brand, border, surface, textSecondary } = lightTokens.color;
+  const { brandMuted, brand, border, surface, textSecondary } = t.color;
 
   // 半透明 surface 叠在 brandMuted 上：同系抬升，避免实心白块突兀
   const activeFill = hexToRgba(surface, 0.72);
@@ -118,14 +121,14 @@ export function SegmentGlassTabs<T extends string>({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   shell: {
-    borderRadius: lightTokens.radius.full,
+    borderRadius: t.radius.full,
     overflow: "hidden",
   },
   track: {
     ...StyleSheet.absoluteFill,
-    borderRadius: lightTokens.radius.full,
+    borderRadius: t.radius.full,
     borderWidth: StyleSheet.hairlineWidth,
   },
   row: {
@@ -142,7 +145,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   label: {
-    fontSize: lightTokens.fontSize.sm,
+    fontSize: t.fontSize.sm,
     letterSpacing: 0.2,
   },
-});
+}));

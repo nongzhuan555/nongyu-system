@@ -1,13 +1,29 @@
 import { useEffect, useState } from "react";
 
+export type TypewriterResult = {
+  displayText: string;
+  /** 已展示完全文 */
+  done: boolean;
+};
+
+type UseTypewriterOptions = {
+  intervalMs?: number;
+  /** false 时清空并暂停（如气泡隐藏） */
+  active?: boolean;
+};
+
 /**
- * 打字机效果：逐字展示 fullText
+ * 打字机：逐字展示 fullText
  */
-export function useTypewriter(fullText: string, intervalMs = 40): string {
+export function useTypewriter(
+  fullText: string,
+  options: UseTypewriterOptions = {},
+): TypewriterResult {
+  const { intervalMs = 40, active = true } = options;
   const [displayText, setDisplayText] = useState("");
 
   useEffect(() => {
-    if (!fullText) {
+    if (!active || !fullText) {
       setDisplayText("");
       return;
     }
@@ -21,7 +37,9 @@ export function useTypewriter(fullText: string, intervalMs = 40): string {
       }
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [fullText, intervalMs]);
+  }, [fullText, intervalMs, active]);
 
-  return displayText;
+  const done = active && fullText.length > 0 && displayText.length >= fullText.length;
+
+  return { displayText, done };
 }

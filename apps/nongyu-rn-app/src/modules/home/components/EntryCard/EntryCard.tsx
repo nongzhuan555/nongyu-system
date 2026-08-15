@@ -1,8 +1,10 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, type Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { HomeSurface } from "@/modules/home/components/HomeSurface";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
+import { trackClick } from "@/modules/telemetry";
 
 type EntryItem = {
   key: string;
@@ -33,6 +35,8 @@ const ENTRIES: EntryItem[] = [
  * 教务 / 二课入口卡片
  */
 export function EntryCard() {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const router = useRouter();
 
   return (
@@ -47,10 +51,13 @@ export function EntryCard() {
             index > 0 && styles.rowBorder,
             pressed && styles.pressed,
           ]}
-          onPress={() => router.push(item.href)}
+          onPress={() => {
+            trackClick(`entry_${item.key}`);
+            router.push(item.href);
+          }}
         >
           <View style={styles.iconBox}>
-            <Ionicons name={item.icon} size={18} color={lightTokens.color.brand} />
+            <Ionicons name={item.icon} size={18} color={t.color.brand} />
           </View>
           <View style={styles.copy}>
             <Text style={styles.label} numberOfLines={1}>
@@ -60,17 +67,17 @@ export function EntryCard() {
               {item.hint}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={lightTokens.color.textSecondary} />
+          <Ionicons name="chevron-forward" size={16} color={t.color.textSecondary} />
         </Pressable>
       ))}
     </HomeSurface>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   card: {
-    marginHorizontal: lightTokens.space.md,
-    marginBottom: lightTokens.space.md,
+    marginHorizontal: t.space.md,
+    marginBottom: t.space.md,
   },
   row: {
     flexDirection: "row",
@@ -92,7 +99,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: lightTokens.color.brandMuted,
+    backgroundColor: t.color.brandMuted,
   },
   copy: {
     flex: 1,
@@ -101,10 +108,10 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: "600",
-    color: lightTokens.color.text,
+    color: t.color.text,
   },
   hint: {
     fontSize: 11,
-    color: lightTokens.color.textSecondary,
+    color: t.color.textSecondary,
   },
-});
+}));

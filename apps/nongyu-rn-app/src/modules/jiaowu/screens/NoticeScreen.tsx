@@ -2,21 +2,27 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { getTeachingNoticeInfo } from "nongyu-tool-jiaowu";
 import { JiaowuPageShell } from "@/modules/jiaowu/components/JiaowuPageShell";
+import { useDeferredLocalSearch } from "@/modules/jiaowu/hooks/useDeferredLocalSearch";
 import { useJiaowuQuery } from "@/modules/jiaowu/hooks/useJiaowuQuery";
-import { lightTokens } from "@/theme/tokens";
+import { matchSearchQuery } from "@/modules/jiaowu/utils/search";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
  * 教学通知列表页
  */
 export function NoticeScreen() {
+  const styles = useStyles();
   const { data, isPending, isError, error, isFetching, isRefetching, refresh } = useJiaowuQuery({
     resource: "notice",
     requireAuth: false,
     queryFn: getTeachingNoticeInfo,
   });
+  const { draft, setDraft, query, searching } = useDeferredLocalSearch();
 
   const list = data ?? [];
   const hasData = list.length > 0;
+  const filtered = list.filter((item) => matchSearchQuery(query, item.title, item.date));
+  const noSearchHit = hasData && !searching && query.trim().length > 0 && filtered.length === 0;
 
   return (
     <JiaowuPageShell
@@ -24,15 +30,25 @@ export function NoticeScreen() {
       loading={isPending && !data}
       error={isError && !data}
       errorMessage={error instanceof Error ? error.message : undefined}
-      empty={!!data && list.length === 0}
-      emptyText="暂无教学通知"
+      empty={(!!data && list.length === 0) || noSearchHit}
+      emptyText={noSearchHit ? "未找到相关结果" : "暂无教学通知"}
       onRetry={refresh}
       refreshing={isRefetching}
       onRefresh={refresh}
       fetchingHint={isFetching && hasData && !isRefetching}
+      search={
+        hasData
+          ? {
+              value: draft,
+              onChangeText: setDraft,
+              placeholder: "搜索通知标题、日期",
+              searching,
+            }
+          : undefined
+      }
     >
       <View style={styles.list}>
-        {list.map((item, index) => (
+        {filtered.map((item, index) => (
           <Pressable
             key={`${item.url}-${index}`}
             accessibilityRole="link"
@@ -50,29 +66,29 @@ export function NoticeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   list: {
-    gap: lightTokens.space.sm,
+    gap: t.space.sm,
   },
   card: {
-    backgroundColor: lightTokens.color.surface,
-    borderRadius: lightTokens.radius.md,
-    padding: lightTokens.space.md,
+    backgroundColor: t.color.surface,
+    borderRadius: t.radius.md,
+    padding: t.space.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: lightTokens.color.border,
+    borderColor: t.color.border,
     gap: 6,
   },
   pressed: {
     opacity: 0.75,
   },
   cardTitle: {
-    fontSize: lightTokens.fontSize.md,
+    fontSize: t.fontSize.md,
     fontWeight: "600",
-    color: lightTokens.color.text,
+    color: t.color.text,
     lineHeight: 22,
   },
   date: {
-    fontSize: lightTokens.fontSize.sm,
-    color: lightTokens.color.textSecondary,
+    fontSize: t.fontSize.sm,
+    color: t.color.textSecondary,
   },
-});
+}));

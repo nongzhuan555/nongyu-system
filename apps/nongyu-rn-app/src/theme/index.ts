@@ -1,8 +1,9 @@
 /**
- * 主题模块统一导出（色板数据 + 解析 + 默认 token）
+ * 主题模块统一导出
  */
 export {
   brandPalettes,
+  darkPalette,
   darkSurfacePalette,
   DANGER_COLOR,
   type BrandName,
@@ -10,4 +11,8 @@ export {
   type DarkSurfacePalette,
 } from "./palettes";
 export { resolveColorPalette, type ThemeColorTokens } from "./resolveColor";
-export { lightTokens, tokens, type ThemeTokens } from "./tokens";
+export { buildThemeTokens, layoutTokens, type ThemeTokens } from "./buildThemeTokens";
+export { lightTokens, syncCompatLightTokens } from "./tokens";
+export { ThemeProvider, useThemeTokens } from "./ThemeProvider";
+export { createThemedStyles } from "./createThemedStyles";
+export { useThemePrefsStore, type ThemeAppearance } from "./themePrefsStore";

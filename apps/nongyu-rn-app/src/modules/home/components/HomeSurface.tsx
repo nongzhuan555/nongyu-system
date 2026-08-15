@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type HomeSurfaceProps = {
   children: ReactNode;
@@ -13,13 +13,14 @@ type HomeSurfaceProps = {
  * 首页统一浅浮层：大圆角 + 细描边 + 极轻品牌阴影
  */
 export function HomeSurface({ children, style, padded = true }: HomeSurfaceProps) {
+  const styles = useStyles();
   return <View style={[styles.surface, padded && styles.padded, style]}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   surface: {
-    borderRadius: lightTokens.radius.lg,
-    backgroundColor: lightTokens.color.surface,
+    borderRadius: t.radius.lg,
+    backgroundColor: t.color.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(10, 124, 89, 0.08)",
     shadowColor: "#0A7C59",
@@ -32,4 +33,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
-});
+}));

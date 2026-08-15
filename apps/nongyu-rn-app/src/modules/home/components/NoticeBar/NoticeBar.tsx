@@ -1,16 +1,19 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, type Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { NoticeBarSkeleton } from "@/components/skeleton/SkeletonBox";
 import { HOME_FIELD_CHROME } from "@/modules/home/constants/fieldChrome";
 import { useNoticeBootstrap } from "@/modules/home/hooks/useNoticeBootstrap";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
  * 通知栏：与网站搜索框同形。
  * 铁律：无真实公告时展示 FIXED_NOTICE 占位文案，禁止 return null 整栏隐藏。
  */
 export function NoticeBar() {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const router = useRouter();
   const { loading, notice } = useNoticeBootstrap();
 
@@ -20,10 +23,6 @@ export function NoticeBar() {
 
   // notice 恒有值（真实或占位），此处不再判空隐藏
   const openNotice = () => {
-    if (!notice.isPlaceholder && notice.id != null) {
-      router.push(`/center/post/${notice.id}` as Href);
-      return;
-    }
     router.push("/home/notice" as Href);
   };
 
@@ -39,23 +38,23 @@ export function NoticeBar() {
         <Ionicons
           name="megaphone-outline"
           size={15}
-          color={lightTokens.color.textSecondary}
+          color={t.color.textSecondary}
           style={styles.icon}
         />
         <Text style={styles.text} numberOfLines={1} ellipsizeMode="tail">
           {notice.title}
         </Text>
-        <Ionicons name="chevron-forward" size={14} color={lightTokens.color.textSecondary} />
+        <Ionicons name="chevron-forward" size={14} color={t.color.textSecondary} />
       </View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   shell: {
-    marginHorizontal: lightTokens.space.md,
+    marginHorizontal: t.space.md,
     marginTop: 2,
-    marginBottom: lightTokens.space.md,
+    marginBottom: t.space.md,
     height: HOME_FIELD_CHROME.height,
     borderRadius: HOME_FIELD_CHROME.radius,
     overflow: "hidden",
@@ -87,8 +86,8 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     fontSize: 13,
-    color: lightTokens.color.text,
+    color: t.color.text,
     paddingVertical: 0,
     backgroundColor: "transparent",
   },
-});
+}));

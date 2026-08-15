@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
+import { isAiTipMuted, setAiTipMuted } from "@/storage/mmkv";
 
 const TIP_AUTO_HIDE_MS = 60 * 1000;
 const TIP_INTERVAL_MS = 3 * 60 * 1000;
@@ -7,15 +8,18 @@ const TIP_INTERVAL_MS = 3 * 60 * 1000;
 type UseAiTipBubbleResult = {
   visible: boolean;
   hideTip: () => void;
+  /** 关闭并本地持久化「不再提醒」；登出后才会再提示 */
+  muteTip: () => void;
 };
 
 /**
  * 农屿 AI 入口引导：进入主壳 / 回前台提示；前台每 3 分钟再提示
- * 仅在 FloatingTabBar 挂载（有底栏）时生效；卸载即清理
+ * 「不再提醒」写入 MMKV；仅在 FloatingTabBar 挂载时生效
  */
 export function useAiTipBubble(): UseAiTipBubbleResult {
   const [visible, setVisible] = useState(false);
   const visibleRef = useRef(false);
+  const mutedRef = useRef(isAiTipMuted());
   const autoHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
@@ -40,11 +44,21 @@ export function useAiTipBubble(): UseAiTipBubbleResult {
     clearAutoHide();
   }, [clearAutoHide]);
 
+  const muteTip = useCallback(() => {
+    mutedRef.current = true;
+    setAiTipMuted(true);
+    visibleRef.current = false;
+    setVisible(false);
+    clearAutoHide();
+    clearIntervalTimer();
+  }, [clearAutoHide, clearIntervalTimer]);
+
   const scheduleNextIntervalRef = useRef<() => void>(() => {});
   const showTipRef = useRef<() => void>(() => {});
 
   scheduleNextIntervalRef.current = () => {
     clearIntervalTimer();
+    if (mutedRef.current) return;
     if (appStateRef.current !== "active") return;
     intervalRef.current = setTimeout(() => {
       if (appStateRef.current !== "active") return;
@@ -53,6 +67,10 @@ export function useAiTipBubble(): UseAiTipBubbleResult {
   };
 
   showTipRef.current = () => {
+    if (mutedRef.current || isAiTipMuted()) {
+      mutedRef.current = true;
+      return;
+    }
     if (appStateRef.current !== "active") return;
     visibleRef.current = true;
     setVisible(true);
@@ -68,6 +86,7 @@ export function useAiTipBubble(): UseAiTipBubbleResult {
 
   // 挂载 = 进入带底栏主壳（冷启动 / 登录落地 / 从 AI 返回）
   useEffect(() => {
+    mutedRef.current = isAiTipMuted();
     showTipRef.current();
     return () => {
       clearAutoHide();
@@ -81,6 +100,7 @@ export function useAiTipBubble(): UseAiTipBubbleResult {
       const prev = appStateRef.current;
       appStateRef.current = next;
       if (prev.match(/inactive|background/) && next === "active") {
+        mutedRef.current = isAiTipMuted();
         showTipRef.current();
         return;
       }
@@ -92,7 +112,7 @@ export function useAiTipBubble(): UseAiTipBubbleResult {
     return () => sub.remove();
   }, [clearIntervalTimer]);
 
-  return { visible, hideTip };
+  return { visible, hideTip, muteTip };
 }
 
 export const AI_TIP_TEXT = "点击此处使用农屿AI功能";

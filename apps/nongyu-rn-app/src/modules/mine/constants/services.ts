@@ -18,7 +18,7 @@ export type ServiceItem = {
 /** 农屿品牌官网（关于入口） */
 export const ABOUT_URL = "https://nongyu-app.github.io/index.html";
 
-/** 「更多服务」入口配置 */
+/** 「更多服务」入口配置（本版本不含评论/回复） */
 export const SERVICE_ITEMS: ServiceItem[] = [
   {
     key: "posts",
@@ -26,20 +26,6 @@ export const SERVICE_ITEMS: ServiceItem[] = [
     description: "查看你发布过的内容",
     icon: "document-text-outline",
     action: { kind: "navigate", href: "/mine/posts" },
-  },
-  {
-    key: "comments",
-    title: "我的评论",
-    description: "后续接入评论列表",
-    icon: "chatbubble-outline",
-    action: { kind: "navigate", href: "/mine/comments" },
-  },
-  {
-    key: "replies",
-    title: "我的回复",
-    description: "后续接入回复列表",
-    icon: "return-down-forward-outline",
-    action: { kind: "navigate", href: "/mine/replies" },
   },
   {
     key: "share",

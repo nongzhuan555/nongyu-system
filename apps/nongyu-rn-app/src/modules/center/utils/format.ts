@@ -1,5 +1,5 @@
-import { lightTokens } from "@/theme/tokens";
 import dayjs from "dayjs";
+import { layoutTokens } from "@/theme/buildThemeTokens";
 
 /**
  * 去掉 HTML 标签，供详情纯文本展示
@@ -27,5 +27,6 @@ export function formatPublishedAt(iso: string): string {
 
 /** 主 Tab 列表底部留白（避开悬浮底栏） */
 export function tabBarContentPadding(): number {
-  return lightTokens.tabBar.heightMax + lightTokens.tabBar.bottomGapMax + lightTokens.space.xl;
+  const tab = layoutTokens.tabBarBase;
+  return tab.heightMax + tab.bottomGapMax + layoutTokens.space.xl;
 }

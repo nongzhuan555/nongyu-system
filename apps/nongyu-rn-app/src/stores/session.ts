@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 export type ThemeMode = "sicauGreen" | "sakura" | "dark" | "system";
 
-/** 本地会话中的学生档案摘要 */
+/** 本地会话中的学生档案摘要（对齐教务 PersonalInfo 可持久化字段） */
 export type SessionProfile = {
   studentId: string;
   name: string;
@@ -12,7 +12,15 @@ export type SessionProfile = {
   className?: string;
   gender?: string;
   campus?: string;
+  /** 家庭通讯地址（教务 homeAddress） */
   hometown?: string;
+  identity?: string;
+  studentStatus?: string;
+  enrollmentDate?: string;
+  ethnicity?: string;
+  politicalStatus?: string;
+  phone?: string;
+  examId?: string;
 };
 
 type SessionState = {

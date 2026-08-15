@@ -6,7 +6,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { lightTokens } from "@/theme/tokens";
+import { TypewriterText } from "@/components/ui/TypewriterText";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 import { AI_TIP_DISMISS_LABEL, AI_TIP_MUTE_LABEL, AI_TIP_TEXT } from "./useAiTipBubble";
 
 type AiTipBubbleProps = {
@@ -14,7 +15,7 @@ type AiTipBubbleProps = {
   /** 点击提示文案：进 AI */
   onPressTip: () => void;
   /**
-   * 点击「不再提醒」：本版仅关闭气泡（持久化后续再接）
+   * 点击「不再提醒」：关闭并本地持久化，直至登出
    */
   onMute: () => void;
   /** 点击「我知道了」：仅关闭 */
@@ -28,6 +29,7 @@ type AiTipBubbleProps = {
  * 会吃到父宽导致文案被截断。
  */
 export function AiTipBubble({ visible, onPressTip, onMute, onDismiss }: AiTipBubbleProps) {
+  const styles = useStyles();
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.9);
   const translateY = useSharedValue(6);
@@ -58,7 +60,13 @@ export function AiTipBubble({ visible, onPressTip, onMute, onDismiss }: AiTipBub
           onPress={onPressTip}
           style={styles.tipHit}
         >
-          <Text style={styles.text}>{AI_TIP_TEXT}</Text>
+          <TypewriterText
+            fullText={AI_TIP_TEXT}
+            style={styles.text}
+            active={visible}
+            lastCharBoost={2}
+            intervalMs={36}
+          />
         </Pressable>
         <View style={styles.actions}>
           <Pressable
@@ -88,7 +96,7 @@ export function AiTipBubble({ visible, onPressTip, onMute, onDismiss }: AiTipBub
 
 const ARROW = 8;
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   wrap: {
     position: "absolute",
     left: 0,
@@ -104,14 +112,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "flex-start",
     gap: 8,
-    backgroundColor: lightTokens.color.surface,
-    borderRadius: lightTokens.radius.md,
+    backgroundColor: t.color.surface,
+    borderRadius: t.radius.md,
     paddingLeft: 14,
     paddingRight: 8,
     paddingVertical: 8,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: lightTokens.color.outline,
-    shadowColor: lightTokens.tabBar.shadowColor,
+    borderColor: t.color.outline,
+    shadowColor: t.tabBar.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 10,
@@ -125,7 +133,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "600",
-    color: lightTokens.color.text,
+    color: t.color.text,
   },
   actions: {
     flexDirection: "row",
@@ -136,28 +144,28 @@ const styles = StyleSheet.create({
   muteBtn: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: lightTokens.radius.sm,
+    borderRadius: t.radius.sm,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: lightTokens.color.outline,
-    backgroundColor: lightTokens.color.surface,
+    borderColor: t.color.outline,
+    backgroundColor: t.color.surface,
   },
   muteText: {
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "600",
-    color: lightTokens.color.textSecondary,
+    color: t.color.textSecondary,
   },
   dismissBtn: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: lightTokens.radius.sm,
-    backgroundColor: lightTokens.color.brandMuted,
+    borderRadius: t.radius.sm,
+    backgroundColor: t.color.brandMuted,
   },
   dismissText: {
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "700",
-    color: lightTokens.color.brand,
+    color: t.color.brand,
   },
   arrow: {
     alignSelf: "flex-start",
@@ -170,6 +178,6 @@ const styles = StyleSheet.create({
     borderTopWidth: ARROW + 2,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    borderTopColor: lightTokens.color.surface,
+    borderTopColor: t.color.surface,
   },
-});
+}));

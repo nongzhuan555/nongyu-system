@@ -9,6 +9,7 @@ export type PostListItem = {
   title: string;
   contentPreview: string;
   publishedAt: string;
+  /** App 端恒为 null（反馈墙/大院匿名）；保留字段兼容接口 */
   authorDisplayName?: string | null;
   viewCount?: number;
 };
@@ -20,7 +21,9 @@ export type PostDetail = {
   title: string;
   content: string;
   publishedAt: string;
+  /** App 端恒为 null（反馈墙/大院匿名） */
   authorDisplayName?: string | null;
+  /** 仅供本人删帖，不向他人暴露作者身份 */
   isMine: boolean;
 };
 

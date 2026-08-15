@@ -1,19 +1,23 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useThemeTokens } from "@/theme/ThemeProvider";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { toast } from "@/components/ui/toast";
+import { confirm } from "@/components/ui/confirm";
 import { deletePost, fetchPostDetail } from "@/modules/center/api/posts";
 import { PostDetailSkeleton } from "@/modules/center/components/PostDetailSkeleton";
 import { subtypeLabel } from "@/modules/center/constants/subtypes";
 import { formatPublishedAt, stripHtml } from "@/modules/center/utils/format";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
  * 帖子详情：打开即计阅读；本人可删
  */
 export function PostDetailScreen() {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const { id: idParam } = useLocalSearchParams<{ id: string }>();
   const id = Number(idParam);
   const router = useRouter();
@@ -38,15 +42,14 @@ export function PostDetailScreen() {
     },
   });
 
-  const onDelete = () => {
-    Alert.alert("删除帖子", "删除后不可恢复，确定删除？", [
-      { text: "取消", style: "cancel" },
-      {
-        text: "删除",
-        style: "destructive",
-        onPress: () => remove.mutate(),
-      },
-    ]);
+  const onDelete = async () => {
+    const ok = await confirm({
+      title: "删除帖子",
+      message: "删除后不可恢复，确定删除？",
+      confirmText: "删除",
+      destructive: true,
+    });
+    if (ok) remove.mutate();
   };
 
   const post = query.data;
@@ -61,7 +64,7 @@ export function PostDetailScreen() {
           style={styles.backBtn}
           hitSlop={8}
         >
-          <Ionicons name="chevron-back" size={22} color={lightTokens.color.text} />
+          <Ionicons name="chevron-back" size={22} color={t.color.text} />
         </Pressable>
         <View style={styles.headerCenter} />
         {post?.isMine && post.postType !== "announcement" ? (
@@ -81,10 +84,7 @@ export function PostDetailScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: insets.bottom + lightTokens.space.xl },
-        ]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + t.space.xl }]}
         showsVerticalScrollIndicator={false}
       >
         {query.isPending ? (
@@ -105,12 +105,7 @@ export function PostDetailScreen() {
               {[
                 formatPublishedAt(post.publishedAt),
                 subtypeLabel(post.postType, post.subtype),
-                post.postType === "courtyard" && post.authorDisplayName
-                  ? post.authorDisplayName
-                  : null,
-              ]
-                .filter(Boolean)
-                .join("  ·  ")}
+              ].join("  ·  ")}
             </Text>
             <View style={styles.rule} />
             <Text style={styles.body}>{stripHtml(post.content)}</Text>
@@ -121,16 +116,16 @@ export function PostDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   root: {
     flex: 1,
-    backgroundColor: lightTokens.color.background,
+    backgroundColor: t.color.background,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: lightTokens.space.sm,
-    paddingVertical: lightTokens.space.xs,
+    paddingHorizontal: t.space.sm,
+    paddingVertical: t.space.xs,
   },
   backBtn: {
     width: 40,
@@ -152,56 +147,56 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   deleteText: {
-    fontSize: lightTokens.fontSize.sm,
-    color: lightTokens.color.danger,
+    fontSize: t.fontSize.sm,
+    color: t.color.danger,
     fontWeight: "600",
   },
   content: {
-    paddingHorizontal: lightTokens.space.lg,
-    paddingTop: lightTokens.space.sm,
+    paddingHorizontal: t.space.lg,
+    paddingTop: t.space.sm,
   },
   title: {
     fontSize: 22,
     fontWeight: "700",
-    color: lightTokens.color.text,
+    color: t.color.text,
     lineHeight: 32,
     letterSpacing: 0.2,
   },
   meta: {
-    marginTop: lightTokens.space.md,
-    fontSize: lightTokens.fontSize.sm,
-    color: lightTokens.color.textSecondary,
+    marginTop: t.space.md,
+    fontSize: t.fontSize.sm,
+    color: t.color.textSecondary,
     letterSpacing: 0.15,
   },
   rule: {
-    marginTop: lightTokens.space.lg,
-    marginBottom: lightTokens.space.lg,
+    marginTop: t.space.lg,
+    marginBottom: t.space.lg,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: lightTokens.color.border,
+    backgroundColor: t.color.border,
   },
   body: {
-    fontSize: lightTokens.fontSize.md,
-    color: lightTokens.color.text,
+    fontSize: t.fontSize.md,
+    color: t.color.text,
     lineHeight: 28,
     letterSpacing: 0.2,
   },
   errorBox: {
-    gap: lightTokens.space.md,
+    gap: t.space.md,
     alignItems: "center",
     paddingTop: 48,
   },
   errorText: {
-    color: lightTokens.color.danger,
+    color: t.color.danger,
     textAlign: "center",
   },
   retryBtn: {
-    paddingHorizontal: lightTokens.space.lg,
+    paddingHorizontal: t.space.lg,
     paddingVertical: 10,
-    borderRadius: lightTokens.radius.full,
-    backgroundColor: lightTokens.color.brand,
+    borderRadius: t.radius.full,
+    backgroundColor: t.color.brand,
   },
   retryText: {
-    color: lightTokens.color.onBrand,
+    color: t.color.onBrand,
     fontWeight: "600",
   },
-});
+}));

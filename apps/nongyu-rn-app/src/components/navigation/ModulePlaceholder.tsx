@@ -1,7 +1,8 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type ModulePlaceholderProps = {
   title: string;
@@ -12,11 +13,13 @@ type ModulePlaceholderProps = {
  * 业务子页通用占位
  */
 export function ModulePlaceholder({ title, subtitle }: ModulePlaceholderProps) {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + lightTokens.space.md }]}>
+    <View style={[styles.root, { paddingTop: insets.top + t.space.md }]}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
       <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.button}>
@@ -26,34 +29,34 @@ export function ModulePlaceholder({ title, subtitle }: ModulePlaceholderProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   root: {
     flex: 1,
-    paddingHorizontal: lightTokens.space.lg,
-    backgroundColor: lightTokens.color.background,
+    paddingHorizontal: t.space.lg,
+    backgroundColor: t.color.background,
   },
   title: {
-    fontSize: lightTokens.fontSize.xl,
+    fontSize: t.fontSize.xl,
     fontWeight: "700",
-    color: lightTokens.color.brand,
-    marginBottom: lightTokens.space.sm,
+    color: t.color.brand,
+    marginBottom: t.space.sm,
   },
   subtitle: {
-    fontSize: lightTokens.fontSize.md,
-    color: lightTokens.color.textSecondary,
+    fontSize: t.fontSize.md,
+    color: t.color.textSecondary,
     lineHeight: 24,
-    marginBottom: lightTokens.space.lg,
+    marginBottom: t.space.lg,
   },
   button: {
     alignSelf: "flex-start",
-    backgroundColor: lightTokens.color.brand,
-    paddingHorizontal: lightTokens.space.lg,
-    paddingVertical: lightTokens.space.md,
-    borderRadius: lightTokens.radius.md,
+    backgroundColor: t.color.brand,
+    paddingHorizontal: t.space.lg,
+    paddingVertical: t.space.md,
+    borderRadius: t.radius.md,
   },
   buttonText: {
-    color: lightTokens.color.onBrand,
-    fontSize: lightTokens.fontSize.md,
+    color: t.color.onBrand,
+    fontSize: t.fontSize.md,
     fontWeight: "600",
   },
-});
+}));

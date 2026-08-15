@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type PlaceholderScreenProps = {
   title: string;
@@ -10,6 +10,7 @@ type PlaceholderScreenProps = {
  * 模块占位页：底部铺高对比色带，便于底栏毛玻璃透出「透视」感
  */
 export function PlaceholderScreen({ title, subtitle }: PlaceholderScreenProps) {
+  const styles = useStyles();
   const { width } = useWindowDimensions();
   const stripeW = width / 5;
 
@@ -41,41 +42,40 @@ export function PlaceholderScreen({ title, subtitle }: PlaceholderScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   container: {
     flex: 1,
-    backgroundColor: lightTokens.color.background,
+    backgroundColor: t.color.background,
   },
   scrollContent: {
-    paddingHorizontal: lightTokens.space.lg,
-    paddingTop: lightTokens.space.xl * 2,
-    paddingBottom:
-      lightTokens.tabBar.heightMax + lightTokens.tabBar.bottomGapMax + lightTokens.space.xl * 2,
+    paddingHorizontal: t.space.lg,
+    paddingTop: t.space.xl * 2,
+    paddingBottom: t.tabBar.heightMax + t.tabBar.bottomGapMax + t.space.xl * 2,
   },
   title: {
-    fontSize: lightTokens.fontSize.xl,
-    color: lightTokens.color.brand,
+    fontSize: t.fontSize.xl,
+    color: t.color.brand,
     fontWeight: "700",
-    marginBottom: lightTokens.space.sm,
+    marginBottom: t.space.sm,
   },
   subtitle: {
-    fontSize: lightTokens.fontSize.md,
-    color: lightTokens.color.textSecondary,
+    fontSize: t.fontSize.md,
+    color: t.color.textSecondary,
     lineHeight: 24,
-    marginBottom: lightTokens.space.md,
+    marginBottom: t.space.md,
   },
   hint: {
-    fontSize: lightTokens.fontSize.sm,
-    color: lightTokens.color.brand,
+    fontSize: t.fontSize.sm,
+    color: t.color.brand,
     lineHeight: 20,
-    marginBottom: lightTokens.space.lg,
+    marginBottom: t.space.lg,
   },
   midBand: {
     height: 220,
-    marginBottom: lightTokens.space.lg,
-    borderRadius: lightTokens.radius.lg,
+    marginBottom: t.space.lg,
+    borderRadius: t.radius.lg,
     overflow: "hidden",
-    backgroundColor: lightTokens.color.brandMuted,
+    backgroundColor: t.color.brandMuted,
   },
   orb: {
     position: "absolute",
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   },
   bottomCanvas: {
     height: 280,
-    borderRadius: lightTokens.radius.lg,
+    borderRadius: t.radius.lg,
     overflow: "hidden",
     position: "relative",
   },
@@ -114,4 +114,4 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
   },
-});
+}));

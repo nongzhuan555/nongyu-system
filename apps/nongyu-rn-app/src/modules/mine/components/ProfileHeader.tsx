@@ -1,18 +1,19 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useThemeTokens } from "@/theme/ThemeProvider";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type ProfileHeaderProps = {
-  /** 点击设置齿轮 */
   onPressSettings: () => void;
-  /** 未登录时可不展示设置 */
   showSettings?: boolean;
 };
 
 /**
- * 「我的」顶栏：标题 + 设置入口
+ * 「我的」顶栏：标题 + 设置
  */
 export function ProfileHeader({ onPressSettings, showSettings = true }: ProfileHeaderProps) {
+  const styles = useStyles();
+  const t = useThemeTokens();
   return (
     <View style={styles.row}>
       <Text style={styles.title}>我的</Text>
@@ -22,9 +23,9 @@ export function ProfileHeader({ onPressSettings, showSettings = true }: ProfileH
           accessibilityLabel="设置"
           hitSlop={10}
           onPress={onPressSettings}
-          style={styles.settingsBtn}
+          style={({ pressed }) => [styles.settingsBtn, pressed && styles.settingsPressed]}
         >
-          <Ionicons name="settings-outline" size={24} color={lightTokens.color.text} />
+          <Ionicons name="settings-outline" size={22} color={t.color.text} />
         </Pressable>
       ) : (
         <View style={styles.settingsPlaceholder} />
@@ -33,28 +34,31 @@ export function ProfileHeader({ onPressSettings, showSettings = true }: ProfileH
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: lightTokens.space.md,
+    marginBottom: t.space.md,
   },
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: lightTokens.color.text,
-    letterSpacing: 0.3,
+    color: t.color.text,
+    letterSpacing: 0.2,
   },
   settingsBtn: {
     width: 40,
     height: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: lightTokens.radius.full,
+    borderRadius: 20,
+  },
+  settingsPressed: {
+    backgroundColor: t.color.brandMuted,
   },
   settingsPlaceholder: {
     width: 40,
     height: 40,
   },
-});
+}));

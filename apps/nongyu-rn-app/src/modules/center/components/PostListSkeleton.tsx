@@ -1,11 +1,12 @@
 import { StyleSheet, View } from "react-native";
 import { SkeletonBox } from "@/components/skeleton/SkeletonBox";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
  * 广场帖子列表骨架（圆润卡片，对齐 PostCard）
  */
 export function PostListSkeleton({ rows = 5 }: { rows?: number }) {
+  const styles = useStyles();
   return (
     <View style={styles.wrap}>
       {Array.from({ length: rows }).map((_, i) => (
@@ -20,18 +21,18 @@ export function PostListSkeleton({ rows = 5 }: { rows?: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   wrap: {
-    paddingTop: lightTokens.space.xs,
-    gap: lightTokens.space.sm,
+    paddingTop: t.space.xs,
+    gap: t.space.sm,
   },
   card: {
-    backgroundColor: lightTokens.color.surface,
-    borderRadius: lightTokens.radius.lg,
-    paddingHorizontal: lightTokens.space.md,
-    paddingVertical: lightTokens.space.md,
+    backgroundColor: t.color.surface,
+    borderRadius: t.radius.lg,
+    paddingHorizontal: t.space.md,
+    paddingVertical: t.space.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: lightTokens.color.border,
+    borderColor: t.color.border,
     gap: 6,
   },
   line: {
@@ -40,4 +41,4 @@ const styles = StyleSheet.create({
   meta: {
     marginTop: 4,
   },
-});
+}));

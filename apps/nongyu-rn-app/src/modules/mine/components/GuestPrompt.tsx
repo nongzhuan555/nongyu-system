@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { guestGreeting } from "@/modules/mine/constants/avatar";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type GuestPromptProps = {
   onPressLogin: () => void;
@@ -10,6 +10,7 @@ type GuestPromptProps = {
  * 未登录引导：问候 + 去登录
  */
 export function GuestPrompt({ onPressLogin }: GuestPromptProps) {
+  const styles = useStyles();
   return (
     <View style={styles.wrap}>
       <Text style={styles.greeting}>{guestGreeting()}</Text>
@@ -27,49 +28,49 @@ export function GuestPrompt({ onPressLogin }: GuestPromptProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   wrap: {
-    marginTop: lightTokens.space.xl,
-    paddingVertical: lightTokens.space.xl,
-    paddingHorizontal: lightTokens.space.md,
+    marginTop: t.space.xl,
+    paddingVertical: t.space.xl,
+    paddingHorizontal: t.space.md,
     borderRadius: 24,
-    backgroundColor: lightTokens.color.surface,
+    backgroundColor: t.color.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: lightTokens.color.border,
+    borderColor: t.color.border,
   },
   greeting: {
     fontSize: 13,
     fontWeight: "600",
     letterSpacing: 1.2,
-    color: lightTokens.color.textSecondary,
-    marginBottom: lightTokens.space.sm,
+    color: t.color.textSecondary,
+    marginBottom: t.space.sm,
     textTransform: "uppercase",
   },
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: lightTokens.color.text,
-    marginBottom: lightTokens.space.sm,
+    color: t.color.text,
+    marginBottom: t.space.sm,
   },
   subtitle: {
-    fontSize: lightTokens.fontSize.md,
-    color: lightTokens.color.textSecondary,
+    fontSize: t.fontSize.md,
+    color: t.color.textSecondary,
     lineHeight: 24,
-    marginBottom: lightTokens.space.lg,
+    marginBottom: t.space.lg,
   },
   button: {
     alignSelf: "flex-start",
-    backgroundColor: lightTokens.color.brand,
-    paddingHorizontal: lightTokens.space.lg,
+    backgroundColor: t.color.brand,
+    paddingHorizontal: t.space.lg,
     paddingVertical: 12,
-    borderRadius: lightTokens.radius.md,
+    borderRadius: t.radius.md,
   },
   pressed: {
     opacity: 0.88,
   },
   buttonText: {
-    color: lightTokens.color.onBrand,
-    fontSize: lightTokens.fontSize.md,
+    color: t.color.onBrand,
+    fontSize: t.fontSize.md,
     fontWeight: "600",
   },
-});
+}));

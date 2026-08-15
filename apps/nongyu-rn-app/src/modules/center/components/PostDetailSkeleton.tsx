@@ -1,11 +1,12 @@
 import { StyleSheet, View } from "react-native";
 import { SkeletonBox } from "@/components/skeleton/SkeletonBox";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
  * 帖子详情骨架：标题 + 元信息 + 分隔 + 多行正文
  */
 export function PostDetailSkeleton() {
+  const styles = useStyles();
   return (
     <View style={styles.wrap} accessibilityLabel="详情加载中">
       <SkeletonBox height={24} width="88%" borderRadius={4} />
@@ -24,7 +25,7 @@ export function PostDetailSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   wrap: {
     gap: 0,
   },
@@ -32,15 +33,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   meta: {
-    marginTop: lightTokens.space.md,
+    marginTop: t.space.md,
   },
   rule: {
-    marginTop: lightTokens.space.lg,
-    marginBottom: lightTokens.space.lg,
+    marginTop: t.space.lg,
+    marginBottom: t.space.lg,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: lightTokens.color.border,
+    backgroundColor: t.color.border,
   },
   body: {
     gap: 12,
   },
-});
+}));

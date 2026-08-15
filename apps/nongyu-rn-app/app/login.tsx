@@ -1,32 +1,15 @@
-import { router } from "expo-router";
-import { StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { JiaowuLoginForm } from "@/modules/jiaowu/components/JiaowuLoginForm";
-import { lightTokens } from "@/theme/tokens";
+import { Redirect } from "expo-router";
+import { LoginScreen } from "@/modules/auth/screens/LoginScreen";
+import { resolveLaunchHref } from "@/modules/settings/utils/resolveLaunchHref";
+import { useSessionStore } from "@/stores/session";
 
 /**
- * 全局登录页：教务校验 → 档案 →（best-effort）农屿 Token
+ * 全局登录路由。已登录则按启动页偏好进入主 Tab；未登录主路径由 AuthRoot 直接渲染登录页。
  */
-export default function LoginScreen() {
-  const insets = useSafeAreaInsets();
-
-  return (
-    <View style={[styles.container, { paddingTop: insets.top + lightTokens.space.lg }]}>
-      <JiaowuLoginForm
-        onSuccess={() => {
-          if (router.canGoBack()) router.back();
-          else router.replace("/(tabs)/home");
-        }}
-      />
-    </View>
-  );
+export default function LoginRoute() {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
+  if (isAuthenticated) {
+    return <Redirect href={resolveLaunchHref()} />;
+  }
+  return <LoginScreen />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: lightTokens.space.lg,
-    paddingBottom: lightTokens.space.xl,
-    backgroundColor: lightTokens.color.brandMuted,
-  },
-});

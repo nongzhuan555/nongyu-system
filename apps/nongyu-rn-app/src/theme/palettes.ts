@@ -31,7 +31,7 @@ export type BrandPalette = {
   };
 };
 
-/** 暗色模式表面/文字/描边覆盖（品牌主色仍取当前 brand） */
+/** 暗色表面字段（兼容旧导出；完整暗色见 darkPalette） */
 export type DarkSurfacePalette = {
   background: string;
   surface: string;
@@ -96,16 +96,46 @@ export const brandPalettes: Record<BrandName, BrandPalette> = {
   },
 };
 
-/** v3 darkExtras 表面层 */
-export const darkSurfacePalette: DarkSurfacePalette = {
+/**
+ * 固定深色色板（不区分绿/粉）。
+ * 表面层取自旧版 darkExtras；强调色取同系冷灰蓝，避免再套品牌绿/粉。
+ */
+export const darkPalette: BrandPalette & { outlineVariant: string } = {
+  primary: "#9BB8D3",
+  onPrimary: "#0B0F14",
+  primaryContainer: "#1F2835",
+  onPrimaryContainer: "#E6EAF0",
+  secondary: "#A8B5C4",
+  onSecondary: "#0B0F14",
+  tertiary: "#C9D1DB",
   background: "#0B0F14",
-  surface: "#121722",
-  surfaceVariant: "#1A2230",
   onBackground: "#E6EAF0",
+  surface: "#121722",
   onSurface: "#E6EAF0",
+  surfaceVariant: "#1A2230",
   onSurfaceVariant: "#C9D1DB",
   outline: "#2B3544",
   outlineVariant: "#1F2835",
+  elevation: {
+    level0: "transparent",
+    level1: "#121722",
+    level2: "#151C28",
+    level3: "#1A2230",
+    level4: "#1E2836",
+    level5: "#222E3C",
+  },
+};
+
+/** v3 darkExtras 表面层（与 darkPalette 表面字段一致） */
+export const darkSurfacePalette: DarkSurfacePalette = {
+  background: darkPalette.background,
+  surface: darkPalette.surface,
+  surfaceVariant: darkPalette.surfaceVariant,
+  onBackground: darkPalette.onBackground,
+  onSurface: darkPalette.onSurface,
+  onSurfaceVariant: darkPalette.onSurfaceVariant,
+  outline: darkPalette.outline,
+  outlineVariant: darkPalette.outlineVariant,
 };
 
 /** v3 无独立 danger，沿用骨架占位以保证现有用法 */

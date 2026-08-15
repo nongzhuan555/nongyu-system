@@ -1,7 +1,8 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AppLinearGradient } from "@/components/ui/AppLinearGradient";
 import type { WebNavItem } from "@/modules/home/constants/webNav";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /** 单格固定高度：图标 40 + 间距 6 + 文案行高 14，用于精确算出 3 行面板高 */
 export const WEB_NAV_ITEM_HEIGHT = 60;
@@ -15,6 +16,8 @@ type WebNavItemViewProps = {
  * 单个网站格子
  */
 export function WebNavItemView({ item, onPress }: WebNavItemViewProps) {
+  const styles = useStyles();
+  const t = useThemeTokens();
   return (
     <Pressable
       accessibilityRole="button"
@@ -24,7 +27,7 @@ export function WebNavItemView({ item, onPress }: WebNavItemViewProps) {
     >
       <View style={styles.iconShell}>
         <AppLinearGradient
-          colors={["#FFFFFF", lightTokens.color.brandMuted]}
+          colors={["#FFFFFF", t.color.brandMuted]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.iconGradient}
@@ -39,7 +42,7 @@ export function WebNavItemView({ item, onPress }: WebNavItemViewProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   item: {
     width: "25%",
     height: WEB_NAV_ITEM_HEIGHT,
@@ -73,13 +76,13 @@ const styles = StyleSheet.create({
   iconLetter: {
     fontSize: 15,
     fontWeight: "700",
-    color: lightTokens.color.brand,
+    color: t.color.brand,
   },
   title: {
     fontSize: 11,
     lineHeight: 14,
     fontWeight: "500",
     textAlign: "center",
-    color: lightTokens.color.text,
+    color: t.color.text,
   },
-});
+}));

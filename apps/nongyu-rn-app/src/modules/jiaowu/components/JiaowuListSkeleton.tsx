@@ -1,11 +1,12 @@
 import { StyleSheet, View } from "react-native";
 import { SkeletonBox } from "@/components/skeleton/SkeletonBox";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
  * 教务列表骨架
  */
 export function JiaowuListSkeleton({ rows = 6 }: { rows?: number }) {
+  const styles = useStyles();
   return (
     <View style={styles.wrap}>
       {Array.from({ length: rows }).map((_, i) => (
@@ -18,20 +19,20 @@ export function JiaowuListSkeleton({ rows = 6 }: { rows?: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   wrap: {
-    gap: lightTokens.space.sm,
-    paddingTop: lightTokens.space.sm,
+    gap: t.space.sm,
+    paddingTop: t.space.sm,
   },
   card: {
-    backgroundColor: lightTokens.color.surface,
-    borderRadius: lightTokens.radius.md,
-    padding: lightTokens.space.md,
+    backgroundColor: t.color.surface,
+    borderRadius: t.radius.md,
+    padding: t.space.md,
     gap: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: lightTokens.color.border,
+    borderColor: t.color.border,
   },
   line: {
     marginTop: 2,
   },
-});
+}));

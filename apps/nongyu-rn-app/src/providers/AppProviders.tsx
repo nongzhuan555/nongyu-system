@@ -1,9 +1,12 @@
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ComponentType, type ReactNode, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
 import { AppToastHost } from "@/components/ui/toast";
+import { AppConfirmHost } from "@/components/ui/confirm";
+import { ThemeProvider } from "@/theme/ThemeProvider";
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -15,8 +18,12 @@ const GestureRoot = GestureHandlerRootView as ComponentType<{
   children?: ReactNode;
 }>;
 
+const SheetProvider = BottomSheetModalProvider as ComponentType<{
+  children?: ReactNode;
+}>;
+
 /**
- * 全局 Provider 栈：手势、安全区、React Query、Toast
+ * 全局 Provider 栈：手势、安全区、主题、React Query、BottomSheet、Toast、确认框
  */
 export function AppProviders({ children }: AppProvidersProps) {
   const [queryClient] = useState(
@@ -34,10 +41,15 @@ export function AppProviders({ children }: AppProvidersProps) {
   return (
     <GestureRoot style={styles.root}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          {children}
-          <AppToastHost />
-        </QueryClientProvider>
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <SheetProvider>
+              {children}
+              <AppToastHost />
+              <AppConfirmHost />
+            </SheetProvider>
+          </QueryClientProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureRoot>
   );

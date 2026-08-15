@@ -1,8 +1,9 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { toast } from "@/components/ui/toast";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 import { JIAOWU_SERVICES, type JiaowuServiceItem } from "@/modules/jiaowu/constants/services";
 
 type JiaowuServiceListProps = {
@@ -13,6 +14,8 @@ type JiaowuServiceListProps = {
  * 教务首页服务入口列表（未登录锁定需鉴权项）
  */
 export function JiaowuServiceList({ isAuthenticated }: JiaowuServiceListProps) {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const router = useRouter();
 
   const onPress = (item: JiaowuServiceItem) => {
@@ -44,7 +47,7 @@ export function JiaowuServiceList({ isAuthenticated }: JiaowuServiceListProps) {
               <Ionicons
                 name={item.icon}
                 size={18}
-                color={locked ? lightTokens.color.textSecondary : lightTokens.color.brand}
+                color={locked ? t.color.textSecondary : t.color.brand}
               />
             </View>
             <View style={styles.copy}>
@@ -56,9 +59,9 @@ export function JiaowuServiceList({ isAuthenticated }: JiaowuServiceListProps) {
               </Text>
             </View>
             {locked ? (
-              <Ionicons name="lock-closed" size={16} color={lightTokens.color.textSecondary} />
+              <Ionicons name="lock-closed" size={16} color={t.color.textSecondary} />
             ) : (
-              <Ionicons name="chevron-forward" size={16} color={lightTokens.color.textSecondary} />
+              <Ionicons name="chevron-forward" size={16} color={t.color.textSecondary} />
             )}
           </Pressable>
         );
@@ -67,10 +70,10 @@ export function JiaowuServiceList({ isAuthenticated }: JiaowuServiceListProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   list: {
-    backgroundColor: lightTokens.color.surface,
-    borderRadius: lightTokens.radius.lg,
+    backgroundColor: t.color.surface,
+    borderRadius: t.radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(10, 124, 89, 0.08)",
     paddingHorizontal: 14,
@@ -97,10 +100,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: lightTokens.color.brandMuted,
+    backgroundColor: t.color.brandMuted,
   },
   iconBoxLocked: {
-    backgroundColor: lightTokens.color.surfaceVariant,
+    backgroundColor: t.color.surfaceVariant,
   },
   copy: {
     flex: 1,
@@ -109,13 +112,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: "600",
-    color: lightTokens.color.text,
+    color: t.color.text,
   },
   titleLocked: {
-    color: lightTokens.color.textSecondary,
+    color: t.color.textSecondary,
   },
   hint: {
     fontSize: 11,
-    color: lightTokens.color.textSecondary,
+    color: t.color.textSecondary,
   },
-});
+}));

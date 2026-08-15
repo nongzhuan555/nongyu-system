@@ -1,54 +1,38 @@
-import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Linking,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { useThemeTokens } from "@/theme/ThemeProvider";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/toast";
 import { TabScreenBackground } from "@/components/navigation/TabScreenBackground";
-import { performJiaowuLogout } from "@/modules/jiaowu/auth/performJiaowuLogin";
+import { openAppUrl } from "@/lib/openAppUrl";
 import { GuestPrompt } from "@/modules/mine/components/GuestPrompt";
-import { IdentityCard } from "@/modules/mine/components/IdentityCard";
 import { InfoGrid } from "@/modules/mine/components/InfoGrid";
 import { ProfileHeader } from "@/modules/mine/components/ProfileHeader";
 import { ServiceList } from "@/modules/mine/components/ServiceList";
 import { ABOUT_URL } from "@/modules/mine/constants/services";
 import type { ServiceItem } from "@/modules/mine/constants/services";
 import { useSessionStore } from "@/stores/session";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
- * 「我的」主界面：已登录档案 + 服务入口；未登录引导去登录
+ * 「我的」主界面：档案入口 + 服务；退出登录在设置页
  */
 export function MineScreen() {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
   const profile = useSessionStore((s) => s.profile);
-  const [logoutLoading, setLogoutLoading] = useState(false);
 
-  const tabBarPad =
-    lightTokens.tabBar.heightMax + lightTokens.tabBar.bottomGapMax + lightTokens.space.xl;
+  const tabBarPad = t.tabBar.heightMax + t.tabBar.bottomGapMax + t.space.xl;
 
   const openSettings = () => {
     router.push("/mine/settings" as Href);
   };
 
-  const openAbout = async () => {
-    try {
-      await Linking.openURL(ABOUT_URL);
-    } catch {
-      toast.error("无法打开官网", { description: "请稍后重试" });
-    }
+  const openAbout = () => {
+    void openAppUrl(ABOUT_URL, { label: "农屿官网" });
   };
 
   const handleServicePress = async (item: ServiceItem) => {
@@ -64,24 +48,6 @@ export function MineScreen() {
     await openAbout();
   };
 
-  const doLogout = async () => {
-    if (logoutLoading) return;
-    setLogoutLoading(true);
-    try {
-      await performJiaowuLogout(queryClient);
-      toast.success("已退出登录");
-    } finally {
-      setLogoutLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    Alert.alert("退出登录", "确定要退出登录吗？退出后将清除本地教务会话与登录状态。", [
-      { text: "取消", style: "cancel" },
-      { text: "确定", style: "destructive", onPress: () => void doLogout() },
-    ]);
-  };
-
   return (
     <View style={styles.root}>
       <TabScreenBackground />
@@ -89,7 +55,7 @@ export function MineScreen() {
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: insets.top + 12,
+            paddingTop: insets.top + 10,
             paddingBottom: insets.bottom + tabBarPad,
           },
         ]}
@@ -99,26 +65,8 @@ export function MineScreen() {
 
         {isAuthenticated && profile ? (
           <>
-            <IdentityCard name={profile.name} studentId={profile.studentId} />
-            <InfoGrid profile={profile} />
+            <InfoGrid profile={profile} onPress={() => router.push("/mine/profile" as Href)} />
             <ServiceList onPressItem={(item) => void handleServicePress(item)} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="退出登录"
-              disabled={logoutLoading}
-              onPress={handleLogout}
-              style={({ pressed }) => [
-                styles.logoutBtn,
-                pressed && styles.logoutPressed,
-                logoutLoading && styles.logoutDisabled,
-              ]}
-            >
-              {logoutLoading ? (
-                <ActivityIndicator color={lightTokens.color.danger} />
-              ) : (
-                <Text style={styles.logoutText}>退出登录</Text>
-              )}
-            </Pressable>
           </>
         ) : (
           <>
@@ -127,75 +75,37 @@ export function MineScreen() {
               accessibilityRole="button"
               accessibilityLabel="关于农屿"
               onPress={() => void openAbout()}
-              style={({ pressed }) => [styles.aboutLink, pressed && styles.logoutPressed]}
+              style={({ pressed }) => [styles.aboutLink, pressed && styles.aboutPressed]}
             >
               <Text style={styles.aboutLinkText}>关于农屿</Text>
             </Pressable>
           </>
         )}
       </ScrollView>
-
-      {logoutLoading ? (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={lightTokens.color.onBrand} />
-          <Text style={styles.loadingText}>正在退出...</Text>
-        </View>
-      ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   root: {
     flex: 1,
-    backgroundColor: lightTokens.color.background,
+    backgroundColor: t.color.background,
   },
   scroll: {
-    paddingHorizontal: lightTokens.space.lg,
-  },
-  logoutBtn: {
-    marginTop: lightTokens.space.xl,
-    marginBottom: lightTokens.space.md,
-    paddingVertical: 14,
-    borderRadius: lightTokens.radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(220, 38, 38, 0.06)",
-    minHeight: 48,
-  },
-  logoutPressed: {
-    opacity: 0.85,
-  },
-  logoutDisabled: {
-    opacity: 0.7,
-  },
-  logoutText: {
-    fontSize: lightTokens.fontSize.md,
-    fontWeight: "600",
-    color: lightTokens.color.danger,
+    paddingHorizontal: t.space.lg,
   },
   aboutLink: {
-    marginTop: lightTokens.space.lg,
+    marginTop: t.space.lg,
     alignSelf: "center",
-    paddingVertical: lightTokens.space.sm,
-    paddingHorizontal: lightTokens.space.md,
+    paddingVertical: t.space.sm,
+    paddingHorizontal: t.space.md,
+  },
+  aboutPressed: {
+    opacity: 0.75,
   },
   aboutLinkText: {
-    fontSize: lightTokens.fontSize.md,
-    color: lightTokens.color.brand,
+    fontSize: t.fontSize.md,
+    color: t.color.brand,
     fontWeight: "600",
   },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 20,
-  },
-  loadingText: {
-    marginTop: lightTokens.space.md,
-    color: "#fff",
-    fontSize: lightTokens.fontSize.md,
-    fontWeight: "500",
-  },
-});
+}));

@@ -1,3 +1,5 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
+import { layoutTokens } from "@/theme/buildThemeTokens";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useSegments, type Href } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -11,11 +13,12 @@ import {
   type LayoutChangeEvent,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 import { AiTipBubble } from "./AiTipBubble";
 import { GlassPanel } from "./GlassPanel";
 import { TabLiquidIndicator, type TabIndicatorFrame } from "./TabLiquidIndicator";
 import { useAiTipBubble } from "./useAiTipBubble";
+import { trackClick } from "@/modules/telemetry";
 
 const NONGYU_AI_AVATAR = require("../../../assets/nongyuai.jpg");
 
@@ -63,7 +66,7 @@ const TABS: TabItem[] = [
   },
 ];
 
-const base = lightTokens.tabBar;
+const base = layoutTokens.tabBarBase;
 
 type TabBarMetrics = {
   horizontalInset: number;
@@ -80,13 +83,15 @@ type TabBarMetrics = {
  * 选中态：独立椭圆毛玻璃指示器（与大栏兄弟叠放）+ 水滴滑动动效
  */
 export function FloatingTabBar() {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const router = useRouter();
   const segments = useSegments();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const metrics = useMemo(() => resolveTabBarMetrics(windowWidth), [windowWidth]);
   const [tabLayouts, setTabLayouts] = useState<Partial<Record<TabKey, TabLayout>>>({});
-  const { visible: tipVisible, hideTip } = useAiTipBubble();
+  const { visible: tipVisible, hideTip, muteTip } = useAiTipBubble();
 
   const activeTab = resolveActiveTab(segments);
   const indicatorFrame = useMemo(
@@ -96,6 +101,7 @@ export function FloatingTabBar() {
 
   const openAi = useCallback(() => {
     hideTip();
+    trackClick("nongyu_ai");
     router.push("/ai" as Href);
   }, [hideTip, router]);
 
@@ -126,7 +132,7 @@ export function FloatingTabBar() {
           <AiTipBubble
             visible={tipVisible}
             onPressTip={openAi}
-            onMute={hideTip}
+            onMute={muteTip}
             onDismiss={hideTip}
           />
           <Pressable accessibilityRole="button" accessibilityLabel="农屿AI" onPress={openAi}>
@@ -156,13 +162,16 @@ export function FloatingTabBar() {
             <TabLiquidIndicator frame={indicatorFrame} />
             {TABS.map((tab) => {
               const focused = tab.key === activeTab;
-              const accent = focused ? lightTokens.color.brand : lightTokens.color.textSecondary;
+              const accent = focused ? t.color.brand : t.color.textSecondary;
               return (
                 <Pressable
                   key={tab.key}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: focused }}
-                  onPress={() => router.navigate(tab.href)}
+                  onPress={() => {
+                    trackClick(`tab_${tab.key}`);
+                    router.navigate(tab.href);
+                  }}
                   onLayout={(e) => onTabLayout(tab.key, e)}
                   style={styles.tabItem}
                 >
@@ -239,7 +248,7 @@ function resolveActiveTab(segments: string[]): TabKey {
   return "home";
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   host: {
     position: "absolute",
     left: 0,
@@ -261,7 +270,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    borderRadius: lightTokens.radius.full,
+    borderRadius: t.radius.full,
   },
   aiAvatar: {
     width: "100%",
@@ -269,7 +278,7 @@ const styles = StyleSheet.create({
   },
   capsuleShell: {
     flex: 1,
-    borderRadius: lightTokens.radius.full,
+    borderRadius: t.radius.full,
     overflow: "hidden",
   },
   capsuleGlassHost: {
@@ -285,7 +294,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    borderRadius: lightTokens.radius.full,
+    borderRadius: t.radius.full,
   },
   capsuleRow: {
     position: "absolute",
@@ -308,4 +317,4 @@ const styles = StyleSheet.create({
   label: {
     fontWeight: "600",
   },
-});
+}));

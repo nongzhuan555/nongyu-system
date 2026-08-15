@@ -1,14 +1,17 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { PostFeedList } from "@/modules/center/components/PostFeedList";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
  * 我的帖子列表（含阅读量）
  */
 export function MyPostsScreen() {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -22,7 +25,7 @@ export function MyPostsScreen() {
           style={styles.backBtn}
           hitSlop={8}
         >
-          <Ionicons name="chevron-back" size={22} color={lightTokens.color.text} />
+          <Ionicons name="chevron-back" size={22} color={t.color.text} />
         </Pressable>
         <Text style={styles.headerTitle}>我的帖子</Text>
         <View style={styles.headerRight} />
@@ -32,17 +35,17 @@ export function MyPostsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   root: {
     flex: 1,
-    backgroundColor: lightTokens.color.background,
+    backgroundColor: t.color.background,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: lightTokens.space.sm,
-    paddingVertical: lightTokens.space.xs,
-    marginBottom: lightTokens.space.xs,
+    paddingHorizontal: t.space.sm,
+    paddingVertical: t.space.xs,
+    marginBottom: t.space.xs,
   },
   backBtn: {
     width: 40,
@@ -53,12 +56,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: "center",
-    fontSize: lightTokens.fontSize.md,
+    fontSize: t.fontSize.md,
     fontWeight: "600",
-    color: lightTokens.color.text,
+    color: t.color.text,
     letterSpacing: 0.3,
   },
   headerRight: {
     width: 40,
   },
-});
+}));

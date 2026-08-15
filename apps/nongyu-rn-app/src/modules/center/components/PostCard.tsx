@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 import type { PostListItem } from "@/modules/center/api/posts";
 import { subtypeLabel } from "@/modules/center/constants/subtypes";
 import { formatPublishedAt } from "@/modules/center/utils/format";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type PostCardProps = {
   item: PostListItem;
@@ -15,11 +15,10 @@ type PostCardProps = {
  * 广场 / 我的帖子共用列表卡片（简约圆润）
  */
 export function PostCard({ item, onPress, showViewCount }: PostCardProps) {
+  const styles = useStyles();
   const typeText = subtypeLabel(item.postType, item.subtype);
+  // 反馈墙 / 大院对用户匿名，不展示作者名
   const metaParts = [formatPublishedAt(item.publishedAt), typeText];
-  if (item.postType === "courtyard" && item.authorDisplayName) {
-    metaParts.push(item.authorDisplayName);
-  }
   if (showViewCount && typeof item.viewCount === "number") {
     metaParts.push(`阅读 ${item.viewCount}`);
   }
@@ -44,36 +43,36 @@ export function PostCard({ item, onPress, showViewCount }: PostCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   card: {
-    backgroundColor: lightTokens.color.surface,
-    borderRadius: lightTokens.radius.lg,
-    paddingHorizontal: lightTokens.space.md,
-    paddingVertical: lightTokens.space.md,
+    backgroundColor: t.color.surface,
+    borderRadius: t.radius.lg,
+    paddingHorizontal: t.space.md,
+    paddingVertical: t.space.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: lightTokens.color.border,
+    borderColor: t.color.border,
     gap: 6,
   },
   pressed: {
     opacity: 0.72,
   },
   title: {
-    fontSize: lightTokens.fontSize.md,
+    fontSize: t.fontSize.md,
     fontWeight: "600",
-    color: lightTokens.color.text,
+    color: t.color.text,
     lineHeight: 24,
     letterSpacing: 0.15,
   },
   preview: {
-    fontSize: lightTokens.fontSize.sm,
-    color: lightTokens.color.textSecondary,
+    fontSize: t.fontSize.sm,
+    color: t.color.textSecondary,
     lineHeight: 20,
   },
   meta: {
     marginTop: 2,
     fontSize: 12,
-    color: lightTokens.color.textSecondary,
+    color: t.color.textSecondary,
     letterSpacing: 0.2,
     opacity: 0.85,
   },
-});
+}));

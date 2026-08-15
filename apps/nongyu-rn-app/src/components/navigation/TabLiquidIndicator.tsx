@@ -1,3 +1,4 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
@@ -7,7 +8,7 @@ import Animated, {
   withSequence,
   withSpring,
 } from "react-native-reanimated";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 import { GlassPanel } from "./GlassPanel";
 
 export type TabIndicatorFrame = {
@@ -52,6 +53,8 @@ export function TabLiquidIndicator({
   frostFill,
   frostBorder,
 }: TabLiquidIndicatorProps) {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const left = useSharedValue(0);
   const top = useSharedValue(0);
   const width = useSharedValue(0);
@@ -113,8 +116,8 @@ export function TabLiquidIndicator({
     };
   });
 
-  const tab = lightTokens.tabBar;
-  const { brandMuted, brand, outline, surface: surfaceColor } = lightTokens.color;
+  const tab = t.tabBar;
+  const { brandMuted, brand, outline, surface: surfaceColor } = t.color;
   // 略透明：保留主题浅色可辨，同时透出底下光影（玻璃感）
   const blurGlassFill = hexToRgba(brandMuted, tab.activeGlassFillAlpha);
   const resolvedFrostFill = frostFill ?? surfaceColor;
@@ -157,13 +160,13 @@ export function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   pill: {
     width: "100%",
     height: "100%",
-    borderRadius: lightTokens.radius.full,
+    borderRadius: t.radius.full,
   },
   frostPill: {
     borderWidth: StyleSheet.hairlineWidth,
   },
-});
+}));

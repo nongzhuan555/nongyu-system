@@ -1,8 +1,10 @@
 import { StyleSheet, Text, View } from "react-native";
 import { getScoreInfo } from "nongyu-tool-jiaowu";
 import { JiaowuPageShell } from "@/modules/jiaowu/components/JiaowuPageShell";
+import { useDeferredLocalSearch } from "@/modules/jiaowu/hooks/useDeferredLocalSearch";
 import { useJiaowuQuery } from "@/modules/jiaowu/hooks/useJiaowuQuery";
-import { lightTokens } from "@/theme/tokens";
+import { matchSearchQuery } from "@/modules/jiaowu/utils/search";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type ScoreRow = Awaited<ReturnType<typeof getScoreInfo>>["result"][number];
 
@@ -26,15 +28,21 @@ function groupByTerm(items: ScoreRow[]): { term: string; items: ScoreRow[] }[] {
  * 成绩查询页
  */
 export function ScoreScreen() {
+  const styles = useStyles();
   const { data, isPending, isError, error, isFetching, isRefetching, refresh } = useJiaowuQuery({
     resource: "score",
     requireAuth: true,
     queryFn: getScoreInfo,
   });
+  const { draft, setDraft, query, searching } = useDeferredLocalSearch();
 
   const list = data ?? [];
-  const groups = groupByTerm(list);
   const hasData = list.length > 0;
+  const filtered = list.filter((item) =>
+    matchSearchQuery(query, item.courseName, item.term, item.courseType, item.source),
+  );
+  const groups = groupByTerm(filtered);
+  const noSearchHit = hasData && !searching && query.trim().length > 0 && filtered.length === 0;
 
   return (
     <JiaowuPageShell
@@ -42,12 +50,22 @@ export function ScoreScreen() {
       loading={isPending && !data}
       error={isError && !data}
       errorMessage={error instanceof Error ? error.message : undefined}
-      empty={!!data && list.length === 0}
-      emptyText="暂无成绩"
+      empty={(!!data && list.length === 0) || noSearchHit}
+      emptyText={noSearchHit ? "未找到相关结果" : "暂无成绩"}
       onRetry={refresh}
       refreshing={isRefetching}
       onRefresh={refresh}
       fetchingHint={isFetching && hasData && !isRefetching}
+      search={
+        hasData
+          ? {
+              value: draft,
+              onChangeText: setDraft,
+              placeholder: "搜索课程、学期、类型…",
+              searching,
+            }
+          : undefined
+      }
     >
       <View style={styles.list}>
         {groups.map((group) => (
@@ -80,25 +98,25 @@ export function ScoreScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   list: {
-    gap: lightTokens.space.md,
+    gap: t.space.md,
   },
   group: {
-    gap: lightTokens.space.sm,
+    gap: t.space.sm,
   },
   term: {
-    fontSize: lightTokens.fontSize.md,
+    fontSize: t.fontSize.md,
     fontWeight: "700",
-    color: lightTokens.color.brand,
+    color: t.color.brand,
     marginBottom: 2,
   },
   card: {
-    backgroundColor: lightTokens.color.surface,
-    borderRadius: lightTokens.radius.md,
-    padding: lightTokens.space.md,
+    backgroundColor: t.color.surface,
+    borderRadius: t.radius.md,
+    padding: t.space.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: lightTokens.color.border,
+    borderColor: t.color.border,
     gap: 6,
   },
   cardTop: {
@@ -108,18 +126,18 @@ const styles = StyleSheet.create({
   },
   course: {
     flex: 1,
-    fontSize: lightTokens.fontSize.md,
+    fontSize: t.fontSize.md,
     fontWeight: "600",
-    color: lightTokens.color.text,
+    color: t.color.text,
     lineHeight: 22,
   },
   score: {
-    fontSize: lightTokens.fontSize.lg,
+    fontSize: t.fontSize.lg,
     fontWeight: "700",
-    color: lightTokens.color.brand,
+    color: t.color.brand,
   },
   meta: {
-    fontSize: lightTokens.fontSize.sm,
-    color: lightTokens.color.textSecondary,
+    fontSize: t.fontSize.sm,
+    color: t.color.textSecondary,
   },
-});
+}));

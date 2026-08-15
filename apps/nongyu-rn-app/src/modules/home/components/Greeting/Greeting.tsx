@@ -1,28 +1,28 @@
-import { StyleSheet, Text, View } from "react-native";
+import { View } from "react-native";
+import { TypewriterText } from "@/components/ui/TypewriterText";
 import { GREETING_RESERVED_HEIGHT, buildGreetingText } from "@/modules/home/constants/greeting";
-import { useTypewriter } from "@/modules/home/hooks/useTypewriter";
-import { lightTokens } from "@/theme/tokens";
+import { useSessionStore } from "@/stores/session";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
  * 时段问候 + 打字机（按约 2 行预留，避免与通知栏间距过大）
  */
 export function Greeting() {
-  const fullText = buildGreetingText();
-  const displayText = useTypewriter(fullText);
+  const styles = useStyles();
+  const name = useSessionStore((s) => s.profile?.name);
+  const fullText = buildGreetingText(name);
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.text} numberOfLines={2}>
-        {displayText}
-      </Text>
+      <TypewriterText fullText={fullText} style={styles.text} numberOfLines={2} lastCharBoost={3} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   wrap: {
     width: "100%",
-    paddingHorizontal: lightTokens.space.md,
+    paddingHorizontal: t.space.md,
     paddingTop: 0,
     paddingBottom: 4,
   },
@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     lineHeight: 34,
     fontWeight: "700",
     letterSpacing: 0.2,
-    color: lightTokens.color.brand,
+    color: t.color.brand,
     minHeight: GREETING_RESERVED_HEIGHT,
   },
-});
+}));

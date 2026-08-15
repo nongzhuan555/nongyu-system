@@ -13,10 +13,14 @@ export function getTimeSlotLabel(date = new Date()): string {
 }
 
 /**
- * 本地问候文案（暂不含姓名）
+ * 本地问候文案：有姓名则「xx你好…」，否则回退无姓名版
  */
-export function buildGreetingText(date = new Date()): string {
+export function buildGreetingText(name?: string | null, date = new Date()): string {
   const slot = getTimeSlotLabel(date);
+  const trimmed = name?.trim();
+  if (trimmed) {
+    return `${trimmed}你好，现在是${slot}，祝你学习顺利`;
+  }
   return `你好，现在是${slot}，祝你学习顺利`;
 }
 

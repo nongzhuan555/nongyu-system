@@ -1,7 +1,8 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { BlurView, type BlurViewProps } from "expo-blur";
 import { createElement, type ComponentType, type ReactNode, type RefObject } from "react";
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 import { useBlurTarget } from "./BlurTargetContext";
 
 const NativeGlassBlur = BlurView as unknown as ComponentType<BlurViewProps>;
@@ -29,32 +30,39 @@ type GlassPanelProps = {
  * - 不能看清背后文字，更不能做成实心不透明白块（霜膜务必薄，见 tokens.tabBar.glassFill）
  * - **禁止**放在 `BlurTargetSurface` 内部（Android 嵌套 BlurView 易原生闪退）；仅用于底栏等外侧叠层
  * - 多个 GlassPanel 必须为**兄弟节点**，禁止互相嵌套
+ * - 默认玻璃色必须在函数体内用 useThemeTokens 解析，禁止写在形参默认值里（会引用未定义的 t）
  */
 export function GlassPanel({
   children,
   style,
   contentStyle,
-  intensity = lightTokens.tabBar.blurIntensity,
-  blurReductionFactor = lightTokens.tabBar.blurReductionFactor,
-  glassFill = lightTokens.tabBar.glassFill,
-  glassBorder = lightTokens.tabBar.glassBorder,
+  intensity,
+  blurReductionFactor,
+  glassFill,
+  glassBorder,
   chrome = "default",
 }: GlassPanelProps) {
+  const styles = useStyles();
+  const theme = useThemeTokens();
+  const resolvedIntensity = intensity ?? theme.tabBar.blurIntensity;
+  const resolvedBlurReduction = blurReductionFactor ?? theme.tabBar.blurReductionFactor;
+  const resolvedFill = glassFill ?? theme.tabBar.glassFill;
+  const resolvedBorder = glassBorder ?? theme.tabBar.glassBorder;
   const blur = useBlurTarget();
   const blurTarget = blur?.targetRef ?? null;
   const blurEpoch = blur?.blurEpoch ?? 0;
   const isMinimal = chrome === "minimal";
 
   const blurProps: BlurViewProps = {
-    intensity,
+    intensity: resolvedIntensity,
     // extraLight：偏白磨砂，避免 light/default 发灰
     tint: "extraLight",
     blurMethod: "dimezisBlurViewSdk31Plus",
-    blurReductionFactor,
+    blurReductionFactor: resolvedBlurReduction,
     style: [
       styles.blur,
       isMinimal ? styles.blurMinimal : styles.blurDefault,
-      { borderColor: glassBorder },
+      { borderColor: resolvedBorder },
       style,
     ],
     // Android 真模糊必须带上 BlurTargetView 的 ref
@@ -65,12 +73,12 @@ export function GlassPanel({
     NativeGlassBlur,
     {
       // epoch>0 时 remount，确保 Android 能拿到 blurTarget node id
-      key: `glass-${blurEpoch}-${intensity}-${chrome}`,
+      key: `glass-${blurEpoch}-${resolvedIntensity}-${chrome}`,
       ...blurProps,
     },
     <>
       {/* 薄霜：只压锐度，不盖死模糊透色 */}
-      <View style={[styles.frost, { backgroundColor: glassFill }]} pointerEvents="none" />
+      <View style={[styles.frost, { backgroundColor: resolvedFill }]} pointerEvents="none" />
       <View style={[styles.content, contentStyle]} pointerEvents="box-none">
         {children}
       </View>
@@ -84,7 +92,7 @@ export function GlassPanel({
  */
 export type GlassBlurTargetRef = RefObject<View | null>;
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   blur: {
     overflow: "hidden",
     backgroundColor: "transparent",
@@ -93,7 +101,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth * 2,
     ...Platform.select({
       ios: {
-        shadowColor: lightTokens.tabBar.shadowColor,
+        shadowColor: t.tabBar.shadowColor,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 1,
         shadowRadius: 16,
@@ -118,4 +126,4 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
   },
-});
+}));

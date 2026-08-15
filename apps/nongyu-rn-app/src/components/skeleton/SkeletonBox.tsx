@@ -1,7 +1,8 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { useEffect, useRef } from "react";
 import { Animated, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { HOME_FIELD_CHROME } from "@/modules/home/constants/fieldChrome";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type SkeletonBoxProps = {
   width?: number | `${number}%`;
@@ -16,9 +17,12 @@ type SkeletonBoxProps = {
 export function SkeletonBox({
   width = "100%",
   height = 16,
-  borderRadius = lightTokens.radius.sm,
+  borderRadius,
   style,
 }: SkeletonBoxProps) {
+  const styles = useStyles();
+  const t = useThemeTokens();
+  const finalBorderRadius = borderRadius ?? t.radius.sm;
   const opacity = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
@@ -47,7 +51,7 @@ export function SkeletonBox({
         {
           width,
           height,
-          borderRadius,
+          borderRadius: finalBorderRadius,
           opacity,
         },
         style,
@@ -60,6 +64,7 @@ export function SkeletonBox({
  * 通知栏骨架：与网站搜索框同形（共用 HOME_FIELD_CHROME）
  */
 export function NoticeBarSkeleton() {
+  const styles = useStyles();
   return (
     <View style={styles.noticeSkel}>
       <View style={styles.noticeFrost} pointerEvents="none" />
@@ -71,14 +76,14 @@ export function NoticeBarSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   box: {
-    backgroundColor: lightTokens.color.border,
+    backgroundColor: t.color.border,
   },
   noticeSkel: {
-    marginHorizontal: lightTokens.space.md,
+    marginHorizontal: t.space.md,
     marginTop: 2,
-    marginBottom: lightTokens.space.md,
+    marginBottom: t.space.md,
     height: HOME_FIELD_CHROME.height,
     borderRadius: HOME_FIELD_CHROME.radius,
     overflow: "hidden",
@@ -101,4 +106,4 @@ const styles = StyleSheet.create({
   noticeLine: {
     flex: 1,
   },
-});
+}));

@@ -2,7 +2,7 @@ import { StyleSheet, View } from "react-native";
 import { Tabs } from "expo-router";
 import { BlurTargetProvider, BlurTargetSurface } from "@/components/navigation/BlurTargetContext";
 import { FloatingTabBar } from "@/components/navigation/FloatingTabBar";
-import { lightTokens } from "@/theme/tokens";
+import { useThemeTokens } from "@/theme/ThemeProvider";
 
 /** 与 src/modules 目录命名对齐：home / course / center / mine */
 export const unstable_settings = {
@@ -13,6 +13,8 @@ export const unstable_settings = {
  * 主 Tab 容器：Provider 同时包住页面与底栏，Surface 只包页面作采样目标
  */
 export default function TabsLayout() {
+  const theme = useThemeTokens();
+
   return (
     <BlurTargetProvider>
       <View style={styles.root}>
@@ -22,7 +24,7 @@ export default function TabsLayout() {
             screenOptions={{
               headerShown: false,
               sceneStyle: {
-                backgroundColor: lightTokens.color.background,
+                backgroundColor: theme.color.background,
               },
             }}
           >

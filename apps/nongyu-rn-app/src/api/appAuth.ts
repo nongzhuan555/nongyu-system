@@ -82,8 +82,12 @@ export async function appAuthLogin(profile: JiaowuProfilePayload): Promise<AppAu
 
 /**
  * GET /api/app/auth/me —— 校验当前 App Token
+ * @param skipAuthInvalidHandler 冷启动验票时自行处理，避免与 bootstrap 竞态
  */
-export async function appAuthMe(token: string): Promise<Record<string, unknown>> {
+export async function appAuthMe(
+  token: string,
+  options?: { skipAuthInvalidHandler?: boolean },
+): Promise<Record<string, unknown>> {
   const response = await fetch(`${API_BASE_URL}/api/app/auth/me`, {
     method: "GET",
     headers: {
@@ -91,7 +95,9 @@ export async function appAuthMe(token: string): Promise<Record<string, unknown>>
       "Content-Type": "application/json",
     },
   });
-  return parseApiResponse<Record<string, unknown>>(response);
+  return parseApiResponse<Record<string, unknown>>(response, {
+    skipAuthInvalidHandler: options?.skipAuthInvalidHandler,
+  });
 }
 
 /**

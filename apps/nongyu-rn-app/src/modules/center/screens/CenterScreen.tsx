@@ -1,3 +1,4 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
@@ -8,7 +9,7 @@ import type { PostType } from "@/modules/center/api/posts";
 import { PostFeedList } from "@/modules/center/components/PostFeedList";
 import { SegmentGlassTabs } from "@/modules/center/components/SegmentGlassTabs";
 import { HOME_FIELD_CHROME } from "@/modules/home/constants/fieldChrome";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 const SEGMENTS = [
   { key: "announcement" as const, label: "公告" },
@@ -22,6 +23,8 @@ const KEYWORD_DEBOUNCE_MS = 350;
  * 广场主界面：搜索 + 玻璃分段 + 列表；反馈/大院发帖入口
  */
 export function CenterScreen() {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [postType, setPostType] = useState<PostType>("announcement");
@@ -50,7 +53,7 @@ export function CenterScreen() {
               onPress={() => router.push(`/center/compose?postType=${postType}` as Href)}
               style={styles.composeBtn}
             >
-              <Ionicons name="create-outline" size={22} color={lightTokens.color.brand} />
+              <Ionicons name="create-outline" size={22} color={t.color.brand} />
             </Pressable>
           ) : (
             <View style={styles.composePlaceholder} />
@@ -59,12 +62,12 @@ export function CenterScreen() {
 
         <View style={styles.searchWrap}>
           <View style={styles.searchBox}>
-            <Ionicons name="search" size={16} color={lightTokens.color.textSecondary} />
+            <Ionicons name="search" size={16} color={t.color.textSecondary} />
             <TextInput
               value={keywordDraft}
               onChangeText={setKeywordDraft}
               placeholder="搜索标题或正文"
-              placeholderTextColor={lightTokens.color.textSecondary}
+              placeholderTextColor={t.color.textSecondary}
               returnKeyType="search"
               maxLength={64}
               style={styles.searchInput}
@@ -80,7 +83,7 @@ export function CenterScreen() {
                   setKeyword("");
                 }}
               >
-                <Ionicons name="close-circle" size={16} color={lightTokens.color.textSecondary} />
+                <Ionicons name="close-circle" size={16} color={t.color.textSecondary} />
               </Pressable>
             ) : null}
           </View>
@@ -111,10 +114,10 @@ export function CenterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   root: {
     flex: 1,
-    backgroundColor: lightTokens.color.background,
+    backgroundColor: t.color.background,
   },
   body: {
     flex: 1,
@@ -123,14 +126,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: lightTokens.space.lg,
-    paddingTop: lightTokens.space.sm,
-    paddingBottom: lightTokens.space.sm,
+    paddingHorizontal: t.space.lg,
+    paddingTop: t.space.sm,
+    paddingBottom: t.space.sm,
   },
   title: {
-    fontSize: lightTokens.fontSize.xl,
+    fontSize: t.fontSize.xl,
     fontWeight: "700",
-    color: lightTokens.color.text,
+    color: t.color.text,
     letterSpacing: 0.6,
   },
   composeBtn: {
@@ -138,16 +141,16 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: lightTokens.radius.full,
-    backgroundColor: lightTokens.color.brandMuted,
+    borderRadius: t.radius.full,
+    backgroundColor: t.color.brandMuted,
   },
   composePlaceholder: {
     width: 40,
     height: 40,
   },
   searchWrap: {
-    paddingHorizontal: lightTokens.space.md,
-    marginBottom: lightTokens.space.sm,
+    paddingHorizontal: t.space.md,
+    marginBottom: t.space.sm,
   },
   searchBox: {
     height: HOME_FIELD_CHROME.height,
@@ -163,11 +166,11 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: lightTokens.color.text,
+    color: t.color.text,
     paddingVertical: 0,
   },
   segmentsWrap: {
-    paddingHorizontal: lightTokens.space.md,
-    marginBottom: lightTokens.space.md,
+    paddingHorizontal: t.space.md,
+    marginBottom: t.space.md,
   },
-});
+}));

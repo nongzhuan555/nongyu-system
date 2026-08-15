@@ -3,7 +3,7 @@ import {
   type BrandPalette,
   DANGER_COLOR,
   brandPalettes,
-  darkSurfacePalette,
+  darkPalette,
 } from "./palettes";
 
 /**
@@ -39,27 +39,13 @@ function withShortAliases(
 }
 
 /**
- * 按品牌色与明暗解析完整 color token
- * 暗色：保留 brand 的 primary/secondary/tertiary，表面层用 darkSurfacePalette
+ * 按品牌色与明暗解析完整 color token。
+ * 暗色：忽略绿/粉品牌，固定使用 `darkPalette`（旧版 darkExtras 表面 + 统一冷灰蓝强调色）。
  */
 export function resolveColorPalette(brand: BrandName, isDark: boolean): ThemeColorTokens {
-  const palette = brandPalettes[brand];
-
-  if (!isDark) {
-    return withShortAliases(palette);
+  if (isDark) {
+    return withShortAliases(darkPalette, { outlineVariant: darkPalette.outlineVariant });
   }
 
-  return withShortAliases(
-    {
-      ...palette,
-      background: darkSurfacePalette.background,
-      surface: darkSurfacePalette.surface,
-      surfaceVariant: darkSurfacePalette.surfaceVariant,
-      onBackground: darkSurfacePalette.onBackground,
-      onSurface: darkSurfacePalette.onSurface,
-      onSurfaceVariant: darkSurfacePalette.onSurfaceVariant,
-      outline: darkSurfacePalette.outline,
-    },
-    { outlineVariant: darkSurfacePalette.outlineVariant },
-  );
+  return withShortAliases(brandPalettes[brand]);
 }

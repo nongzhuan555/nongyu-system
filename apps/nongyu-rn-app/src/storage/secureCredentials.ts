@@ -5,6 +5,7 @@ import * as SecureStore from "expo-secure-store";
  */
 const STUDENT_ID_KEY = "jiaowu_student_id";
 const PASSWORD_KEY = "jiaowu_password";
+const SECOND_PASSWORD_KEY = "second_password";
 
 export type JiaowuCredentials = {
   studentId: string;
@@ -46,8 +47,39 @@ export async function clearCredentials(): Promise<void> {
     await Promise.all([
       SecureStore.deleteItemAsync(STUDENT_ID_KEY),
       SecureStore.deleteItemAsync(PASSWORD_KEY),
+      SecureStore.deleteItemAsync(SECOND_PASSWORD_KEY),
     ]);
   } catch (error) {
     console.warn("清除教务凭据失败:", error);
+  }
+}
+
+/**
+ * 读取二课密码（学号仍用教务 studentId）
+ */
+export async function loadSecondPassword(): Promise<string | null> {
+  try {
+    return (await SecureStore.getItemAsync(SECOND_PASSWORD_KEY)) ?? null;
+  } catch (error) {
+    console.warn("读取二课密码失败:", error);
+    return null;
+  }
+}
+
+/**
+ * 写入二课密码
+ */
+export async function saveSecondPassword(password: string): Promise<void> {
+  await SecureStore.setItemAsync(SECOND_PASSWORD_KEY, password);
+}
+
+/**
+ * 清除二课密码
+ */
+export async function clearSecondPassword(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(SECOND_PASSWORD_KEY);
+  } catch (error) {
+    console.warn("清除二课密码失败:", error);
   }
 }

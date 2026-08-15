@@ -1,5 +1,7 @@
 import { API_BASE_URL } from "@/config/env";
 import { useSessionStore } from "@/stores/session";
+import { AppApiError, isAuthInvalidCode } from "@/api/appApiError";
+import { handleAuthInvalid } from "@/api/handleAuthInvalid";
 
 type ApiEnvelope<T> = {
   code: number;
@@ -8,12 +10,13 @@ type ApiEnvelope<T> = {
 };
 
 /**
- * 解析统一响应包；业务失败抛出带 message 的 Error
+ * 解析统一响应包；业务失败抛出带 code 的 AppApiError
  * @param allowNullData 登出等接口成功时 data 可为 null
+ * @param skipAuthInvalidHandler 冷启动 /me 等自行处理失效时跳过全局清会话
  */
 export async function parseApiResponse<T>(
   response: Response,
-  options?: { allowNullData?: boolean },
+  options?: { allowNullData?: boolean; skipAuthInvalidHandler?: boolean },
 ): Promise<T> {
   let json: ApiEnvelope<T> | null = null;
   try {
@@ -23,7 +26,12 @@ export async function parseApiResponse<T>(
   }
 
   if (!response.ok || json.code !== 0) {
-    throw new Error(json.message || `农屿接口失败 (HTTP ${response.status}, code=${json.code})`);
+    const code = json.code;
+    const message = json.message || `农屿接口失败 (HTTP ${response.status}, code=${code})`;
+    if (!options?.skipAuthInvalidHandler && isAuthInvalidCode(code)) {
+      void handleAuthInvalid(code);
+    }
+    throw new AppApiError(code, message, response.status);
   }
 
   if (json.data == null && !options?.allowNullData) {

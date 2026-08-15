@@ -1,4 +1,5 @@
-import { useMemo, useRef } from "react";
+import { useThemeTokens } from "@/theme/ThemeProvider";
+import { useCallback, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -9,10 +10,11 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
-import { FlashList } from "@shopify/flash-list";
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useRouter, type Href } from "expo-router";
 import { useSharedValue } from "react-native-reanimated";
+import { ScrollToTopFab, useScrollToTopVisibility } from "@/components/ui/ScrollToTopFab";
 import {
   fetchMyPosts,
   fetchPosts,
@@ -23,7 +25,7 @@ import { FadeScrollItem } from "@/modules/center/components/FadeScrollItem";
 import { PostCard } from "@/modules/center/components/PostCard";
 import { PostListSkeleton } from "@/modules/center/components/PostListSkeleton";
 import { tabBarContentPadding } from "@/modules/center/utils/format";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type PostFeedListProps = {
   mode: "plaza" | "mine";
@@ -45,11 +47,15 @@ export function PostFeedList({
   withTabBarPadding,
   emptyText = "暂无内容",
 }: PostFeedListProps) {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const router = useRouter();
   const listHostRef = useRef<View>(null);
+  const listRef = useRef<FlashListRef<PostListItem>>(null);
   const scrollY = useSharedValue(0);
   const listPageY = useSharedValue(0);
   const isScrolling = useSharedValue(0);
+  const { visible: showScrollTop, onScroll: onScrollTopVisibility } = useScrollToTopVisibility();
   const trimmedKeyword = keyword?.trim() || undefined;
 
   const queryKey =
@@ -80,7 +86,7 @@ export function PostFeedList({
 
   const items = useMemo(() => query.data?.pages.flatMap((p) => p.list) ?? [], [query.data?.pages]);
 
-  const bottomPad = withTabBarPadding ? tabBarContentPadding() : lightTokens.space.xl;
+  const bottomPad = withTabBarPadding ? tabBarContentPadding() : t.space.xl;
 
   const syncListPageY = () => {
     listHostRef.current?.measureInWindow((_x, y) => {
@@ -90,7 +96,13 @@ export function PostFeedList({
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     scrollY.value = e.nativeEvent.contentOffset.y;
+    onScrollTopVisibility(e);
   };
+
+  const onPressScrollTop = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    void query.refetch();
+  }, [query.refetch]);
 
   const onScrollBegin = () => {
     isScrolling.value = 1;
@@ -136,11 +148,12 @@ export function PostFeedList({
   return (
     <View ref={listHostRef} style={styles.listRoot} onLayout={syncListPageY} collapsable={false}>
       <FlashList
+        ref={listRef}
         data={items}
         keyExtractor={(item: PostListItem) => String(item.id)}
         contentContainerStyle={{
-          paddingHorizontal: lightTokens.space.md,
-          paddingTop: lightTokens.space.xs,
+          paddingHorizontal: t.space.md,
+          paddingTop: t.space.xs,
           paddingBottom: bottomPad,
         }}
         ItemSeparatorComponent={() => <View style={styles.sep} />}
@@ -163,7 +176,7 @@ export function PostFeedList({
           <RefreshControl
             refreshing={query.isRefetching && !query.isFetchingNextPage}
             onRefresh={() => void query.refetch()}
-            tintColor={lightTokens.color.brand}
+            tintColor={t.color.brand}
           />
         }
         onEndReached={() => {
@@ -180,67 +193,72 @@ export function PostFeedList({
         ListFooterComponent={
           query.isFetchingNextPage ? (
             <View style={styles.footer}>
-              <ActivityIndicator color={lightTokens.color.brand} />
+              <ActivityIndicator color={t.color.brand} />
             </View>
           ) : !query.hasNextPage && items.length > 0 ? (
             <Text style={styles.endHint}>没有更多了</Text>
           ) : null
         }
       />
+      <ScrollToTopFab
+        visible={showScrollTop}
+        onPress={onPressScrollTop}
+        placement={withTabBarPadding ? "tab" : "stack"}
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   listRoot: {
     flex: 1,
   },
   stateWrap: {
     flex: 1,
-    paddingHorizontal: lightTokens.space.md,
+    paddingHorizontal: t.space.md,
   },
   centered: {
     justifyContent: "center",
     alignItems: "center",
-    gap: lightTokens.space.md,
+    gap: t.space.md,
   },
   sep: {
-    height: lightTokens.space.sm,
+    height: t.space.sm,
   },
   errorText: {
-    fontSize: lightTokens.fontSize.sm,
-    color: lightTokens.color.danger,
+    fontSize: t.fontSize.sm,
+    color: t.color.danger,
     textAlign: "center",
-    paddingHorizontal: lightTokens.space.lg,
+    paddingHorizontal: t.space.lg,
   },
   retryBtn: {
-    paddingHorizontal: lightTokens.space.lg,
+    paddingHorizontal: t.space.lg,
     paddingVertical: 10,
-    borderRadius: lightTokens.radius.full,
-    backgroundColor: lightTokens.color.brand,
+    borderRadius: t.radius.full,
+    backgroundColor: t.color.brand,
   },
   retryText: {
-    color: lightTokens.color.onBrand,
+    color: t.color.onBrand,
     fontWeight: "600",
-    fontSize: lightTokens.fontSize.sm,
+    fontSize: t.fontSize.sm,
   },
   empty: {
     paddingTop: 64,
     alignItems: "center",
   },
   emptyText: {
-    fontSize: lightTokens.fontSize.sm,
-    color: lightTokens.color.textSecondary,
+    fontSize: t.fontSize.sm,
+    color: t.color.textSecondary,
     letterSpacing: 0.2,
   },
   footer: {
-    paddingVertical: lightTokens.space.md,
+    paddingVertical: t.space.md,
   },
   endHint: {
     textAlign: "center",
-    paddingVertical: lightTokens.space.lg,
+    paddingVertical: t.space.lg,
     fontSize: 12,
-    color: lightTokens.color.textSecondary,
+    color: t.color.textSecondary,
     opacity: 0.7,
   },
-});
+}));

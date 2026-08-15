@@ -1,13 +1,8 @@
-import { ModulePlaceholder } from "@/components/navigation/ModulePlaceholder";
+import { AnnouncementListScreen } from "@/modules/home/screens/AnnouncementListScreen";
 
 /**
- * 通知占位页
+ * 首页公告栏 → 公告列表
  */
-export default function HomeNoticePlaceholder() {
-  return (
-    <ModulePlaceholder
-      title="通知"
-      subtitle="通知列表与详情骨架占位。接口就绪后在此接入真实通知数据。"
-    />
-  );
+export default function HomeNoticeRoute() {
+  return <AnnouncementListScreen />;
 }

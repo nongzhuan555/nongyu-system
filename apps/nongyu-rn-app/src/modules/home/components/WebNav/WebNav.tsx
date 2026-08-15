@@ -1,19 +1,12 @@
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { toast } from "@/components/ui/toast";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { openAppUrl } from "@/lib/openAppUrl";
 import { HomeSurface } from "@/modules/home/components/HomeSurface";
 import { HOME_FIELD_CHROME } from "@/modules/home/constants/fieldChrome";
 import { WEB_NAV_ITEMS, type WebNavItem } from "@/modules/home/constants/webNav";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 import { WEB_NAV_ITEM_HEIGHT, WebNavItemView } from "./WebNavItemView";
 
 /** 栅格：行间距与上下内边距 */
@@ -29,10 +22,12 @@ const PANEL_HEIGHT = WEB_NAV_ITEM_HEIGHT * 3 + ROW_GAP * 2 + PANEL_PAD_V * 2;
 const SEARCH_REMOTE_MOCK_MS = 300;
 
 /**
- * 常用网站：搜索 + 栅格；外开系统浏览器
+ * 常用网站：搜索 + 栅格；按「网页跳转」偏好打开
  * 面板固定 3 行可视高度，超出纵向滚动
  */
 export function WebNav() {
+  const styles = useStyles();
+  const t = useThemeTokens();
   const [keyword, setKeyword] = useState("");
   /** 真正渲染的列表（受模拟远程延迟约束，勿与 keyword 同步即时计算） */
   const [displayItems, setDisplayItems] = useState<WebNavItem[]>(WEB_NAV_ITEMS);
@@ -60,26 +55,14 @@ export function WebNav() {
     return () => clearTimeout(timer);
   }, [keyword]);
 
-  const openUrl = async (url: string, title: string) => {
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (!supported) {
-        toast.error("无法打开链接", { description: title });
-        return;
-      }
-      await Linking.openURL(url);
-    } catch {
-      toast.error("打开失败", { description: title });
-    }
+  const openUrl = (url: string, title: string) => {
+    void openAppUrl(url, { label: title });
   };
 
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <View style={styles.titleDot} />
-          <Text style={styles.title}>常用网站</Text>
-        </View>
+        <Text style={styles.title}>常用网站</Text>
         <Text style={styles.sub}>{searching ? "搜索中…" : `${displayItems.length} 个站点`}</Text>
       </View>
 
@@ -93,23 +76,19 @@ export function WebNav() {
           <Ionicons
             name="search"
             size={15}
-            color={lightTokens.color.textSecondary}
+            color={t.color.textSecondary}
             style={styles.searchIcon}
           />
           <TextInput
             value={keyword}
             onChangeText={setKeyword}
-            placeholder="搜索网站"
-            placeholderTextColor={lightTokens.color.textSecondary}
+            placeholder="输入关键词搜索网站"
+            placeholderTextColor={t.color.textSecondary}
             style={styles.searchInput}
             returnKeyType="search"
           />
           {searching ? (
-            <ActivityIndicator
-              size="small"
-              color={lightTokens.color.brand}
-              style={styles.searchSpinner}
-            />
+            <ActivityIndicator size="small" color={t.color.brand} style={styles.searchSpinner} />
           ) : null}
         </View>
       </View>
@@ -118,7 +97,7 @@ export function WebNav() {
         <View style={[styles.panel, { height: PANEL_HEIGHT }]}>
           {searching ? (
             <View style={styles.loadingBox} accessibilityLabel="正在搜索网站">
-              <ActivityIndicator size="small" color={lightTokens.color.brand} />
+              <ActivityIndicator size="small" color={t.color.brand} />
               <Text style={styles.loadingText}>正在检索…</Text>
             </View>
           ) : (
@@ -142,11 +121,11 @@ export function WebNav() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   wrap: {
     width: "100%",
-    paddingHorizontal: lightTokens.space.md,
-    paddingBottom: lightTokens.space.md,
+    paddingHorizontal: t.space.md,
+    paddingBottom: t.space.md,
   },
   header: {
     flexDirection: "row",
@@ -154,28 +133,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 10,
   },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  titleDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: lightTokens.color.brand,
-  },
   title: {
     fontSize: 16,
     fontWeight: "700",
     letterSpacing: 0.3,
-    color: lightTokens.color.text,
+    color: t.color.text,
   },
   sub: {
     fontSize: 11,
     fontWeight: "500",
     letterSpacing: 0.2,
-    color: lightTokens.color.textSecondary,
+    color: t.color.textSecondary,
   },
   searchGlass: {
     marginBottom: 10,
@@ -203,7 +171,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 13,
-    color: lightTokens.color.text,
+    color: t.color.text,
     paddingVertical: 0,
     backgroundColor: "transparent",
   },
@@ -222,7 +190,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     fontWeight: "500",
-    color: lightTokens.color.textSecondary,
+    color: t.color.textSecondary,
   },
   grid: {
     flexDirection: "row",
@@ -231,4 +199,4 @@ const styles = StyleSheet.create({
     paddingVertical: PANEL_PAD_V,
     rowGap: ROW_GAP,
   },
-});
+}));

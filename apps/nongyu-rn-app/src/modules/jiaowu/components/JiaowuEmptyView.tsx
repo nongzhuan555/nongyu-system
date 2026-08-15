@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type JiaowuEmptyViewProps = {
   text?: string;
@@ -9,6 +9,7 @@ type JiaowuEmptyViewProps = {
  * 教务空态
  */
 export function JiaowuEmptyView({ text = "暂无数据" }: JiaowuEmptyViewProps) {
+  const styles = useStyles();
   return (
     <View style={styles.wrap}>
       <Text style={styles.text}>{text}</Text>
@@ -16,15 +17,15 @@ export function JiaowuEmptyView({ text = "暂无数据" }: JiaowuEmptyViewProps)
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   wrap: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: lightTokens.space.xl,
+    paddingVertical: t.space.xl,
   },
   text: {
-    fontSize: lightTokens.fontSize.md,
-    color: lightTokens.color.textSecondary,
+    fontSize: t.fontSize.md,
+    color: t.color.textSecondary,
   },
-});
+}));

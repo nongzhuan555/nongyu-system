@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { lightTokens } from "@/theme/tokens";
+import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type JiaowuErrorViewProps = {
   message?: string;
@@ -13,6 +13,7 @@ export function JiaowuErrorView({
   message = "加载失败，请检查网络后重试",
   onRetry,
 }: JiaowuErrorViewProps) {
+  const styles = useStyles();
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>出错了</Text>
@@ -30,38 +31,38 @@ export function JiaowuErrorView({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   wrap: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: lightTokens.space.xl,
-    gap: lightTokens.space.sm,
+    paddingVertical: t.space.xl,
+    gap: t.space.sm,
   },
   title: {
-    fontSize: lightTokens.fontSize.lg,
+    fontSize: t.fontSize.lg,
     fontWeight: "700",
-    color: lightTokens.color.text,
+    color: t.color.text,
   },
   message: {
-    fontSize: lightTokens.fontSize.md,
-    color: lightTokens.color.textSecondary,
+    fontSize: t.fontSize.md,
+    color: t.color.textSecondary,
     textAlign: "center",
     lineHeight: 22,
   },
   btn: {
-    marginTop: lightTokens.space.sm,
-    backgroundColor: lightTokens.color.brand,
-    paddingHorizontal: lightTokens.space.lg,
-    paddingVertical: lightTokens.space.sm + 2,
-    borderRadius: lightTokens.radius.md,
+    marginTop: t.space.sm,
+    backgroundColor: t.color.brand,
+    paddingHorizontal: t.space.lg,
+    paddingVertical: t.space.sm + 2,
+    borderRadius: t.radius.md,
   },
   pressed: {
     opacity: 0.8,
   },
   btnText: {
-    color: lightTokens.color.onBrand,
+    color: t.color.onBrand,
     fontWeight: "600",
-    fontSize: lightTokens.fontSize.md,
+    fontSize: t.fontSize.md,
   },
-});
+}));

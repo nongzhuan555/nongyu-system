@@ -2,15 +2,27 @@ import { QueryClient } from "@tanstack/react-query";
 import { getPersonalInfo } from "nongyu-tool-jiaowu";
 import { toast } from "@/components/ui/toast";
 import { appAuthLogin, appAuthLogout } from "@/api/appAuth";
+import { clearAgentConfig } from "@/storage/agentConfig";
 import { clearCredentials, saveCredentials } from "@/storage/secureCredentials";
-import { clearSessionSnapshot, saveSessionSnapshot } from "@/storage/mmkv";
-import { useSessionStore, type SessionProfile } from "@/stores/session";
+import { clearSessionSnapshot, clearAiTipMuted, saveSessionSnapshot } from "@/storage/mmkv";
+import { trackClick, shutdownForLogout } from "@/modules/telemetry";
+import { loadCourses } from "@/modules/course/data/courseRepository";
+import { clearLocalCourses } from "@/modules/course/data/courseLocalStore";
+import { clearLocalCourseExt } from "@/modules/course/data/courseExtRepository";
+import { clearPersistedCourseBackground } from "@/modules/course/data/courseBackground";
+import { useCourseUiStore } from "@/modules/course/store/courseUiStore";
+import { useSessionStore } from "@/stores/session";
+import { personalInfoToSessionProfile } from "@/modules/jiaowu/auth/personalInfoMap";
+import { invalidateNongyuAgent } from "@/agent/agent";
+import { clearAgentChatSessions } from "@/agent/session";
 import {
   bridgeJiaowuLogin,
   bridgeSetLoginData,
   clearJiaowuToolSession,
   persistCurrentAspCookie,
 } from "./jiaowuSession";
+import { clearSecondToolSession } from "@/modules/second/auth/secondSession";
+import { refreshSecondAuthFlag } from "@/modules/second/hooks/useSecondAuth";
 
 export type PerformJiaowuLoginInput = {
   studentId: string;
@@ -60,17 +72,7 @@ export async function performJiaowuLogin(
   }
 
   const info = personal.result;
-  const profile: SessionProfile = {
-    studentId: info.studentId || trimmedId,
-    name: info.name || "",
-    college: info.college,
-    major: info.major,
-    grade: info.grade,
-    className: info.className,
-    gender: info.gender,
-    campus: info.campus,
-    hometown: info.homeAddress,
-  };
+  const profile = personalInfoToSessionProfile(info, trimmedId);
 
   if (!profile.name) {
     return {
@@ -113,17 +115,37 @@ export async function performJiaowuLogin(
 
   if (queryClient) {
     await queryClient.invalidateQueries({ queryKey: ["jiaowu"] });
+    // 预热课表 Query：有本地则只读本地，无本地才打教务并落盘
+    void queryClient.prefetchQuery({
+      queryKey: ["jiaowu", "course", profile.studentId],
+      staleTime: Number.POSITIVE_INFINITY,
+      queryFn: async () => {
+        const res = await loadCourses(profile.studentId);
+        if (!res.success) {
+          throw new Error(res.message || "课表获取失败");
+        }
+        return res.courses;
+      },
+    });
   }
 
   return { ok: true, nodeOk };
 }
 
 /**
- * 登出：清凭据、Cookie、会话与教务 Query 缓存
+ * 登出：清凭据、Cookie、会话与教务 Query 缓存。
+ * 用户可见清单见 `logoutClearSummary.ts`，改清理项时请同步更新。
  */
 export async function performJiaowuLogout(queryClient?: QueryClient): Promise<void> {
   const token = useSessionStore.getState().token;
+  const studentId = useSessionStore.getState().profile?.studentId;
   if (token) {
+    try {
+      trackClick("logout");
+      await shutdownForLogout();
+    } catch {
+      // 埋点失败不得挡住登出
+    }
     try {
       await appAuthLogout(token);
     } catch {
@@ -131,11 +153,27 @@ export async function performJiaowuLogout(queryClient?: QueryClient): Promise<vo
     }
   }
 
+  if (studentId) {
+    clearLocalCourses(studentId);
+    clearLocalCourseExt(studentId);
+    clearAgentChatSessions(studentId);
+  }
+
+  await clearPersistedCourseBackground();
+  useCourseUiStore.getState().setBackgroundUri(null);
+
   await clearCredentials();
+  await clearAgentConfig();
+  invalidateNongyuAgent();
   clearJiaowuToolSession();
+  clearSecondToolSession();
+  refreshSecondAuthFlag();
   clearSessionSnapshot();
+  clearAiTipMuted();
   useSessionStore.getState().clearSession();
   if (queryClient) {
     queryClient.removeQueries({ queryKey: ["jiaowu"] });
+    queryClient.removeQueries({ queryKey: ["second"] });
+    queryClient.removeQueries({ queryKey: ["course-ext"] });
   }
 }

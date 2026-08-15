@@ -1,41 +1,13 @@
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
-import { type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { toast } from "@/components/ui/toast";
 import { HomeSurface } from "@/modules/home/components/HomeSurface";
 import { SOCIAL_COPY } from "@/modules/home/constants/social";
-import { lightTokens } from "@/theme/tokens";
-
-type CopyRow = {
-  key: string;
-  title: string;
-  value: string;
-  copyLabel: string;
-  /** 行首品牌图标（微信用 Ionicons，QQ 用 FontAwesome 企鹅） */
-  renderIcon: () => ReactNode;
-};
+import { createThemedStyles } from "@/theme/createThemedStyles";
+import { useThemeTokens } from "@/theme/ThemeProvider";
 
 const ICON_SIZE = 17;
-const ICON_COLOR = lightTokens.color.brand;
-
-const ROWS: CopyRow[] = [
-  {
-    key: "wechat",
-    title: `公众号 · ${SOCIAL_COPY.wechatName}`,
-    value: SOCIAL_COPY.wechatName,
-    copyLabel: "公众号",
-    renderIcon: () => <Ionicons name="logo-wechat" size={ICON_SIZE} color={ICON_COLOR} />,
-  },
-  {
-    key: "qq",
-    title: `QQ 群 · ${SOCIAL_COPY.qqGroup}`,
-    value: SOCIAL_COPY.qqGroup,
-    copyLabel: "QQ群号",
-    // FontAwesome Brands 的 qq = 经典企鹅标（Ionicons 无此字形）
-    renderIcon: () => <FontAwesome name="qq" size={ICON_SIZE} color={ICON_COLOR} />,
-  },
-];
 
 type SocialCopyCardProps = {
   /**
@@ -49,14 +21,35 @@ type SocialCopyCardProps = {
  * 公众号 / QQ 复制卡片
  */
 export function SocialCopyCard({ opacity = 1 }: SocialCopyCardProps) {
+  const styles = useStyles();
+  const t = useThemeTokens();
+  const brand = t.color.brand;
+
   const copyText = async (value: string, copyLabel: string) => {
     await Clipboard.setStringAsync(value);
     toast.success(`${copyLabel}已复制`);
   };
 
+  const rows = [
+    {
+      key: "wechat",
+      title: `公众号 · ${SOCIAL_COPY.wechatName}`,
+      value: SOCIAL_COPY.wechatName,
+      copyLabel: "公众号",
+      icon: <Ionicons name="logo-wechat" size={ICON_SIZE} color={brand} />,
+    },
+    {
+      key: "qq",
+      title: `QQ 群 · ${SOCIAL_COPY.qqGroup}`,
+      value: SOCIAL_COPY.qqGroup,
+      copyLabel: "QQ群号",
+      icon: <FontAwesome name="qq" size={ICON_SIZE} color={brand} />,
+    },
+  ];
+
   return (
     <HomeSurface style={[styles.card, { opacity }]}>
-      {ROWS.map((row, index) => (
+      {rows.map((row, index) => (
         <Pressable
           key={row.key}
           accessibilityRole="button"
@@ -68,7 +61,7 @@ export function SocialCopyCard({ opacity = 1 }: SocialCopyCardProps) {
           ]}
           onPress={() => copyText(row.value, row.copyLabel)}
         >
-          <View style={styles.iconBox}>{row.renderIcon()}</View>
+          <View style={styles.iconBox}>{row.icon}</View>
           <Text style={styles.label} numberOfLines={1}>
             {row.title}
           </Text>
@@ -81,10 +74,10 @@ export function SocialCopyCard({ opacity = 1 }: SocialCopyCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((t) => ({
   card: {
-    marginHorizontal: lightTokens.space.md,
-    marginBottom: lightTokens.space.sm,
+    marginHorizontal: t.space.md,
+    marginBottom: t.space.sm,
   },
   row: {
     flexDirection: "row",
@@ -95,7 +88,7 @@ const styles = StyleSheet.create({
   },
   rowBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(10, 124, 89, 0.1)",
+    borderTopColor: t.color.border,
   },
   pressed: {
     opacity: 0.72,
@@ -106,23 +99,23 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: lightTokens.color.brandMuted,
+    backgroundColor: t.color.brandMuted,
   },
   label: {
     flex: 1,
     fontSize: 13,
     fontWeight: "500",
-    color: lightTokens.color.text,
+    color: t.color.text,
   },
   hintPill: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: lightTokens.color.brandMuted,
+    backgroundColor: t.color.brandMuted,
   },
   hint: {
     fontSize: 11,
     fontWeight: "600",
-    color: lightTokens.color.brand,
+    color: t.color.brand,
   },
-});
+}));
