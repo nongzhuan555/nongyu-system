@@ -1,19 +1,23 @@
+import { ConfigProvider } from "antd";
+import zhCN from "antd/locale/zh_CN";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
+import { App } from "./App";
 import "./index.css";
+import { antdTheme } from "./theme/antdTheme";
 
-const App = () => (
-  <div className="p-8">
-    <h1 className="text-3xl font-bold">Nongyu Web Admin</h1>
-    <p className="mt-4">Welcome to the management system.</p>
-  </div>
-);
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("找不到根节点 #root");
+}
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ConfigProvider locale={zhCN} theme={antdTheme}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ConfigProvider>
   </React.StrictMode>,
 );

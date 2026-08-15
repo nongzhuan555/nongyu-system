@@ -1,3 +1,51 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f8fafc;
+  color: #1e293b;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.dashboard-grid .react-grid-item {
+  transition: none;
+}
+
+.dashboard-grid .react-grid-item.react-grid-placeholder {
+  background: rgb(16 185 129 / 0.18);
+  border-radius: 1.5rem;
+  opacity: 1;
+}
+
+.dashboard-grid .dashboard-drag-handle {
+  touch-action: none;
+  user-select: none;
+}
+
+.dashboard-grid .react-resizable-handle {
+  width: 18px;
+  height: 18px;
+}
+
+.dashboard-grid .react-resizable-handle-se {
+  right: 8px;
+  bottom: 8px;
+}
