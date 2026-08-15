@@ -90,7 +90,6 @@ declare const toast: {
 | `JiaowuLoginForm.tsx`   | error / success 登录结果                   |
 | `performJiaowuLogin.ts` | info Token 未签发                          |
 | `useJiaowuQuery.ts`     | error 刷新失败                             |
-| `JiaowuHomeScreen.tsx`  | success 退出登录                           |
 | `ComposeScreen.tsx`     | success / error 发布                       |
 | `PostDetailScreen.tsx`  | success / error 删除                       |
 | `MineScreen.tsx`        | error / info / success（关于、分享、退出） |

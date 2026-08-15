@@ -44,3 +44,8 @@ scripts/ops/
 .codegraph/
 .codegraph-*/
 
+# Track 本地 SQLite / 编译产物
+apps/nongyu-go-track-server/data/
+apps/nongyu-go-track-server/dist/
+
+
