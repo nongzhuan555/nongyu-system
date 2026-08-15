@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../../middlewares/common.js";
-import { requireAdminAuth } from "../../middlewares/auth.js";
+import { requireProvisionedAdminAuth } from "../../middlewares/auth.js";
 import { ok } from "../../lib/response.js";
 import {
   getOverview,
@@ -14,7 +14,7 @@ export const adminDashboardRouter = Router();
 
 adminDashboardRouter.get(
   "/overview",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (_req, res) => {
     ok(res, await getOverview());
   }),
@@ -22,7 +22,7 @@ adminDashboardRouter.get(
 
 adminDashboardRouter.get(
   "/user-growth",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const query = z
       .object({
@@ -35,7 +35,7 @@ adminDashboardRouter.get(
 
 adminDashboardRouter.get(
   "/user-distribution",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (_req, res) => {
     ok(res, await getUserDistribution());
   }),
@@ -43,7 +43,7 @@ adminDashboardRouter.get(
 
 adminDashboardRouter.get(
   "/settings-distribution",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (_req, res) => {
     ok(res, await getSettingsDistribution());
   }),

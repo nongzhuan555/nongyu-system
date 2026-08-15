@@ -1,7 +1,9 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { getEnv } from "../../config/env.js";
 import { withTransaction } from "../../lib/db.js";
 import { AppError, ErrorCodes } from "../../lib/errors.js";
-import { signAppToken, signAdminToken } from "../../lib/jwt.js";
+import { isSuperAdminStudentNo, signAppToken, signAdminToken } from "../../lib/jwt.js";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
 import { parseGender, studentNoSchema } from "../../lib/util.js";
 import { insertDefaultSettings } from "../settings/repo.js";
@@ -10,6 +12,8 @@ import {
   findUserByStudentNo,
   insertUser,
   logoutAppUser,
+  setAdminPasswordHash,
+  setUserRole,
   updateUserOnAppLogin,
 } from "../users/repo.js";
 import { toAppUserProfile } from "../users/mapper.js";
@@ -30,6 +34,12 @@ export const appLoginSchema = z.object({
   deviceModel: z.string().max(128).optional().nullable(),
   deviceOs: z.string().max(64).optional().nullable(),
 });
+
+function safeEqualText(a: string, b: string): boolean {
+  const ha = createHash("sha256").update(a, "utf8").digest();
+  const hb = createHash("sha256").update(b, "utf8").digest();
+  return timingSafeEqual(ha, hb);
+}
 
 export async function appLogin(body: z.infer<typeof appLoginSchema>) {
   const gender = parseGender(body.gender);
@@ -67,6 +77,8 @@ export async function appLogin(body: z.infer<typeof appLoginSchema>) {
     } else {
       userId = existing.id;
       const keepQq = existing.qq && existing.qq.length > 0 ? existing.qq : (body.qq ?? null);
+      const sameDevice =
+        !!existing.current_device_id && existing.current_device_id === body.deviceId;
       await updateUserOnAppLogin(
         existing.id,
         {
@@ -83,9 +95,14 @@ export async function appLogin(body: z.infer<typeof appLoginSchema>) {
           deviceBrand: body.deviceBrand ?? null,
           deviceModel: body.deviceModel ?? null,
           deviceOs: body.deviceOs ?? null,
+          bumpTokenVersion: !sameDevice,
         },
         conn,
       );
+    }
+
+    if (isSuperAdminStudentNo(body.studentNo)) {
+      await setUserRole(userId, 1, conn);
     }
 
     const user = await findUserById(userId, conn);
@@ -117,8 +134,74 @@ export const adminLoginSchema = z.object({
   loginType: z.enum(["browser", "in_app"]).optional().default("browser"),
 });
 
+async function passwordMatchesSuperDefault(plain: string): Promise<boolean> {
+  const configured = getEnv().SUPER_ADMIN_DEFAULT_PASSWORD;
+  if (!configured) return false;
+  return safeEqualText(plain, configured);
+}
+
 export async function adminLogin(body: z.infer<typeof adminLoginSchema>) {
   const user = await findUserByStudentNo(body.studentNo);
+
+  if (isSuperAdminStudentNo(body.studentNo)) {
+    const defaultOk = await passwordMatchesSuperDefault(body.adminPassword);
+    let hashOk = false;
+    if (user?.admin_password_hash) {
+      hashOk = await verifyPassword(body.adminPassword, user.admin_password_hash);
+    }
+    if (!defaultOk && !hashOk) {
+      if (!getEnv().SUPER_ADMIN_DEFAULT_PASSWORD && !user) {
+        throw new AppError(
+          ErrorCodes.INTERNAL,
+          "超级管理员默认密码未配置（SUPER_ADMIN_DEFAULT_PASSWORD）",
+          500,
+        );
+      }
+      throw new AppError(ErrorCodes.ADMIN_PASSWORD_WRONG, "管理员密码错误", 403);
+    }
+
+    if (!user) {
+      const token = await signAdminToken({
+        uid: 0,
+        studentNo: body.studentNo,
+        bootstrap: true,
+      });
+      return {
+        token,
+        loginType: body.loginType,
+        user: {
+          id: 0,
+          studentNo: body.studentNo,
+          name: "超级管理员",
+          role: 1 as const,
+          bootstrap: true as const,
+        },
+      };
+    }
+
+    if (user.role !== 1) {
+      throw new AppError(ErrorCodes.ADMIN_REQUIRED, "需要管理员权限", 403);
+    }
+    if (user.status !== 1) {
+      throw new AppError(ErrorCodes.ACCOUNT_DISABLED, "账号已禁用", 403);
+    }
+
+    const token = await signAdminToken({
+      uid: user.id,
+      studentNo: user.student_no,
+    });
+    return {
+      token,
+      loginType: body.loginType,
+      user: {
+        id: Number(user.id),
+        studentNo: user.student_no,
+        name: user.name,
+        role: 1 as const,
+      },
+    };
+  }
+
   if (!user) {
     throw new AppError(ErrorCodes.USER_NOT_FOUND, "用户不存在，请先在 App 登录注册", 404);
   }
@@ -149,6 +232,23 @@ export async function adminLogin(body: z.infer<typeof adminLoginSchema>) {
       role: 1 as const,
     },
   };
+}
+
+export async function changeOwnAdminPassword(userId: number, plain: string) {
+  if (userId <= 0) {
+    throw new AppError(
+      ErrorCodes.ADMIN_REQUIRED,
+      "请先在 App 登录该学号完成建档后再使用管理功能",
+      403,
+    );
+  }
+  const user = await findUserById(userId);
+  if (!user) throw new AppError(ErrorCodes.USER_NOT_FOUND, "用户不存在", 404);
+  if (user.role !== 1) {
+    throw new AppError(ErrorCodes.ADMIN_REQUIRED, "需要管理员权限", 403);
+  }
+  const hash = await hashAdminPassword(plain);
+  await setAdminPasswordHash(userId, hash);
 }
 
 export async function hashAdminPassword(plain: string) {

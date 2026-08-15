@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify, type JWTPayload } from "jose";
+import { SignJWT, jwtVerify, errors as JoseErrors, type JWTPayload } from "jose";
 import { getEnv } from "../config/env.js";
 import { AppError, ErrorCodes } from "./errors.js";
 
@@ -15,6 +15,7 @@ export type AdminTokenClaims = {
   studentNo: string;
   role: 1;
   typ: "admin";
+  bootstrap?: boolean;
 };
 
 function secretKey() {
@@ -28,6 +29,14 @@ function parseDurationToSeconds(ttl: string): number {
   const unit = m[2];
   const mult = unit === "s" ? 1 : unit === "m" ? 60 : unit === "h" ? 3600 : 86400;
   return n * mult;
+}
+
+export function getSuperAdminStudentNo(): string {
+  return getEnv().SUPER_ADMIN_STUDENT_NO;
+}
+
+export function isSuperAdminStudentNo(studentNo: string): boolean {
+  return studentNo === getSuperAdminStudentNo();
 }
 
 export async function signAppToken(claims: Omit<AppTokenClaims, "typ">): Promise<string> {
@@ -46,26 +55,28 @@ export async function signAppToken(claims: Omit<AppTokenClaims, "typ">): Promise
 }
 
 export async function signAdminToken(
-  claims: Omit<AdminTokenClaims, "typ" | "role">,
+  claims: Omit<AdminTokenClaims, "typ" | "role"> & { bootstrap?: boolean },
 ): Promise<string> {
-  const env = getEnv();
-  return new SignJWT({
+  const payload: Record<string, unknown> = {
     uid: claims.uid,
     studentNo: claims.studentNo,
     role: 1,
     typ: "admin",
-  })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(`${parseDurationToSeconds(env.JWT_ADMIN_TTL)}s`)
-    .sign(secretKey());
+  };
+  if (claims.bootstrap) {
+    payload.bootstrap = true;
+  }
+  return new SignJWT(payload).setProtectedHeader({ alg: "HS256" }).setIssuedAt().sign(secretKey());
 }
 
 async function verifyRaw(token: string): Promise<JWTPayload> {
   try {
     const { payload } = await jwtVerify(token, secretKey());
     return payload;
-  } catch {
+  } catch (err) {
+    if (err instanceof JoseErrors.JWTExpired) {
+      throw new AppError(ErrorCodes.TOKEN_EXPIRED, "登录已过期，请重新登录", 401);
+    }
     throw new AppError(ErrorCodes.TOKEN_INVALID, "Token 无效或已失效", 401);
   }
 }
@@ -90,8 +101,17 @@ export async function verifyAdminToken(token: string): Promise<AdminTokenClaims>
   if (payload.typ !== "admin" || Number(payload.role) !== 1) {
     throw new AppError(ErrorCodes.TOKEN_INVALID, "Token 类型错误", 401);
   }
-  const uid = Number(payload.uid);
   const studentNo = String(payload.studentNo ?? "");
+  const bootstrap = payload.bootstrap === true;
+  const uid = Number(payload.uid);
+
+  if (bootstrap) {
+    if (!isSuperAdminStudentNo(studentNo) || uid !== 0) {
+      throw new AppError(ErrorCodes.TOKEN_INVALID, "Token 载荷不完整", 401);
+    }
+    return { uid: 0, studentNo, role: 1, typ: "admin", bootstrap: true };
+  }
+
   if (!uid || !studentNo) {
     throw new AppError(ErrorCodes.TOKEN_INVALID, "Token 载荷不完整", 401);
   }

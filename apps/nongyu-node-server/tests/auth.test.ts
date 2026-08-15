@@ -52,13 +52,22 @@ describe("auth.app", () => {
       .get("/api/app/auth/me")
       .set("Authorization", `Bearer ${first.token}`)
       .expect(401);
-    expect(kicked.body.code).toBe(40102);
+    expect(kicked.body.code).toBe(40104);
 
     const me2 = await api()
       .get("/api/app/auth/me")
       .set("Authorization", `Bearer ${second.token}`)
       .expect(200);
     expect(me2.body.code).toBe(0);
+  });
+
+  it("same device re-login keeps previous token valid", async () => {
+    const first = await registerAppUser({ studentNo: "202366666", deviceId: "same-dev" });
+    const second = await registerAppUser({ studentNo: "202366666", deviceId: "same-dev" });
+    expect(second.isNewUser).toBe(false);
+
+    await api().get("/api/app/auth/me").set("Authorization", `Bearer ${first.token}`).expect(200);
+    await api().get("/api/app/auth/me").set("Authorization", `Bearer ${second.token}`).expect(200);
   });
 
   it("logout invalidates token", async () => {
@@ -68,7 +77,30 @@ describe("auth.app", () => {
       .get("/api/app/auth/me")
       .set("Authorization", `Bearer ${token}`)
       .expect(401);
-    expect(res.body.code).toBe(40102);
+    expect(res.body.code).toBe(40104);
+  });
+
+  it("expired app token returns 40103", async () => {
+    const { SignJWT } = await import("jose");
+    const { getEnv } = await import("../src/config/env.js");
+    const secret = new TextEncoder().encode(getEnv().JWT_SECRET);
+    const token = await new SignJWT({
+      uid: 1,
+      studentNo: "202300001",
+      tokenVersion: 1,
+      typ: "app",
+      deviceId: "d",
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt(Math.floor(Date.now() / 1000) - 120)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - 60)
+      .sign(secret);
+
+    const res = await api()
+      .get("/api/app/auth/me")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(401);
+    expect(res.body.code).toBe(40103);
   });
 
   it("disabled account cannot login", async () => {
@@ -117,5 +149,72 @@ describe("auth.admin", () => {
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
     expect(me.body.data.role).toBe(1);
+  });
+
+  it("super admin can login without users row", async () => {
+    const { getEnv } = await import("../src/config/env.js");
+    const { getPool } = await import("../src/lib/db.js");
+    const studentNo = getEnv().SUPER_ADMIN_STUDENT_NO;
+    const password = getEnv().SUPER_ADMIN_DEFAULT_PASSWORD;
+
+    const [beforeRows] = await getPool().query(
+      `SELECT COUNT(*) AS c FROM users WHERE student_no = ?`,
+      [studentNo],
+    );
+    expect(Number((beforeRows as { c: number }[])[0].c)).toBe(0);
+
+    const res = await api()
+      .post("/api/admin/auth/login")
+      .send({ studentNo, adminPassword: password })
+      .expect(200);
+    expect(res.body.data.user.bootstrap).toBe(true);
+    expect(res.body.data.user.id).toBe(0);
+
+    const [afterRows] = await getPool().query(
+      `SELECT COUNT(*) AS c FROM users WHERE student_no = ?`,
+      [studentNo],
+    );
+    expect(Number((afterRows as { c: number }[])[0].c)).toBe(0);
+
+    await api()
+      .get("/api/admin/auth/me")
+      .set("Authorization", `Bearer ${res.body.data.token}`)
+      .expect(200);
+
+    const denied = await api()
+      .get("/api/admin/users")
+      .set("Authorization", `Bearer ${res.body.data.token}`)
+      .expect(403);
+    expect(denied.body.code).toBe(40302);
+  });
+
+  it("super admin app login forces role=1 and dual password works", async () => {
+    const { getEnv } = await import("../src/config/env.js");
+    const studentNo = getEnv().SUPER_ADMIN_STUDENT_NO;
+    const defaultPassword = getEnv().SUPER_ADMIN_DEFAULT_PASSWORD;
+
+    await registerAppUser({ studentNo, name: "超管" });
+    const { getPool } = await import("../src/lib/db.js");
+    const [rows] = await getPool().query(`SELECT role FROM users WHERE student_no = ?`, [
+      studentNo,
+    ]);
+    expect(Number((rows as { role: number }[])[0].role)).toBe(1);
+
+    const loginRes = await api()
+      .post("/api/admin/auth/login")
+      .send({ studentNo, adminPassword: defaultPassword })
+      .expect(200);
+    expect(loginRes.body.data.user.bootstrap).toBeUndefined();
+    expect(loginRes.body.data.user.id).toBeGreaterThan(0);
+
+    const token = loginRes.body.data.token as string;
+    await api()
+      .put("/api/admin/auth/password")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ adminPassword: "CustomAdmin9" })
+      .expect(200);
+
+    await adminLogin(studentNo, "CustomAdmin9");
+    await adminLogin(studentNo, defaultPassword);
   });
 });

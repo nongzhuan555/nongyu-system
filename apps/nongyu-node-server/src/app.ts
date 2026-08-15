@@ -8,9 +8,13 @@ import { asyncHandler } from "./middlewares/common.js";
 import { adminAuthRouter, appAuthRouter } from "./modules/auth/routes.js";
 import { adminUsersRouter, appUsersRouter } from "./modules/users/routes.js";
 import { appSettingsRouter } from "./modules/settings/routes.js";
+import { appCourseExtRouter } from "./modules/course-ext/routes.js";
+import { appCourseShareRouter } from "./modules/course-share/routes.js";
 import { adminPostsRouter, appMyPostsRouter, appPostsRouter } from "./modules/posts/routes.js";
 import { adminVersionsRouter, appVersionsRouter } from "./modules/versions/routes.js";
 import { adminDashboardRouter } from "./modules/dashboard/routes.js";
+import { adminTrackRouter } from "./modules/track/routes.js";
+import { internalUsersRouter } from "./modules/users/internalRoutes.js";
 
 export function createApp() {
   const env = getEnv();
@@ -42,6 +46,8 @@ export function createApp() {
   app.use("/api/app/users/me/posts", appMyPostsRouter);
   app.use("/api/app/users", appUsersRouter);
   app.use("/api/app/settings", appSettingsRouter);
+  app.use("/api/app/course-ext", appCourseExtRouter);
+  app.use("/api/app/course-share", appCourseShareRouter);
   app.use("/api/app/posts", appPostsRouter);
   app.use("/api/app/versions", appVersionsRouter);
 
@@ -50,6 +56,8 @@ export function createApp() {
   app.use("/api/admin/posts", adminPostsRouter);
   app.use("/api/admin/app-versions", adminVersionsRouter);
   app.use("/api/admin/dashboard", adminDashboardRouter);
+  app.use("/api/admin/track", adminTrackRouter);
+  app.use("/api/internal/users", internalUsersRouter);
 
   app.use(errorHandler);
   return app;

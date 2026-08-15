@@ -59,6 +59,79 @@ describe("posts.read", () => {
     expect(detail.body.data.uniqueReaderCount).toBe(2);
   });
 
+  it("keeps feedback and courtyard anonymous on app APIs; admin still sees author", async () => {
+    const author = await registerAppUser({
+      studentNo: "202366001",
+      name: "署名应仅管理端可见",
+      deviceId: "anon-a",
+    });
+    const peer = await registerAppUser({ studentNo: "202366002", deviceId: "anon-p" });
+
+    const feedback = await api()
+      .post("/api/app/posts")
+      .set("Authorization", `Bearer ${author.token}`)
+      .send({
+        postType: "feedback",
+        subtype: "suggestion",
+        title: "匿名反馈",
+        content: "内容",
+      })
+      .expect(200);
+    const courtyard = await api()
+      .post("/api/app/posts")
+      .set("Authorization", `Bearer ${author.token}`)
+      .send({
+        postType: "courtyard",
+        subtype: "life",
+        title: "匿名大院",
+        content: "内容",
+      })
+      .expect(200);
+
+    const feedbackId = feedback.body.data.id as number;
+    const courtyardId = courtyard.body.data.id as number;
+
+    const feedbackList = await api()
+      .get("/api/app/posts")
+      .query({ postType: "feedback" })
+      .set("Authorization", `Bearer ${peer.token}`)
+      .expect(200);
+    expect(feedbackList.body.data.list[0].authorDisplayName).toBeNull();
+
+    const courtyardList = await api()
+      .get("/api/app/posts")
+      .query({ postType: "courtyard" })
+      .set("Authorization", `Bearer ${peer.token}`)
+      .expect(200);
+    expect(courtyardList.body.data.list[0].authorDisplayName).toBeNull();
+    expect(courtyardList.body.data.list[0]).not.toHaveProperty("authorUserId");
+    expect(courtyardList.body.data.list[0]).not.toHaveProperty("authorName");
+    expect(courtyardList.body.data.list[0]).not.toHaveProperty("authorStudentNo");
+
+    const courtyardDetail = await api()
+      .get(`/api/app/posts/${courtyardId}`)
+      .set("Authorization", `Bearer ${peer.token}`)
+      .expect(200);
+    expect(courtyardDetail.body.data.authorDisplayName).toBeNull();
+    expect(courtyardDetail.body.data.isMine).toBe(false);
+
+    const ownDetail = await api()
+      .get(`/api/app/posts/${courtyardId}`)
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+    expect(ownDetail.body.data.authorDisplayName).toBeNull();
+    expect(ownDetail.body.data.isMine).toBe(true);
+
+    await promoteAdmin("202366001", "AdminPass1");
+    const adminToken = await adminLogin("202366001", "AdminPass1");
+    const adminDetail = await api()
+      .get(`/api/admin/posts/${feedbackId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+    expect(adminDetail.body.data.authorName).toBe("署名应仅管理端可见");
+    expect(adminDetail.body.data.authorStudentNo).toBe("202366001");
+  });
+
   it("searches posts by keyword on title/content with type/subtype filters", async () => {
     const user = await registerAppUser({ studentNo: "202311111", deviceId: "s1" });
 

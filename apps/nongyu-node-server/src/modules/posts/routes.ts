@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../../middlewares/common.js";
-import { requireAdminAuth, requireAppAuth } from "../../middlewares/auth.js";
+import { requireProvisionedAdminAuth, requireAppAuth } from "../../middlewares/auth.js";
 import { ok } from "../../lib/response.js";
 import { AppError, ErrorCodes } from "../../lib/errors.js";
 import { toIsoUtc, toIsoUtcRequired } from "../../lib/time.js";
@@ -32,12 +32,8 @@ function appListItem(
     title: row.title,
     contentPreview: previewText(row.content),
     publishedAt: toIsoUtcRequired(row.published_at),
-    authorDisplayName:
-      row.post_type === "feedback"
-        ? null
-        : row.post_type === "courtyard"
-          ? (row.author_name ?? null)
-          : null,
+    // 反馈墙 / 大院对用户彼此匿名；署名仅 Admin 接口返回
+    authorDisplayName: null,
   };
   if (opts?.withViews) {
     return { ...base, viewCount: row.view_count };
@@ -112,12 +108,7 @@ appPostsRouter.get(
       title: refreshed!.title,
       content: refreshed!.content,
       publishedAt: toIsoUtcRequired(refreshed!.published_at),
-      authorDisplayName:
-        refreshed!.post_type === "feedback"
-          ? null
-          : refreshed!.post_type === "courtyard"
-            ? (refreshed!.author_name ?? null)
-            : null,
+      authorDisplayName: null,
       isMine: Number(refreshed!.author_user_id) === req.appAuth!.uid,
     });
   }),
@@ -195,7 +186,7 @@ appMyPostsRouter.get(
 
 adminPostsRouter.get(
   "/",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const query = z
       .object({
@@ -246,7 +237,7 @@ adminPostsRouter.get(
 
 adminPostsRouter.get(
   "/:id",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const post = await findPostById(id);
@@ -272,7 +263,7 @@ adminPostsRouter.get(
 
 adminPostsRouter.post(
   "/",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const body = z
       .object({
@@ -297,7 +288,7 @@ adminPostsRouter.post(
 
 adminPostsRouter.patch(
   "/:id",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const post = await findPostById(id);
@@ -325,7 +316,7 @@ adminPostsRouter.patch(
 
 adminPostsRouter.delete(
   "/:id",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const post = await findPostById(id);

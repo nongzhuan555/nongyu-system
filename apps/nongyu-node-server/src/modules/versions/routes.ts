@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../../middlewares/common.js";
-import { requireAdminAuth } from "../../middlewares/auth.js";
+import { requireProvisionedAdminAuth } from "../../middlewares/auth.js";
 import { ok } from "../../lib/response.js";
 import { AppError, ErrorCodes } from "../../lib/errors.js";
 import { toIsoUtc, toIsoUtcRequired } from "../../lib/time.js";
@@ -69,7 +69,7 @@ function toAdminVersion(row: NonNullable<Awaited<ReturnType<typeof findVersionBy
 
 adminVersionsRouter.get(
   "/",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const query = z
       .object({
@@ -100,7 +100,7 @@ adminVersionsRouter.get(
 
 adminVersionsRouter.post(
   "/",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const body = z
       .object({
@@ -130,7 +130,7 @@ adminVersionsRouter.post(
 
 adminVersionsRouter.patch(
   "/:id",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const existing = await findVersionById(id);
@@ -155,7 +155,7 @@ adminVersionsRouter.patch(
 
 adminVersionsRouter.delete(
   "/:id",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const existing = await findVersionById(id);

@@ -113,9 +113,14 @@ export async function updateUserOnAppLogin(
     deviceBrand: string | null;
     deviceModel: string | null;
     deviceOs: string | null;
+    /** 换设备时为 true；同设备再登录为 false */
+    bumpTokenVersion: boolean;
   },
   conn: PoolConnection,
 ): Promise<void> {
+  const versionSql = input.bumpTokenVersion
+    ? "token_version = token_version + 1"
+    : "token_version = token_version";
   await conn.query(
     `UPDATE users SET
       name = ?, major = ?, college = ?, class_name = ?, grade = ?, gender = ?,
@@ -126,7 +131,7 @@ export async function updateUserOnAppLogin(
       last_login_at = UTC_TIMESTAMP(3),
       device_brand = ?, device_model = ?, device_os = ?,
       current_device_id = ?,
-      token_version = token_version + 1
+      ${versionSql}
     WHERE id = ?`,
     [
       input.name,
@@ -147,6 +152,11 @@ export async function updateUserOnAppLogin(
   );
 }
 
+export async function setUserRole(id: number, role: 0 | 1, conn?: PoolConnection): Promise<void> {
+  const db = conn ?? getPool();
+  await db.query(`UPDATE users SET role = ? WHERE id = ?`, [role, id]);
+}
+
 export async function logoutAppUser(id: number): Promise<void> {
   await getPool().query(
     `UPDATE users SET is_online = 0, token_version = token_version + 1 WHERE id = ?`,
@@ -156,6 +166,21 @@ export async function logoutAppUser(id: number): Promise<void> {
 
 export async function updateUserQq(id: number, qq: string | null): Promise<void> {
   await getPool().query(`UPDATE users SET qq = ? WHERE id = ?`, [qq, id]);
+}
+
+export async function updateUserPresence(
+  id: number,
+  isOnline: 0 | 1,
+  lastActiveAt: Date,
+): Promise<boolean> {
+  const user = await findUserById(id);
+  if (!user) return false;
+  await getPool().query(`UPDATE users SET is_online = ?, last_active_at = ? WHERE id = ?`, [
+    isOnline,
+    lastActiveAt,
+    id,
+  ]);
+  return true;
 }
 
 export async function listUsersAdmin(params: {

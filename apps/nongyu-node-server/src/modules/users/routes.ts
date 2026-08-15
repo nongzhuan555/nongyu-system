@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../../middlewares/common.js";
-import { requireAdminAuth, requireAppAuth } from "../../middlewares/auth.js";
+import { requireProvisionedAdminAuth, requireAppAuth } from "../../middlewares/auth.js";
 import { ok } from "../../lib/response.js";
 import { AppError, ErrorCodes } from "../../lib/errors.js";
 import { toIsoUtc, toIsoUtcRequired } from "../../lib/time.js";
@@ -26,7 +26,7 @@ appUsersRouter.get(
   requireAppAuth,
   asyncHandler(async (req, res) => {
     const user = await findUserById(req.appAuth!.uid);
-    if (!user) throw new AppError(ErrorCodes.TOKEN_INVALID, "Token 无效或已失效", 401);
+    if (!user) throw new AppError(ErrorCodes.TOKEN_REVOKED, "登录状态已失效，请重新登录", 401);
     ok(res, toAppUserProfile(user));
   }),
 );
@@ -46,7 +46,7 @@ appUsersRouter.patch(
 
 adminUsersRouter.get(
   "/",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const query = z
       .object({
@@ -88,7 +88,7 @@ adminUsersRouter.get(
 
 adminUsersRouter.get(
   "/:id",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const user = await findUserById(id);
@@ -111,7 +111,7 @@ adminUsersRouter.get(
 
 adminUsersRouter.patch(
   "/:id",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const body = z
@@ -136,7 +136,7 @@ adminUsersRouter.patch(
 
 adminUsersRouter.put(
   "/:id/admin-password",
-  requireAdminAuth,
+  requireProvisionedAdminAuth,
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const body = z.object({ adminPassword: z.string().min(1) }).parse(req.body);

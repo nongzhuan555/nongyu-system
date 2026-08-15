@@ -1,0 +1,40 @@
+import { getEnv } from "../../config/env.js";
+import { businessDayUtcRange } from "../../lib/time.js";
+import { mapCrashes, mapDims, mapOverview, mapTrend } from "./map.js";
+import { trackAdminGet } from "./trackClient.js";
+
+export function todayBusinessDate(): string {
+  return businessDayUtcRange(getEnv().BUSINESS_TZ).dateKey;
+}
+
+export async function getTrackOverview(date: string) {
+  const data = await trackAdminGet(`/v1/admin/overview?date=${encodeURIComponent(date)}`);
+  return mapOverview(data);
+}
+
+export async function getTrackDims(metric: string, date: string, limit: number) {
+  const query = new URLSearchParams({
+    metric,
+    date,
+    limit: String(limit),
+  });
+  const data = await trackAdminGet(`/v1/admin/metrics/dims?${query.toString()}`);
+  return mapDims(data);
+}
+
+export async function getTrackCrashes(from: string, to: string, page: number, pageSize: number) {
+  const query = new URLSearchParams({
+    from,
+    to,
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  const data = await trackAdminGet(`/v1/admin/crashes?${query.toString()}`);
+  return mapCrashes(data, page, pageSize);
+}
+
+export async function getTrackTrend(metric: string, from: string, to: string) {
+  const query = new URLSearchParams({ metric, from, to });
+  const data = await trackAdminGet(`/v1/admin/metrics/trend?${query.toString()}`);
+  return mapTrend(data);
+}
