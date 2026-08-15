@@ -20,6 +20,7 @@ import {
   // getKaikeInfo,
 } from "./core/jiaowu";
 import { setLoginData, jiaowuLogin } from "./core/login";
+import { attachJiaowuHttpLogger, getCookie } from "./core/utils";
 
 /**
  * 设置测试账号凭据
@@ -96,28 +97,53 @@ async function safeTest<T>(name: string, fn: () => Promise<T>) {
 }
 
 /**
+ * 开发调试：打印教务请求结算（密码已由调用方脱敏；Cookie 只打有无）
+ */
+function installDebugHttpLogger(): void {
+  attachJiaowuHttpLogger((event) => {
+    const responsePreview =
+      typeof event.responseBody === "string"
+        ? event.responseBody.slice(0, 400)
+        : event.responseBody;
+    console.log(`[HTTP] ${event.ok ? "OK" : "FAIL"} ${event.method} ${event.url}`, {
+      status: event.status ?? "-",
+      durationMs: event.durationMs,
+      cookie: event.hasCookie ? "present" : "absent",
+      error: event.errorMessage,
+      response: responsePreview,
+    });
+  });
+}
+
+/**
  * 测试执行主函数
  */
 async function runTests() {
   console.log("--- [农屿教务工具库] 开始自动化测试 ---");
-  // 先登录
-  // await jiaowuLogin();
-  // 无需鉴权的公共信息
-  // await safeTest('教务通知', getNoticeInfo);
-  // await safeTest('竞赛通知', getCompetitionInfo);
-  // await safeTest('教室课表', () => getClassroomCourseInfoByName('10-A104'));
-  // await safeTest('教师课表', () => getTeacherCourseInfoByName('吴德'));
-  // 需要鉴权的个人信息
-  // await safeTest('个人信息', getPersonalInfo);
-  // await safeTest('成绩信息', getScoreInfo);
-  // await safeTest('考试安排', getExamInfo);
-  // await safeTest('学业进度', getProgressInfo);
-  // await safeTest('排名信息', getRankInfo);
-  // await safeTest('课表信息', getCourseInfo);
-  // await safeTest('培养方案', getPlanInfo);
-  // 后续版本发布
-  // await safeTest('开课目录', getKaikeInfo); // 后续版本完善此函数,目标为可根据参数查询开课信息,用于查课查教师以及配合培养方案函数做课程推荐
-  // await safeTest('教师信息', getTeacherInfo); // 根据教师编码获取教师信息，已接通但暂无便捷获取教师编码的函数配合使用
+  installDebugHttpLogger();
+
+  const login = await jiaowuLogin();
+  const cookie = getCookie();
+  console.log("[登录]", {
+    success: login.success,
+    message: "message" in login ? login.message : undefined,
+    cookiePresent: Boolean(cookie),
+    cookiePrefix: cookie ? cookie.split("=")[0] : undefined,
+  });
+  if (!login.success) {
+    console.log("\n--- [农屿教务工具库] 登录失败，跳过鉴权接口 ---");
+    return;
+  }
+
+  await safeTest("个人信息", getPersonalInfo);
+  await safeTest("教务通知", getNoticeInfo);
+  // await safeTest("竞赛通知", getCompetitionInfo);
+  // await safeTest("成绩信息", getScoreInfo);
+  // await safeTest("考试安排", getExamInfo);
+  // await safeTest("学业进度", getProgressInfo);
+  // await safeTest("排名信息", getRankInfo);
+  // await safeTest("课表信息", getCourseInfo);
+  // await safeTest("培养方案", getPlanInfo);
 
   console.log("\n--- [农屿教务工具库] 测试流程结束 ---");
 }

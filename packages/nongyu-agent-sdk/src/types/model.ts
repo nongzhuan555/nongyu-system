@@ -74,6 +74,8 @@ export interface StreamDelta {
   toolCalls?: StreamToolCallDelta[];
   /** 结束原因 */
   finishReason?: string;
+  /** 流式末包 usage（需 stream_options.include_usage） */
+  usage?: ModelUsage;
 }
 
 // ===== 模型提供者接口 =====

@@ -2,16 +2,17 @@ import type { Message } from "../../types/message";
 import type { ContextManager, AgentContext, ContextConfig, TokenStats } from "../../types/context";
 import type { ModelUsage } from "../../types/model";
 import { TrimmingStrategy } from "./strategies/trimming";
-
-const DEFAULT_MAX_TOKENS = 8000;
-const DEFAULT_KEEP_LAST_N_TURNS = 6;
-const DEFAULT_COMPACT_THRESHOLD = 0.8;
+import {
+  DEFAULT_COMPACT_THRESHOLD,
+  DEFAULT_KEEP_LAST_N_TURNS,
+  DEFAULT_MAX_TOKENS,
+} from "./defaults";
 
 /**
  * 上下文管理器实现
  *
  * 负责管理 Agent 的对话上下文，包括消息存储、Token 统计和上下文压缩。
- * 默认使用裁剪策略（Trimming），保留最近 N 轮对话。
+ * 默认 hybrid：超阈值时由 prepareConversationWindow 做摘要+近轮保留。
  */
 export class ContextManagerImpl implements ContextManager {
   private systemContent: string;
@@ -31,7 +32,7 @@ export class ContextManagerImpl implements ContextManager {
 
     this.config = {
       maxTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
-      strategy: config.strategy ?? "trimming",
+      strategy: config.strategy ?? "hybrid",
       keepLastNTurns: config.keepLastNTurns ?? DEFAULT_KEEP_LAST_N_TURNS,
       compactThreshold: config.compactThreshold ?? DEFAULT_COMPACT_THRESHOLD,
       summaryModel: config.summaryModel,
@@ -87,17 +88,14 @@ export class ContextManagerImpl implements ContextManager {
   }
 
   async compact(): Promise<void> {
-    const _beforeTokens = this.stats.lastPromptTokens;
-
     switch (this.config.strategy) {
       case "trimming":
         await this.applyTrimming();
         break;
       case "summarization":
-        // Phase 5 实现
-        break;
       case "hybrid":
-        // Phase 5 实现
+        // 带 LLM 的 hybrid 走 prepareConversationWindow；此处仅裁近轮
+        await this.applyTrimming();
         break;
     }
 
@@ -138,3 +136,6 @@ export function createContextManager(
 
 export { TrimmingStrategy } from "./strategies/trimming";
 export { TokenStatsTracker } from "./token-stats";
+export { chatMessagesToModelMessages } from "./chatToModel";
+export { prepareConversationWindow } from "./prepareWindow";
+export type { ContextCompactPayload } from "../../types/context";

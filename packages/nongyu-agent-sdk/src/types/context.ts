@@ -29,16 +29,25 @@ export interface SessionMetadata {
 // ===== 上下文配置 =====
 
 export interface ContextConfig {
-  /** 最大 Token 数，默认 8000 */
-  maxTokens: number;
-  /** 上下文管理策略 */
-  strategy: "trimming" | "summarization" | "hybrid";
+  /** 最大 Token 数，默认 28000 */
+  maxTokens?: number;
+  /** 上下文管理策略，默认 hybrid */
+  strategy?: "trimming" | "summarization" | "hybrid";
   /** 保留最近 N 轮完整对话（裁剪时），默认 6 */
-  keepLastNTurns: number;
+  keepLastNTurns?: number;
   /** 当 Token 超过此比例时触发压缩，默认 0.8 */
-  compactThreshold: number;
-  /** 用于生成摘要的模型 */
+  compactThreshold?: number;
+  /** 用于生成摘要的模型；缺省则与对话模型相同 */
   summaryModel?: ModelProvider;
+}
+
+/** 一次 hybrid 压缩的结果（供事件 / 流式 chunk / 落盘） */
+export interface ContextCompactPayload {
+  ok: boolean;
+  beforeTokens: number;
+  afterTokens: number;
+  llmSummary?: string;
+  llmCompactedUntilId?: string;
 }
 
 // ===== Token 统计 =====

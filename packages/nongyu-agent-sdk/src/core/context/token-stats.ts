@@ -10,7 +10,7 @@ import type { ModelUsage } from "../../types/model";
 export class TokenStatsTracker {
   private stats: TokenStats;
 
-  constructor(limit: number = 8000) {
+  constructor(limit: number = 28000) {
     this.stats = {
       totalInput: 0,
       totalOutput: 0,

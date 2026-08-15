@@ -4,6 +4,7 @@ import type {
   GenerateResult,
   StreamDelta,
   ModelMessage,
+  ModelUsage,
 } from "../../types/model";
 import { request } from "../../shared/network";
 
@@ -119,6 +120,11 @@ export class OpenAIProvider implements ModelProvider {
             const json = JSON.parse(trimmed.slice(6));
             const delta = json.choices?.[0]?.delta;
             const finishReason = json.choices?.[0]?.finish_reason;
+            const usage = parseStreamUsage(json.usage);
+
+            if (usage) {
+              yield { usage, finishReason };
+            }
 
             if (delta) {
               yield {
@@ -152,6 +158,10 @@ export class OpenAIProvider implements ModelProvider {
       body.tool_choice = "auto";
     }
 
+    if (stream) {
+      body.stream_options = { include_usage: true };
+    }
+
     return body;
   }
 
@@ -183,4 +193,19 @@ function convertMessage(msg: ModelMessage): Record<string, unknown> {
   }
 
   return result;
+}
+
+function parseStreamUsage(raw: unknown): ModelUsage | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const usage = raw as {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+  if (typeof usage.prompt_tokens !== "number") return undefined;
+  return {
+    prompt_tokens: usage.prompt_tokens,
+    completion_tokens: usage.completion_tokens ?? 0,
+    total_tokens: usage.total_tokens ?? usage.prompt_tokens,
+  };
 }

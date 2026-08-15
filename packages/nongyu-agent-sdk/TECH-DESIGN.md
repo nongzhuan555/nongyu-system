@@ -433,6 +433,32 @@ const deleteCourseTool = tool({
 });
 ```
 
+### 4.6 工具内联渲染（Generative UI，Controlled 模式）
+
+工具可声明 `render`，让前端把工具结果用预注册组件内联渲染到对话中（如活动卡片、天气卡片）。这是「AI 生成 UI」的落地方式——LLM 选组件 + 填数据，前端按注册表渲染，模型不写任何 UI 代码。
+
+```ts
+const weatherQueryTool = tool({
+  name: "weather_query",
+  description: "查询天气，结果以卡片展示",
+  inputSchema: z.object({ city: z.string() }),
+  render: { component: "WeatherCard" }, // 仅声明字符串名，由各端 ToolUIRegistry 解析
+  async execute({ city }, ctx) {
+    return await fetchWeather(city, ctx.abortSignal);
+  },
+});
+```
+
+关键设计：
+
+- `render.component` 用字符串名而非组件实现，保持 SDK 平台无关（DOM/RN 各自注册）。
+- `Tool` 暴露 `renderComponent?: string`，`ToolRegistry.getRenderComponent(name)` 可查询。
+- 流式块 `tool:call`/`tool:result`/`tool:error` 携带 `callId`（取自模型 `ToolCall.id`）与 `renderComponent`，供前端按 `callId` 精确回填与渲染。
+- `ToolCallRecord` 扩展 `callId/status/error/renderComponent`，支持 加载/成功/失败 三态渲染。
+- 事件回流：卡片内交互转成语义用户消息交给 Agent 决策，不直接执行副作用（与 `needsApproval` 一致）。
+
+详见 `docs/nongyu-rn-app/tech/Agent生成UI渲染能力-技术方案.md`。
+
 ---
 
 ## 5. 上下文管理器
@@ -1121,7 +1147,8 @@ const agent = createAgent({
 ```
 packages/nongyu-agent-sdk/
 ├── src/
-│   ├── index.ts                    # 顶层导出入口
+│   ├── index.ts                    # 顶层导出入口（RN/Web 安全，不含 Node-only）
+│   ├── stdio.ts                    # Node-only 子入口：StdioChannel（依赖 readline）
 │   │
 │   ├── core/
 │   │   ├── agent/
@@ -1258,15 +1285,33 @@ export {
 
 ### 13.2 子路径导出
 
+主入口（`.`）**不得**导出依赖 Node 标准库的模块（如 `readline`），否则 React Native / Metro 打包会失败。
+
+`StdioChannel` 仅用于 Node CLI 调试，通过独立子路径导出：
+
 ```json
 {
   "exports": {
-    ".": "./dist/index.js",
-    "./react": "./dist/react/index.js",
-    "./channel": "./dist/core/channel/index.js",
-    "./observability": "./dist/observability/index.js"
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./stdio": {
+      "import": "./dist/stdio.js",
+      "types": "./dist/stdio.d.ts"
+    }
   }
 }
+```
+
+用法：
+
+```ts
+// RN / Web：只从主入口引入，避免拉入 Node-only 代码
+import { createAgent, useAgentChat } from "nongyu-agent-sdk";
+
+// Node CLI：显式从子路径引入
+import { StdioChannel } from "nongyu-agent-sdk/stdio";
 ```
 
 ---

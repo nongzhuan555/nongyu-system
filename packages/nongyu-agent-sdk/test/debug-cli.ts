@@ -16,7 +16,7 @@ import {
   type OutboundEnvelope,
 } from "../src/index";
 import { buildSystemPrompt } from "../src/core/prompt/buildSystemPrompt";
-import { StdioChannel } from "../src/core/channel/builtin/stdio";
+import { StdioChannel } from "../src/stdio";
 import { jiaowuTools } from "../src/core/tool/ExternalTools/jiaowu-tools";
 
 const systemPrompt = buildSystemPrompt({

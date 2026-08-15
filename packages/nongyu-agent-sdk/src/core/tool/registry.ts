@@ -59,4 +59,9 @@ export class ToolRegistry {
   getAll(): Tool[] {
     return Array.from(this.tools.values());
   }
+
+  /** 获取工具的前端渲染组件名（无声明返回 undefined） */
+  getRenderComponent(name: string): string | undefined {
+    return this.tools.get(name)?.renderComponent;
+  }
 }

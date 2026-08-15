@@ -73,6 +73,7 @@ export class AgentImpl implements Agent {
       this.tools,
       this.events,
       config.runConfig,
+      config.context,
     );
 
     // 监听状态变更事件，更新状态

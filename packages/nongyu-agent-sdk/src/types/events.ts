@@ -17,13 +17,34 @@ export type AgentEventMap = {
   "text:complete": { agentName: string; text: string };
 
   // 工具事件
-  "tool:call": { agentName: string; toolName: string; input: unknown };
-  "tool:result": { agentName: string; toolName: string; output: unknown; duration: number };
-  "tool:error": { agentName: string; toolName: string; error: Error };
+  "tool:call": {
+    agentName: string;
+    toolName: string;
+    input: unknown;
+    /** 工具调用唯一 id，来自模型 ToolCall.id；缺失时前端按 toolName 降级匹配 */
+    callId?: string;
+    /** 前端内联渲染组件名（来自 ToolDefinition.render.component） */
+    renderComponent?: string;
+  };
+  "tool:result": {
+    agentName: string;
+    toolName: string;
+    output: unknown;
+    duration: number;
+    callId?: string;
+  };
+  "tool:error": { agentName: string; toolName: string; error: Error; callId?: string };
   "tool:approval-required": { agentName: string; toolName: string; input: unknown };
 
   // 上下文事件
-  "context:compact": { agentName: string; beforeTokens: number; afterTokens: number };
+  "context:compact": {
+    agentName: string;
+    ok: boolean;
+    beforeTokens: number;
+    afterTokens: number;
+    llmSummary?: string;
+    llmCompactedUntilId?: string;
+  };
 
   // 终止事件
   "agent:complete": {

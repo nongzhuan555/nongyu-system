@@ -65,11 +65,21 @@ export interface StepContext {
 }
 
 // ===== 工具调用记录 =====
+export type ToolCallStatus = "executing" | "done" | "error";
+
 export interface ToolCallRecord {
+  /** 工具调用唯一 id，来自模型 ToolCall.id；缺失时按 toolName 降级匹配 */
+  callId?: string;
   toolName: string;
   input: unknown;
   output?: unknown;
   duration?: number;
+  /** 当前执行状态，用于前端三态渲染（骨架/数据/错误） */
+  status?: ToolCallStatus;
+  /** 错误信息（status === 'error' 时） */
+  error?: string;
+  /** 前端内联渲染组件名（透传自 ToolDefinition.render.component） */
+  renderComponent?: string;
 }
 
 // ===== Agent 状态 =====
@@ -97,6 +107,12 @@ export interface AgentState {
 export interface AgentInput {
   prompt: string;
   context?: AgentContext;
+  /** 本回合之前的模型消息（user/assistant/tool）；由调用方从 UI 历史映射 */
+  history?: Message[];
+  /** 已落盘的会话摘要 */
+  llmSummary?: string;
+  /** UI 消息 id：该条及之前已纳入摘要/丢弃，不再注入 */
+  llmCompactedUntilId?: string;
 }
 
 export interface AgentOutput {

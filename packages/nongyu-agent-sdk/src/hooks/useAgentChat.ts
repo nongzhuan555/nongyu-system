@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { chatMessagesToModelMessages } from "../core/context/chatToModel";
 import type { ToolCallRecord } from "../types/agent";
 import type { ChatMessage, UseAgentChatConfig, UseAgentChatReturn } from "./types";
 
@@ -10,6 +11,20 @@ function uid(prefix = "msg"): string {
 }
 
 /**
+ * 工具调用匹配：优先按 callId 精确匹配；callId 缺失时按 toolName + 未填充 output 降级匹配。
+ * 解决一条 assistant 消息内并发同名工具调用错位问题。
+ */
+function matchCall(
+  tc: ToolCallRecord,
+  callId: string | undefined,
+  toolName: string | undefined,
+): boolean {
+  if (callId != null && tc.callId != null) return tc.callId === callId;
+  // 降级：按 toolName 且 output 尚未填充
+  return tc.toolName === toolName && tc.output === undefined;
+}
+
+/**
  * 流式块内部类型（AgentStreamChunk 的子集）
  */
 interface StreamChunk {
@@ -17,6 +32,7 @@ interface StreamChunk {
   delta?: string;
   fullText?: string;
   toolName?: string;
+  callId?: string;
   input?: unknown;
   output?: unknown;
   duration?: number;
@@ -25,6 +41,12 @@ interface StreamChunk {
   totalSteps?: number;
   totalTokens?: number;
   error?: Error;
+  renderComponent?: string;
+  ok?: boolean;
+  beforeTokens?: number;
+  afterTokens?: number;
+  llmSummary?: string;
+  llmCompactedUntilId?: string;
 }
 
 /**
@@ -50,7 +72,17 @@ interface StreamChunk {
  * ```
  */
 export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
-  const { agent, initialMessages = [], onError, onToolCall, debug } = config;
+  const {
+    agent,
+    initialMessages = [],
+    onError,
+    onToolCall,
+    debug,
+    textUpdateThrottleMs = 0,
+    llmSummary,
+    llmCompactedUntilId,
+    onContextCompact,
+  } = config;
 
   const log = useCallback(
     (...args: unknown[]) => {
@@ -79,6 +111,46 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
   /** 是否正在生成中（用来在 effect 清理时判断是否需要 stop） */
   const runningRef = useRef(false);
 
+  // ---- 文本节流（流式渲染流畅性）----
+  /** 待 flush 的最新全文（节流期间累积） */
+  const pendingTextRef = useRef<string>("");
+  /** 节流定时器句柄 */
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** 立即清除定时器 */
+  const clearFlushTimer = useCallback(() => {
+    if (flushTimerRef.current != null) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+  }, []);
+
+  /** 把 pendingTextRef 的最新文本 flush 到对应消息 */
+  const flushText = useCallback((msgId: string) => {
+    const text = pendingTextRef.current;
+    setMessages((prev: ChatMessage[]) =>
+      prev.map((m: ChatMessage) =>
+        m.id === msgId ? { ...m, content: text, status: "streaming" as const } : m,
+      ),
+    );
+  }, []);
+
+  /** 安排一次节流 flush（throttleMs=0 时立即 flush） */
+  const scheduleFlush = useCallback(
+    (msgId: string) => {
+      if (textUpdateThrottleMs <= 0) {
+        flushText(msgId);
+        return;
+      }
+      if (flushTimerRef.current != null) return;
+      flushTimerRef.current = setTimeout(() => {
+        flushTimerRef.current = null;
+        flushText(msgId);
+      }, textUpdateThrottleMs);
+    },
+    [textUpdateThrottleMs, flushText],
+  );
+
   // ---- 核心：消费 agent.stream() ----
   const runStream = useCallback(
     async (prompt: string) => {
@@ -87,6 +159,7 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
       setIsLoading(true);
       setError(null);
       lastPromptRef.current = prompt;
+      pendingTextRef.current = "";
 
       // 添加用户消息
       const userMsg: ChatMessage = {
@@ -108,10 +181,21 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
       };
 
       streamingMsgIdRef.current = aiMsgId;
-      setMessages((prev: ChatMessage[]) => [...prev, userMsg, aiMsg]);
+      let historySnapshot: ChatMessage[] = [];
+      setMessages((prev: ChatMessage[]) => {
+        const last = prev[prev.length - 1];
+        historySnapshot =
+          last?.role === "user" && last.content === prompt ? prev.slice(0, -1) : prev;
+        return [...prev, userMsg, aiMsg];
+      });
 
       try {
-        const streamIterable = agent.stream({ prompt }) as AsyncIterable<StreamChunk>;
+        const streamIterable = agent.stream({
+          prompt,
+          history: chatMessagesToModelMessages(historySnapshot),
+          llmSummary,
+          llmCompactedUntilId,
+        }) as AsyncIterable<StreamChunk>;
         log("🚀 开始模型调用, prompt:", prompt.slice(0, 100) + (prompt.length > 100 ? "..." : ""));
 
         for await (const chunk of streamIterable) {
@@ -119,17 +203,10 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
 
           switch (chunk.type) {
             case "text:delta": {
-              setMessages((prev: ChatMessage[]) =>
-                prev.map((m: ChatMessage) =>
-                  m.id === aiMsgId
-                    ? {
-                        ...m,
-                        content: chunk.fullText ?? m.content + (chunk.delta ?? ""),
-                        status: "streaming" as const,
-                      }
-                    : m,
-                ),
-              );
+              // 节流：累积到 ref，按 throttleMs flush
+              pendingTextRef.current =
+                chunk.fullText ?? pendingTextRef.current + (chunk.delta ?? "");
+              scheduleFlush(aiMsgId);
               break;
             }
 
@@ -147,8 +224,11 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
                     toolCalls: [
                       ...existing,
                       {
+                        callId: chunk.callId,
                         toolName: chunk.toolName!,
                         input: chunk.input,
+                        status: "executing" as const,
+                        renderComponent: chunk.renderComponent,
                       } as ToolCallRecord,
                     ],
                     status: "streaming" as const,
@@ -163,11 +243,31 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
                 prev.map((m: ChatMessage) => {
                   if (m.id !== aiMsgId) return m;
                   const toolCalls = (m.toolCalls ?? []).map((tc: ToolCallRecord) =>
-                    tc.toolName === chunk.toolName && tc.output === undefined
+                    matchCall(tc, chunk.callId, chunk.toolName)
                       ? {
                           ...tc,
                           output: chunk.output,
                           duration: chunk.duration,
+                          status: "done" as const,
+                        }
+                      : tc,
+                  );
+                  return { ...m, toolCalls, status: "streaming" as const };
+                }),
+              );
+              break;
+            }
+
+            case "tool:error": {
+              setMessages((prev: ChatMessage[]) =>
+                prev.map((m: ChatMessage) => {
+                  if (m.id !== aiMsgId) return m;
+                  const toolCalls = (m.toolCalls ?? []).map((tc: ToolCallRecord) =>
+                    matchCall(tc, chunk.callId, chunk.toolName)
+                      ? {
+                          ...tc,
+                          status: "error" as const,
+                          error: chunk.error?.message ?? "工具执行失败",
                         }
                       : tc,
                   );
@@ -178,6 +278,9 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
             }
 
             case "agent:complete": {
+              // 强制 flush 剩余文本，避免节流导致末尾丢失
+              clearFlushTimer();
+              if (pendingTextRef.current) flushText(aiMsgId);
               setMessages((prev: ChatMessage[]) =>
                 prev.map((m: ChatMessage) =>
                   m.id === aiMsgId ? { ...m, status: "done" as const } : m,
@@ -187,6 +290,7 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
             }
 
             case "agent:error": {
+              clearFlushTimer();
               const err = chunk.error ?? new Error("Agent 未知错误");
               setMessages((prev: ChatMessage[]) =>
                 prev.map((m: ChatMessage) =>
@@ -195,6 +299,17 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
               );
               setError(err);
               onError?.(err);
+              break;
+            }
+
+            case "context:compact": {
+              onContextCompact?.({
+                ok: Boolean(chunk.ok),
+                beforeTokens: chunk.beforeTokens ?? 0,
+                afterTokens: chunk.afterTokens ?? 0,
+                llmSummary: chunk.llmSummary,
+                llmCompactedUntilId: chunk.llmCompactedUntilId,
+              });
               break;
             }
 
@@ -229,9 +344,23 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
         runningRef.current = false;
         setIsLoading(false);
         streamingMsgIdRef.current = null;
+        clearFlushTimer();
       }
     },
-    [agent, onError, onToolCall, log, logWarn],
+    [
+      agent,
+      onError,
+      onToolCall,
+      log,
+      logWarn,
+      textUpdateThrottleMs,
+      scheduleFlush,
+      clearFlushTimer,
+      flushText,
+      llmSummary,
+      llmCompactedUntilId,
+      onContextCompact,
+    ],
   );
 
   // ---- 输入变更（同时支持 DOM Event 和 RN string）----
@@ -303,8 +432,9 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
   useEffect(() => {
     return () => {
       runningRef.current = false;
+      clearFlushTimer();
     };
-  }, []);
+  }, [clearFlushTimer]);
 
   return {
     messages,

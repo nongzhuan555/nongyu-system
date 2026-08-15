@@ -5,6 +5,10 @@ export { buildSystemPrompt } from "./core/prompt";
 
 export { tool, ToolRegistry, zodToJsonSchema } from "./core/tool";
 
+// ===== 业务工具集 =====
+export { jiaowuTools } from "./core/tool/ExternalTools/jiaowu-tools";
+export { secondTools } from "./core/tool/ExternalTools/second-tools";
+
 export { EventBus } from "./core/events";
 
 export { AgentLoop } from "./core/agent/loop";
@@ -31,12 +35,13 @@ export {
   ContextManagerImpl,
   TrimmingStrategy,
   TokenStatsTracker,
+  chatMessagesToModelMessages,
+  prepareConversationWindow,
 } from "./core/context";
 
 // ===== 通道 =====
+// StdioChannel 依赖 Node readline，走子路径 `nongyu-agent-sdk/stdio`，勿并入主入口
 export { Gateway } from "./core/channel/gateway";
-export { StdioChannel } from "./core/channel/builtin/stdio";
-export type { StdioChannelOptions } from "./core/channel/builtin/stdio";
 
 // ===== 工具函数 =====
 export { generateId, delay, safeJsonParse, isAbortError } from "./shared/utils";
@@ -79,6 +84,7 @@ export type {
   AgentContext,
   ContextConfig,
   ContextManager,
+  ContextCompactPayload,
   TokenStats,
 
   // Events

@@ -5,12 +5,14 @@ import type {
   RunConfig,
   ToolApprovalConfig,
   ToolCallRecord,
+  ContextConfig,
 } from "../../../types/agent";
 import type { Message } from "../../../types/message";
 import type { ModelProvider, ToolSchema } from "../../../types/model";
 import type { Tool } from "../../../types/tool";
 import type { AgentStreamChunk } from "../../../types/stream";
 import { EventBus } from "../../events";
+import { prepareConversationWindow } from "../../context/prepareWindow";
 import { stopConditions, type StopCondition } from "./stop-conditions";
 
 /**
@@ -36,6 +38,7 @@ export class AgentLoop {
   private events: EventBus;
   private agentName: string;
   private systemPrompt: string;
+  private contextConfig: ContextConfig | undefined;
 
   // 运行时状态
   private abortController: AbortController | null = null;
@@ -50,6 +53,7 @@ export class AgentLoop {
     tools: Map<string, Tool>,
     events: EventBus,
     runConfig?: RunConfig,
+    contextConfig?: ContextConfig,
   ) {
     this.agentName = agentName;
     this.systemPrompt = systemPrompt;
@@ -57,6 +61,7 @@ export class AgentLoop {
     this.tools = tools;
     this.events = events;
     this._runConfig = runConfig;
+    this.contextConfig = contextConfig;
     this.toolApproval = runConfig?.toolApproval;
     this.maxSteps = runConfig?.maxSteps ?? 20;
     this.prepareStepHook = runConfig?.prepareStep ?? (async (ctx) => ctx);
@@ -85,7 +90,14 @@ export class AgentLoop {
     this.stopped = false;
     this.abortController = new AbortController();
 
-    const messages = this.buildInitialMessages(input.prompt);
+    const prepared = await this.prepareTurn(input);
+    if (prepared.compact) {
+      this.events.emit("context:compact", {
+        agentName: this.agentName,
+        ...prepared.compact,
+      });
+    }
+    const messages = [...prepared.messages];
     const toolCallRecords: ToolCallRecord[] = [];
     let totalTokens = 0;
     let stepNumber = 0;
@@ -113,22 +125,9 @@ export class AgentLoop {
           messages: ctx.messages,
         });
 
-        // 构建系统提示词
-        const systemMessages = [{ role: "system" as const, content: this.systemPrompt }];
-
-        // 调用 LLM
         const result = await model.generateText({
           model: model.model,
-          messages: [
-            ...systemMessages,
-            ...ctx.messages.map((m) => ({
-              role: m.role as "user" | "assistant" | "tool",
-              content: m.content,
-              tool_call_id: m.toolCallId,
-              name: m.name,
-              tool_calls: m.toolCalls,
-            })),
-          ],
+          messages: this.toModelMessages(ctx.messages),
           tools: this.toolSchemas,
           temperature: this._runConfig?.temperature,
         });
@@ -209,6 +208,8 @@ export class AgentLoop {
               agentName: this.agentName,
               toolName: tc.function.name,
               input,
+              callId: tc.id,
+              renderComponent: tool.renderComponent,
             });
 
             const startTime = Date.now();
@@ -221,6 +222,7 @@ export class AgentLoop {
                     toolName: tc.function.name,
                     output: { event, data },
                     duration: Date.now() - startTime,
+                    callId: tc.id,
                   });
                 },
                 agentName: this.agentName,
@@ -232,13 +234,17 @@ export class AgentLoop {
                 toolName: tc.function.name,
                 output,
                 duration,
+                callId: tc.id,
               });
 
               toolCallRecords.push({
+                callId: tc.id,
                 toolName: tc.function.name,
                 input,
                 output,
                 duration,
+                status: "done",
+                renderComponent: tool.renderComponent,
               });
 
               messages.push({
@@ -254,6 +260,17 @@ export class AgentLoop {
                 agentName: this.agentName,
                 toolName: tc.function.name,
                 error: error instanceof Error ? error : new Error(String(error)),
+                callId: tc.id,
+              });
+
+              toolCallRecords.push({
+                callId: tc.id,
+                toolName: tc.function.name,
+                input,
+                duration: Date.now() - startTime,
+                status: "error",
+                error: error instanceof Error ? error.message : String(error),
+                renderComponent: tool.renderComponent,
               });
 
               messages.push({
@@ -331,7 +348,15 @@ export class AgentLoop {
     this.stopped = false;
     this.abortController = new AbortController();
 
-    const messages = this.buildInitialMessages(input.prompt);
+    const prepared = await this.prepareTurn(input);
+    if (prepared.compact) {
+      this.events.emit("context:compact", {
+        agentName: this.agentName,
+        ...prepared.compact,
+      });
+      yield { type: "context:compact", ...prepared.compact };
+    }
+    const messages = [...prepared.messages];
     const toolCallRecords: ToolCallRecord[] = [];
     let totalTokens = 0;
     let stepNumber = 0;
@@ -356,24 +381,14 @@ export class AgentLoop {
 
         yield { type: "step:start", stepNumber };
 
-        const systemMessages = [{ role: "system" as const, content: this.systemPrompt }];
-
         // 流式调用
         let fullText = "";
         let toolCallsAccum: any[] = [];
+        let stepPromptTokens = 0;
 
         for await (const delta of model.streamText({
           model: model.model,
-          messages: [
-            ...systemMessages,
-            ...ctx.messages.map((m) => ({
-              role: m.role as "system" | "user" | "assistant" | "tool",
-              content: m.content,
-              tool_call_id: m.toolCallId,
-              name: m.name,
-              tool_calls: m.toolCalls,
-            })),
-          ],
+          messages: this.toModelMessages(ctx.messages),
           tools: this.toolSchemas,
           temperature: this._runConfig?.temperature,
         })) {
@@ -412,9 +427,17 @@ export class AgentLoop {
           if (delta.finishReason) {
             ctx.finishReason = delta.finishReason;
           }
+
+          if (delta.usage) {
+            stepPromptTokens = delta.usage.prompt_tokens;
+            totalTokens += delta.usage.total_tokens;
+          }
         }
 
-        totalTokens += 100; // 流式模式下 usage 可能不精确，估算
+        if (stepPromptTokens <= 0) {
+          const approx = this.estimateMessagesTokens(ctx.messages);
+          totalTokens += approx;
+        }
 
         if (toolCallsAccum.length > 0) {
           // 添加 assistant 消息（包含 tool_calls），确保下一轮上下文完整
@@ -464,8 +487,10 @@ export class AgentLoop {
             // 审批通过后，emit tool:call
             yield {
               type: "tool:call",
+              callId: tc.id,
               toolName: tc.function.name,
               input,
+              renderComponent: tool.renderComponent,
             };
 
             try {
@@ -479,16 +504,20 @@ export class AgentLoop {
               const duration = Date.now() - startTime;
               yield {
                 type: "tool:result",
+                callId: tc.id,
                 toolName: tc.function.name,
                 output,
                 duration,
               };
 
               toolCallRecords.push({
+                callId: tc.id,
                 toolName: tc.function.name,
                 input,
                 output,
                 duration,
+                status: "done",
+                renderComponent: tool.renderComponent,
               });
 
               messages.push({
@@ -500,10 +529,31 @@ export class AgentLoop {
                 timestamp: Date.now(),
               });
             } catch (error) {
+              const err = error instanceof Error ? error : new Error(String(error));
               yield {
-                type: "agent:error",
-                error: error instanceof Error ? error : new Error(String(error)),
+                type: "tool:error",
+                callId: tc.id,
+                toolName: tc.function.name,
+                error: err,
               };
+
+              toolCallRecords.push({
+                callId: tc.id,
+                toolName: tc.function.name,
+                input,
+                status: "error",
+                error: err.message,
+                renderComponent: tool.renderComponent,
+              });
+
+              messages.push({
+                id: this.generateId(),
+                role: "tool",
+                content: `工具执行出错: ${err.message}`,
+                toolCallId: tc.id,
+                name: tc.function.name,
+                timestamp: Date.now(),
+              });
             }
           }
 
@@ -538,15 +588,43 @@ export class AgentLoop {
     }
   }
 
-  private buildInitialMessages(prompt: string): Message[] {
+  /**
+   * 每回合第一次模型调用前：注入历史并按需 hybrid 压缩。
+   */
+  private async prepareTurn(input: AgentInput) {
+    return prepareConversationWindow({
+      history: input.history ?? [],
+      prompt: input.prompt,
+      llmSummary: input.llmSummary,
+      llmCompactedUntilId: input.llmCompactedUntilId,
+      model: this.model,
+      maxTokens: this.contextConfig?.maxTokens,
+      keepLastNTurns: this.contextConfig?.keepLastNTurns,
+      compactThreshold: this.contextConfig?.compactThreshold,
+      abortSignal: this.abortController?.signal,
+    });
+  }
+
+  /** 主 systemPrompt + 本回合窗口（窗口内可含摘要 system） */
+  private toModelMessages(turnMessages: Message[]) {
     return [
-      {
-        id: this.generateId(),
-        role: "user",
-        content: prompt,
-        timestamp: Date.now(),
-      },
+      { role: "system" as const, content: this.systemPrompt },
+      ...turnMessages.map((m) => ({
+        role: m.role as "system" | "user" | "assistant" | "tool",
+        content: m.content,
+        tool_call_id: m.toolCallId,
+        name: m.name,
+        tool_calls: m.toolCalls,
+      })),
     ];
+  }
+
+  private estimateMessagesTokens(messages: Message[]): number {
+    let chars = this.systemPrompt.length;
+    for (const m of messages) {
+      chars += m.content.length;
+    }
+    return Math.ceil(chars / 4);
   }
 
   /** 等待审批决策：优先使用 onApprove 回调，否则 fallback 到 defaultApproval */

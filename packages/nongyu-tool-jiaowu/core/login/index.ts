@@ -4,8 +4,11 @@
  */
 
 import {
+  get,
   post,
+  getCookie,
   setCookie,
+  decodeGbk,
   resolveJiaowuErrorMessage,
   type ExtendedAxiosRequestConfig,
 } from "../utils";
@@ -44,19 +47,36 @@ export const clearLoginData = () => {
 };
 
 /**
+ * 官网登录页（浏览器会先打开此页再提交 check.asp）
+ */
+const LOGIN_PAGE_URL = "https://jiaowu.sicau.edu.cn/web/web/web/index.asp";
+
+/**
  * 教务网登录校验接口地址
  */
 const LOGIN_ENDPOINT = "https://jiaowu.sicau.edu.cn/jiaoshi/bangong/check.asp";
 
 /**
- * 教务网登录所需的固定请求参数
+ * 登录表单中除学号密码外的固定域（sign / hour_key 从登录页解析）
  */
-const FIXED_PARAMS = {
+const FIXED_FORM_PARAMS = {
   lb: "S",
   submit: "",
-  sign: "e7a39b3bc356c6ccfd2736fb570cf0",
-  hour_key:
-    "819929348661855286025327972118498133047381331063899536918199759489377416899358818930337690620558866971528661981289306036893755569067971881335133",
+};
+
+/**
+ * 与浏览器登录页一致的公共头（不含 Cookie / Content-Type）
+ */
+const LOGIN_BROWSER_HEADERS: Record<string, string> = {
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+  "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+  "Upgrade-Insecure-Requests": "1",
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 Edg/151.0.0.0",
+  "sec-ch-ua": '"Not=A?Brand";v="99", "Microsoft Edge";v="151", "Chromium";v="151"',
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": '"Windows"',
 };
 
 /**
@@ -65,33 +85,168 @@ const FIXED_PARAMS = {
 const COOKIE_PREFIX = "ASPSESSIONID";
 
 /**
- * 构造一个随机的 24 位 Cookie 字符串
+ * 收集响应头里的 Set-Cookie 原始值（兼容 axios 普通对象与 AxiosHeaders）
  */
-function createJiaowuLoginCookie(length = 24): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let cookie = "";
-  for (let i = 0; i < length; i += 1) {
-    cookie += chars[Math.floor(Math.random() * chars.length)];
+function readSetCookieHeader(headers: AxiosResponse["headers"]): unknown[] {
+  if (!headers) return [];
+
+  const collected: unknown[] = [
+    (headers as Record<string, unknown>)["set-cookie"],
+    (headers as Record<string, unknown>)["Set-Cookie"],
+  ];
+
+  const getter = (headers as { get?: (name: string) => unknown }).get;
+  if (typeof getter === "function") {
+    collected.push(getter.call(headers, "set-cookie"));
+    collected.push(getter.call(headers, "Set-Cookie"));
   }
-  return cookie;
+
+  return collected;
 }
 
 /**
  * 从响应头中提取所有 ASPSESSIONID 类型的 Cookie
  */
-function extractCookiesFromHeaders(headers: any): string[] {
-  const setCookie = headers?.["set-cookie"] || headers?.["Set-Cookie"];
-  if (!setCookie) return [];
+function extractCookiesFromHeaders(headers: AxiosResponse["headers"]): string[] {
+  const pairs: string[] = [];
 
-  const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
-  return cookies.map((c) => c.split(";")[0]).filter((c) => c.includes(COOKIE_PREFIX));
+  for (const raw of readSetCookieHeader(headers)) {
+    if (raw == null || raw === "") continue;
+    const items = Array.isArray(raw) ? raw : [raw];
+    for (const item of items) {
+      const pair = String(item).split(";")[0]?.trim();
+      if (pair && pair.toUpperCase().includes(COOKIE_PREFIX)) {
+        pairs.push(pair);
+      }
+    }
+  }
+
+  return [...new Set(pairs)];
+}
+
+/**
+ * 从登录页 HTML 取出 hidden input 的 value（兼容 name/value 两种属性顺序）
+ */
+function extractHiddenInputValue(html: string, fieldName: string): string | null {
+  const nameFirst = new RegExp(
+    `name\\s*=\\s*["']${fieldName}["'][^>]*value\\s*=\\s*["']([^"']+)["']`,
+    "i",
+  );
+  const valueFirst = new RegExp(
+    `value\\s*=\\s*["']([^"']+)["'][^>]*name\\s*=\\s*["']${fieldName}["']`,
+    "i",
+  );
+  const fromNameFirst = html.match(nameFirst)?.[1]?.trim();
+  if (fromNameFirst) return fromNameFirst;
+  const fromValueFirst = html.match(valueFirst)?.[1]?.trim();
+  return fromValueFirst || null;
+}
+
+type JiaowuLoginPageFields = {
+  sign: string;
+  hourKey: string;
+};
+
+/**
+ * 将登录响应体规范为字符串（拦截器应已解码；此处兜底 ArrayBuffer）
+ */
+function toLoginResponseText(data: unknown): string {
+  if (typeof data === "string") return data;
+  if (data == null) return "";
+  if (typeof ArrayBuffer !== "undefined" && data instanceof ArrayBuffer) {
+    return decodeGbk(data);
+  }
+  if (ArrayBuffer.isView(data)) {
+    return decodeGbk(data as Uint8Array);
+  }
+  return String(data);
+}
+
+/**
+ * 解析 check.asp 失败页文案。
+ * 失败多为 alert + history.back；成功多为 302 或 200 + location 跳转，二者都不应判失败。
+ */
+function parseJiaowuLoginFailureMessage(html: string): string | null {
+  const text = html.replace(/^\uFEFF/, "").trim();
+  if (!text) return null;
+
+  const alertMatch = text.match(/alert\s*\(\s*["']([^"']+)["']\s*\)/i);
+  if (alertMatch?.[1]) {
+    return alertMatch[1].trim();
+  }
+
+  const isJsRedirect =
+    /(?:window\.)?location(?:\.href)?\s*=/i.test(text) || /window\.navigate\s*\(/i.test(text);
+  if (isJsRedirect) return null;
+
+  const looksLikeFailScript =
+    text.toLowerCase().startsWith("<script") && /history\.(back|go)/i.test(text);
+  if (looksLikeFailScript || /登录失败|密码错误|账号不存在/.test(text)) {
+    return "登录失败，可能是学号密码错误或接口变动";
+  }
+
+  return null;
+}
+
+/**
+ * 打开官网登录页：写入 ASP Cookie，并解析 sign / hour_key
+ */
+async function openJiaowuLoginPage(): Promise<JiaowuLoginPageFields> {
+  setCookie("");
+  const pageResponse = (await get(LOGIN_PAGE_URL, undefined, {
+    headers: {
+      ...LOGIN_BROWSER_HEADERS,
+      Referer: "https://jiaowu.sicau.edu.cn/",
+      "Sec-Fetch-Dest": "document",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "none",
+      "Sec-Fetch-User": "?1",
+    },
+    fullResponse: true,
+    validateStatus: (status) => status >= 200 && status < 400,
+  } as ExtendedAxiosRequestConfig)) as unknown as AxiosResponse;
+
+  const pageCookies = extractCookiesFromHeaders(pageResponse.headers);
+  if (pageCookies.length > 0) {
+    setCookie(pageCookies.join("; "));
+  }
+
+  const html = toLoginResponseText(pageResponse.data);
+  const sign = extractHiddenInputValue(html, "sign");
+  const hourKey = extractHiddenInputValue(html, "hour_key");
+  if (!sign || !hourKey) {
+    throw new Error("登录页未解析到 sign 或 hour_key");
+  }
+  return { sign, hourKey };
+}
+
+/**
+ * 组装 check.asp 请求头；有会话 Cookie 才写入，避免空 Cookie 盖掉 RN 原生 Cookie 罐
+ */
+function buildLoginPostHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    ...LOGIN_BROWSER_HEADERS,
+    "Cache-Control": "max-age=0",
+    "Content-Type": "application/x-www-form-urlencoded",
+    Origin: "https://jiaowu.sicau.edu.cn",
+    Referer: LOGIN_PAGE_URL,
+    Priority: "u=0, i",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "same-origin",
+    "Sec-Fetch-User": "?1",
+  };
+  const sessionCookie = getCookie();
+  if (sessionCookie) {
+    headers.Cookie = sessionCookie;
+  }
+  return headers;
 }
 
 /**
  * 四川农业大学教务系统登录函数。
  *
- * 向教务系统发送登录请求，成功时返回服务器下发的 Cookie，此 Cookie 用于后续鉴权请求。
- * 失败时返回错误信息。
+ * 先打开官网登录页建立会话，从 hidden 域解析 sign / hour_key，再向 check.asp 提交学号密码。
  * 使用场景：
  * 1. 农屿App登录页，校验通过后农屿本地存学号和密码
  *
@@ -120,7 +275,7 @@ function extractCookiesFromHeaders(headers: any): string[] {
  * const result = await jiaowuLogin('20210001', 'wrong_pwd');
  * // {
  * //   success: false,
- * //   message: '登录失败，可能是学号密码错误或接口变动'
+ * //   message: '用户名或密码错误！'  // 优先透出教务 alert 原文
  * // }
  * ```
  *
@@ -150,57 +305,41 @@ export async function jiaowuLogin(user?: string, pwd?: string) {
     return { success: false, message: "未提供用户名或密码" };
   }
 
-  // 严格遵循旧代码的参数顺序
-  const params = new URLSearchParams();
-  params.append("user", finalUser);
-  params.append("pwd", finalPwd);
-  Object.entries(FIXED_PARAMS).forEach(([k, v]) => params.append(k, v));
-
-  // 准备初始 Cookie
-  // 注意：旧代码中使用了特定的后缀 CEQTSTBS
-  const initialCookieKey = `${COOKIE_PREFIX}CEQTSTBS`;
-  const initialCookie = `${initialCookieKey}=${createJiaowuLoginCookie()}`;
-
   try {
+    const pageFields = await openJiaowuLoginPage();
+
+    const params = new URLSearchParams();
+    params.append("user", finalUser);
+    params.append("pwd", finalPwd);
+    params.append("lb", FIXED_FORM_PARAMS.lb);
+    params.append("submit", FIXED_FORM_PARAMS.submit);
+    params.append("sign", pageFields.sign);
+    params.append("hour_key", pageFields.hourKey);
+
     const response = (await post(LOGIN_ENDPOINT, params.toString(), {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Cookie: initialCookie,
-        Origin: "https://jiaowu.sicau.edu.cn",
-        Referer: "https://jiaowu.sicau.edu.cn/web/web/web/index.asp", // 模拟来源页
-      },
+      headers: buildLoginPostHeaders(),
       fullResponse: true,
       maxRedirects: 0,
       validateStatus: (status) => status >= 200 && status < 400,
     } as ExtendedAxiosRequestConfig)) as unknown as AxiosResponse;
 
-    const resultText = response.data;
+    const resultText = toLoginResponseText(response.data);
     const isRedirect = response.status >= 300 && response.status < 400;
-    const isFailed =
-      typeof resultText === "string" &&
-      resultText.trim().toLowerCase().startsWith("<script language=javascript");
+    const failureMessage = isRedirect ? null : parseJiaowuLoginFailureMessage(resultText);
 
-    if (isRedirect || !isFailed) {
-      // 提取服务器返回的所有相关 Cookie
-      const serverCookies = extractCookiesFromHeaders(response.headers);
-
-      // 优先使用服务器返回的，如果没有则使用初始生成的
-      // 如果有多个，用分号连接
-      let finalCookie = initialCookie;
-      if (serverCookies.length > 0) {
-        // 如果服务器返回了包含我们要找的那个 key 的 cookie，则更新它
-        const targetServerCookie = serverCookies.find((c) => c.startsWith(initialCookieKey));
-        finalCookie = targetServerCookie || serverCookies[0];
-      }
-
-      setCookie(finalCookie);
-      // 登录成功，也反填全局登录数据
-      setLoginData(finalUser, finalPwd);
-
-      return { success: true, cookie: finalCookie };
+    if (failureMessage) {
+      return { success: false, message: failureMessage };
     }
 
-    return { success: false, message: "登录失败，可能是学号密码错误或接口变动" };
+    const serverCookies = extractCookiesFromHeaders(response.headers);
+    const sessionCookie = getCookie();
+    const finalCookie = serverCookies[0] || sessionCookie;
+    if (finalCookie) {
+      setCookie(finalCookie);
+    }
+    setLoginData(finalUser, finalPwd);
+
+    return { success: true, cookie: finalCookie || "" };
   } catch (error: unknown) {
     const message = resolveJiaowuErrorMessage(error, "登录异常");
     console.error("登录请求异常:", message);

@@ -19,6 +19,11 @@ export {
 // Cookie 桥接（冷启动恢复 / 持久化备份）
 export { getCookie, setCookie } from "./core/utils";
 
+export { resolveJiaowuUserAgent, setJiaowuUserAgent } from "./core/utils";
+
+// 开发态 HTTP 日志挂载点（仅 RN __DEV__ 调用，包内不打印）
+export { attachJiaowuHttpLogger, type JiaowuHttpLogEvent } from "./core/utils";
+
 // 超时/内网提示
 export {
   JIAOWU_CAMPUS_NETWORK_HINT,

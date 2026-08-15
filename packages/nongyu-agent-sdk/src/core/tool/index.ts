@@ -9,6 +9,7 @@ class ToolImpl<TInput extends z.ZodTypeAny, TOutput> implements Tool<TInput, TOu
   public readonly name: string;
   public readonly description: string;
   public readonly inputSchema: TInput;
+  public readonly renderComponent?: string;
   private readonly _execute: (input: z.infer<TInput>, context: ToolContext) => Promise<TOutput>;
   private readonly _needsApproval: (input: z.infer<TInput>) => boolean;
 
@@ -16,6 +17,7 @@ class ToolImpl<TInput extends z.ZodTypeAny, TOutput> implements Tool<TInput, TOu
     this.name = def.name;
     this.description = def.description;
     this.inputSchema = def.inputSchema;
+    this.renderComponent = def.render?.component;
     this._execute = def.execute.bind(def);
 
     // 处理工具审批

@@ -29,6 +29,7 @@ export type {
   AgentContext,
   ContextConfig,
   ContextManager,
+  ContextCompactPayload,
   TokenStats,
   SystemMessage,
   SessionMetadata,

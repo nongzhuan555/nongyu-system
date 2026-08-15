@@ -12,6 +12,7 @@ import axios, {
 import { decodeGbk } from "./decode";
 import { getCookie, setCookie } from "./cookie";
 import { isJiaowuTimeoutError, resolveJiaowuErrorMessage } from "./errors";
+import { resolveJiaowuUserAgent } from "./userAgent";
 
 /**
  * 教务网请求的通用 Headers
@@ -23,8 +24,6 @@ const COMMON_HEADERS: Record<string, string> = {
   "accept-encoding": "gzip, deflate, br, zstd",
   "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
   "upgrade-insecure-requests": "1",
-  "user-agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0",
 };
 
 /**
@@ -45,14 +44,19 @@ service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const cookie = getCookie();
 
+    // 登录请求已按浏览器抓包带 UA，不得覆盖
+    if (!headerHas(config.headers, "User-Agent")) {
+      config.headers.set("User-Agent", resolveJiaowuUserAgent());
+    }
+
     // 自动设置 Referer，许多 ASP 系统以此作为安全校验
     if (config.url && !config.headers["Referer"]) {
       config.headers["Referer"] = config.url;
     }
 
     // 只有在没有手动设置 Cookie 的情况下才注入全局 Cookie
-    if (cookie && !config.headers["Cookie"]) {
-      config.headers["Cookie"] = cookie;
+    if (cookie && !headerHas(config.headers, "Cookie")) {
+      config.headers.set("Cookie", cookie);
     }
     return config;
   },
@@ -72,6 +76,96 @@ export interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
 }
 
 /**
+ * 教务 axios 结算事件（供 RN 开发态日志使用，包内不打印）
+ */
+export type JiaowuHttpLogEvent = {
+  ok: boolean;
+  method: string;
+  url: string;
+  status: number | null;
+  durationMs: number;
+  requestBody: unknown;
+  responseBody: unknown;
+  errorMessage: string | null;
+  hasAuthorization: boolean;
+  hasCookie: boolean;
+};
+
+let jiaowuHttpLogger: ((event: JiaowuHttpLogEvent) => void) | undefined;
+
+/**
+ * 判断 axios headers 上是否存在指定头（不读取原文，只看有无）
+ */
+function headerHas(headers: AxiosRequestConfig["headers"], name: string): boolean {
+  if (!headers) return false;
+  const getter = (headers as { get?: (key: string) => unknown }).get;
+  if (typeof getter === "function") {
+    const value = getter.call(headers, name);
+    return value != null && value !== "";
+  }
+  const record = headers as Record<string, unknown>;
+  const matched = record[name] ?? record[name.toLowerCase()];
+  return matched != null && matched !== "";
+}
+
+/**
+ * 解析 axios 最终请求 URL（含 query）
+ */
+function resolveAxiosUrl(config: AxiosRequestConfig): string {
+  try {
+    return axios.getUri(config);
+  } catch {
+    const path = config.url ?? "";
+    const base = config.baseURL ?? "";
+    return `${base}${path}` || "(unknown url)";
+  }
+}
+
+/**
+ * 从 config / error 组装一条结算事件
+ */
+function buildJiaowuHttpLogEvent(
+  config: ExtendedAxiosRequestConfig | undefined,
+  status: number | null,
+  responseBody: unknown,
+  errorMessage: string | null,
+  startedAt: number,
+): JiaowuHttpLogEvent {
+  return {
+    ok: errorMessage == null && status != null && status >= 200 && status < 400,
+    method: (config?.method ?? "GET").toUpperCase(),
+    url: config ? resolveAxiosUrl(config) : "(unknown url)",
+    status,
+    durationMs: Date.now() - startedAt,
+    requestBody: config?.data,
+    responseBody,
+    errorMessage,
+    hasAuthorization: headerHas(config?.headers, "Authorization"),
+    hasCookie: headerHas(config?.headers, "Cookie"),
+  };
+}
+
+/**
+ * 安全触发开发态日志回调，失败不影响原请求
+ */
+function emitJiaowuHttpLog(event: JiaowuHttpLogEvent): void {
+  if (!jiaowuHttpLogger) return;
+  try {
+    jiaowuHttpLogger(event);
+  } catch {
+    // 日志回调失败不得影响教务请求
+  }
+}
+
+/**
+ * 注册教务请求结算回调（幂等覆盖）。未注册时 request() 零额外开销以外的分支即 return。
+ * 挂在 request() 而非拦截器，避免内部重试/自动登录把同一业务请求打两遍。
+ */
+export function attachJiaowuHttpLogger(onSettled: (event: JiaowuHttpLogEvent) => void): void {
+  jiaowuHttpLogger = onSettled;
+}
+
+/**
  * 响应拦截器
  * 1. 处理 GBK 解码
  * 2. 检测并处理“登录超时”
@@ -81,14 +175,14 @@ service.interceptors.response.use(
   async (response: AxiosResponse) => {
     const config = response.config as ExtendedAxiosRequestConfig;
 
-    // 如果是登录接口，直接返回，不进行超时判断（避免死循环）
+    // 一律先 GBK 解码。check.asp 若保持 ArrayBuffer，jiaowuLogin 无法识别失败脚本。
+    const decodedHtml = decodeGbk(response.data);
+    response.data = decodedHtml;
+
+    // 登录接口只解码，不做超时自动重登，避免与 jiaowuLogin 死循环
     if (config.url?.includes("check.asp")) {
       return response;
     }
-
-    // 解码响应体为 GBK 字符串
-    const responseData = response.data;
-    const decodedHtml = decodeGbk(responseData);
 
     // 判断响应内容是否提示登录超时
     if (decodedHtml.includes("登录超时") || decodedHtml.includes("账号验证失败")) {
@@ -122,8 +216,6 @@ service.interceptors.response.use(
       }
     }
 
-    // 将解码后的字符串存回 data 字段，供后续业务使用
-    response.data = decodedHtml;
     return response;
   },
   async (error) => {
@@ -158,11 +250,39 @@ service.interceptors.response.use(
  * const full = await request({ url: '/api/page', fullResponse: true });
  */
 export async function request<T = any>(config: ExtendedAxiosRequestConfig): Promise<T> {
-  const response = await service.request(config);
-  if (config.fullResponse) {
-    return response as any;
+  const startedAt = Date.now();
+  try {
+    const response = await service.request(config);
+    emitJiaowuHttpLog(
+      buildJiaowuHttpLogEvent(
+        response.config as ExtendedAxiosRequestConfig,
+        response.status,
+        response.data,
+        null,
+        startedAt,
+      ),
+    );
+    if (config.fullResponse) {
+      return response as any;
+    }
+    return response.data as T;
+  } catch (error: unknown) {
+    const axiosError = error as {
+      config?: ExtendedAxiosRequestConfig;
+      response?: { status?: number; data?: unknown };
+      message?: string;
+    };
+    emitJiaowuHttpLog(
+      buildJiaowuHttpLogEvent(
+        axiosError.config ?? config,
+        axiosError.response?.status ?? null,
+        axiosError.response?.data,
+        axiosError.message ?? String(error),
+        startedAt,
+      ),
+    );
+    throw error;
   }
-  return response.data as T;
 }
 
 /**

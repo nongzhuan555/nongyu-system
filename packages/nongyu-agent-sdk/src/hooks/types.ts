@@ -42,6 +42,29 @@ export interface UseAgentChatConfig {
 
   /** 开启调试模式，在控制台打印模型调用全流程信息 */
   debug?: boolean;
+
+  /**
+   * 文本流式更新节流间隔（毫秒）。
+   *
+   * 流式 `text:delta` 会高频触发 state 更新，长回复数百次渲染会导致卡顿。
+   * 设置节流后，文本累积到 ref，按此间隔 flush 到 state，渲染次数大幅降低。
+   * - 0（默认）：不节流，每个 delta 立即更新（保持旧行为）
+   * - 推荐 React Native 设 40ms
+   */
+  textUpdateThrottleMs?: number;
+
+  /** 已落盘的会话摘要，随每次请求注入 */
+  llmSummary?: string;
+  /** 压缩游标：该 UI 消息及之前不再注入模型 */
+  llmCompactedUntilId?: string;
+  /** 上下文压缩完成（成功或降级） */
+  onContextCompact?: (payload: {
+    ok: boolean;
+    beforeTokens: number;
+    afterTokens: number;
+    llmSummary?: string;
+    llmCompactedUntilId?: string;
+  }) => void;
 }
 
 /**

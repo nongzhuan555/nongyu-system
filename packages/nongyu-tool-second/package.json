@@ -1,21 +1,32 @@
 {
   "name": "nongyu-tool-second",
   "version": "1.0.0",
-  "description": "农屿二课工具库",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "description": "农屿二课（i川农）工具库",
+  "keywords": [
+    "agent",
+    "second",
+    "sicau",
+    "tool"
+  ],
+  "license": "ISC",
+  "author": "TangLei",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
-    "dev": "tsup src/index.ts --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "lint": "oxlint .",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "axios": "catalog:",
-    "iconv-lite": "catalog:"
-  },
-  "devDependencies": {
-    "@types/node": "^22.13.1"
+    "axios": "catalog:"
   }
 }

@@ -15,6 +15,18 @@ export interface ToolContext {
 
 // ===== 工具定义 =====
 
+/**
+ * 工具渲染声明
+ *
+ * 声明该工具的结果用前端某组件内联渲染（Generative UI，Controlled 模式）。
+ * `component` 仅为字符串名，由各端（DOM/RN）各自的 ToolUIRegistry 解析为真实组件，
+ * 从而保持 SDK 平台无关。
+ */
+export interface ToolRenderSpec {
+  /** 前端注册的组件名，由各端 ToolUIRegistry 解析 */
+  component: string;
+}
+
 export interface ToolDefinition<TInput extends z.ZodTypeAny = z.ZodTypeAny, TOutput = unknown> {
   /** 工具名称，全局唯一 */
   name: string;
@@ -26,6 +38,11 @@ export interface ToolDefinition<TInput extends z.ZodTypeAny = z.ZodTypeAny, TOut
   execute: (input: z.infer<TInput>, context: ToolContext) => Promise<TOutput>;
   /** 是否需要用户审批 */
   needsApproval?: boolean | ((input: z.infer<TInput>) => boolean);
+  /**
+   * 声明该工具的结果用前端某组件内联渲染。
+   * 不声明则按原行为（不渲染，仅作为工具结果参与后续推理）。
+   */
+  render?: ToolRenderSpec;
 }
 
 export interface Tool<TInput extends z.ZodTypeAny = z.ZodTypeAny, TOutput = unknown> {
@@ -38,6 +55,8 @@ export interface Tool<TInput extends z.ZodTypeAny = z.ZodTypeAny, TOutput = unkn
   execute(input: z.infer<TInput>, context: ToolContext): Promise<TOutput>;
   /** 检查是否需要审批 */
   needsApproval(input: z.infer<TInput>): boolean;
+  /** 前端内联渲染组件名（来自 ToolDefinition.render.component），无声明则为 undefined */
+  readonly renderComponent?: string;
 }
 
 // ===== 工具执行结果 =====
