@@ -15,6 +15,9 @@ import { adminVersionsRouter, appVersionsRouter } from "./modules/versions/route
 import { adminDashboardRouter } from "./modules/dashboard/routes.js";
 import { adminTrackRouter } from "./modules/track/routes.js";
 import { internalUsersRouter } from "./modules/users/internalRoutes.js";
+import { adminLlmKeysRouter } from "./modules/llm-pool/routes.admin.js";
+import { appLlmRouter } from "./modules/llm-pool/routes.app.js";
+import { requireAppAuth } from "./middlewares/auth.js";
 
 export function createApp() {
   const env = getEnv();
@@ -50,6 +53,7 @@ export function createApp() {
   app.use("/api/app/course-share", appCourseShareRouter);
   app.use("/api/app/posts", appPostsRouter);
   app.use("/api/app/versions", appVersionsRouter);
+  app.use("/api/app/llm/v1", requireAppAuth, appLlmRouter);
 
   app.use("/api/admin/auth", adminAuthRouter);
   app.use("/api/admin/users", adminUsersRouter);
@@ -57,6 +61,7 @@ export function createApp() {
   app.use("/api/admin/app-versions", adminVersionsRouter);
   app.use("/api/admin/dashboard", adminDashboardRouter);
   app.use("/api/admin/track", adminTrackRouter);
+  app.use("/api/admin/llm/keys", adminLlmKeysRouter);
   app.use("/api/internal/users", internalUsersRouter);
 
   app.use(errorHandler);

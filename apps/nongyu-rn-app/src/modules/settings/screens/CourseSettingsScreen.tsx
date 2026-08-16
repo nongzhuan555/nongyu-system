@@ -26,6 +26,7 @@ import {
   fetchMyShareStatus,
 } from "@/modules/course/data/courseShareRepository";
 import { useCourseUiStore } from "@/modules/course/store/courseUiStore";
+import { COURSE_SIZE_LABELS, type CourseSizeScale } from "@/modules/course/model/coursePrefs";
 import { toast } from "@/components/ui/toast";
 import { useSessionStore } from "@/stores/session";
 import { createThemedStyles } from "@/theme/createThemedStyles";
@@ -159,11 +160,39 @@ export function CourseSettingsScreen() {
       await clearPersistedCourseBackground();
       setBackgroundUri(null);
       toast.success("已清除背景");
-    } catch {
-      setBackgroundUri(null);
-      toast.success("已清除背景");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "请稍后重试";
+      toast.error("清除背景失败", { description: msg });
     }
   };
+
+  const onCardSizeChange = useCallback(
+    (size: CourseSizeScale) => {
+      if (size === cardSize) return;
+      try {
+        setCardSize(size);
+        toast.success(`卡片大小已设为${COURSE_SIZE_LABELS[size]}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "请稍后重试";
+        toast.error("设置卡片大小失败", { description: msg });
+      }
+    },
+    [cardSize, setCardSize],
+  );
+
+  const onFontSizeChange = useCallback(
+    (size: CourseSizeScale) => {
+      if (size === fontSize) return;
+      try {
+        setFontSize(size);
+        toast.success(`字体大小已设为${COURSE_SIZE_LABELS[size]}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "请稍后重试";
+        toast.error("设置字体大小失败", { description: msg });
+      }
+    },
+    [fontSize, setFontSize],
+  );
 
   return (
     <SettingsPageShell title="课表设置">
@@ -175,9 +204,9 @@ export function CourseSettingsScreen() {
         <View style={styles.card}>
           <View style={styles.shareRow}>
             <View style={styles.shareTextCol}>
-              <Text style={styles.shareTitle}>允许课表共享</Text>
+              <Text style={styles.shareTitle}>开启课表共享</Text>
               <Text style={styles.hint}>
-                开启后上传原始课表，他人可用学号只读查看；不含备注/待办/自定义日程
+                开启后农屿会远程存储你的原始课表，他人可用学号只读查看你的原始课表（不含备注/课程待办/自定义日程/考勤记录），便于比较双方课程差异和冲突
               </Text>
             </View>
             {shareBootstrapping || shareLoading ? (
@@ -231,13 +260,13 @@ export function CourseSettingsScreen() {
         <Text style={styles.sectionTitle}>卡片大小</Text>
         <View style={styles.card}>
           <Text style={styles.hint}>调整大课区间行高（默认「中」）</Text>
-          <SizeSegment value={cardSize} onChange={setCardSize} />
+          <SizeSegment value={cardSize} onChange={onCardSizeChange} />
         </View>
 
         <Text style={styles.sectionTitle}>字体大小</Text>
         <View style={styles.card}>
           <Text style={styles.hint}>仅影响课程卡片内文字（默认「中」）</Text>
-          <SizeSegment value={fontSize} onChange={setFontSize} />
+          <SizeSegment value={fontSize} onChange={onFontSizeChange} />
         </View>
       </ScrollView>
     </SettingsPageShell>

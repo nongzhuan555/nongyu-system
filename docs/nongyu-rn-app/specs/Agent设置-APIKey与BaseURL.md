@@ -24,7 +24,7 @@
 1. 「农屿 Agent」入口可进，打开子页 `/mine/settings/agent`。
 2. 用户可选择主流服务商预设（DeepSeek / OpenAI / 通义 / Kimi / 智谱 / 硅基流动）自动填入 Base URL 与推荐模型名，或选「自定义」手填；再填写并保存 `API Key`；杀进程重开后仍可读。
 3. 三项（baseURL / API Key / model）存 **SecureStore**；登出（主动登出 + Token 失效本地清会话）一并清空。
-4. AI 聊天页：已配置则用真实 `OpenAIProvider`；未配置则提示去设置，不静默继续 mock。
+4. AI 聊天页：已配置自有 Key → 直连；未配置但有 App JWT → 平台代理；否则提示登录或去设置；禁止 mock 顶替。
 5. 模型名随预设带出，允许在设置页微调；不另做独立「启用开关」UI。
 
 ---

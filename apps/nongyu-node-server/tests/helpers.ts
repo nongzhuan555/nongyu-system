@@ -24,9 +24,22 @@ export async function ensureMigrated() {
 }
 
 export async function truncateAll() {
+  const env = getEnv();
+  const host = env.MYSQL_HOST.trim().toLowerCase();
+  if (!["127.0.0.1", "localhost", "::1"].includes(host)) {
+    throw new Error(`拒绝 truncate 非本机库: ${env.MYSQL_HOST}/${env.MYSQL_DATABASE}`);
+  }
   const pool = getPool();
   await pool.query("SET FOREIGN_KEY_CHECKS = 0");
-  for (const table of ["post_reads", "posts", "user_settings", "app_versions", "users"]) {
+  for (const table of [
+    "post_reads",
+    "posts",
+    "user_settings",
+    "app_versions",
+    "llm_user_usage_daily",
+    "llm_api_keys",
+    "users",
+  ]) {
     await pool.query(`TRUNCATE TABLE ${table}`);
   }
   await pool.query("SET FOREIGN_KEY_CHECKS = 1");

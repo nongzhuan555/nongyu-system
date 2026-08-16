@@ -1,5 +1,12 @@
 import { MAJOR_SLOT_COUNT, slotIndexFromPeriod, spanRowsFromPeriods } from "./courseTimes";
-import type { CourseEntry, GridCell, ScheduleEntry, WeekGridData } from "./types";
+import type {
+  CourseEntry,
+  GridCell,
+  GridStack,
+  ScheduleEntry,
+  StackItem,
+  WeekGridData,
+} from "./types";
 
 /**
  * 某课是否在指定教学周有效
@@ -54,9 +61,26 @@ function emptyGrid(): WeekGridData {
   );
 }
 
+function sortStackItems(items: StackItem[]): StackItem[] {
+  const courses = items.filter((i) => i.type === "course");
+  const schedules = items
+    .filter((i): i is Extract<StackItem, { type: "schedule" }> => i.type === "schedule")
+    .slice()
+    .sort((a, b) => a.schedule.createdAt.localeCompare(b.schedule.createdAt));
+  return [...courses, ...schedules];
+}
+
+function writeOccupied(grid: WeekGridData, startRow: number, col: number, spanRows: number): void {
+  for (let s = 1; s < spanRows; s++) {
+    const r = startRow + s;
+    if (r >= MAJOR_SLOT_COUNT) break;
+    if (grid[r]![col] != null) break;
+    grid[r]![col] = { kind: "occupied", primaryRow: startRow };
+  }
+}
+
 /**
- * 构建单周 5×7 矩阵；连堂写入 primary + occupied
- * 仅处理课程，不填日程
+ * 构建单周 5×7 矩阵；连堂写入 stack + occupied（仅课程）
  */
 export function buildWeekGrid(week: number, courses: CourseEntry[]): WeekGridData {
   const grid = emptyGrid();
@@ -69,25 +93,24 @@ export function buildWeekGrid(week: number, courses: CourseEntry[]): WeekGridDat
     const spanRows = spanRowsFromPeriods(course.startPeriod, course.endPeriod);
 
     const existing = grid[startRow]![col];
-    if (existing?.kind === "primary" || existing?.kind === "occupied") {
+    if (existing?.kind === "stack" || existing?.kind === "occupied") {
+      // 同格多课：保留先写入（T1）
       continue;
     }
 
-    grid[startRow]![col] = { kind: "primary", course, spanRows };
-
-    for (let s = 1; s < spanRows; s++) {
-      const r = startRow + s;
-      if (r >= MAJOR_SLOT_COUNT) break;
-      if (grid[r]![col] != null) break;
-      grid[r]![col] = { kind: "occupied", primaryRow: startRow };
-    }
+    grid[startRow]![col] = {
+      kind: "stack",
+      items: [{ type: "course", course }],
+      spanRows,
+    };
+    writeOccupied(grid, startRow, col, spanRows);
   }
 
   return grid;
 }
 
 /**
- * 构建单周矩阵：课程优先，日程填空格（冲突时课程保留，日程跳过）
+ * 构建单周矩阵：课程优先置顶；日程可与课程冲突并入同一 stack
  */
 export function buildWeekGridWithSchedules(
   week: number,
@@ -104,26 +127,41 @@ export function buildWeekGridWithSchedules(
     const spanRows = spanRowsFromPeriods(schedule.startPeriod, schedule.endPeriod);
 
     const existing = grid[startRow]![col];
-    if (existing != null) {
-      // 课程优先：该格已被课程占用，日程跳过
+    if (existing?.kind === "occupied") {
+      // 落在连堂占位行：不写入（避免破坏跨行结构）
       continue;
     }
 
-    grid[startRow]![col] = { kind: "schedule", schedule, spanRows };
-
-    for (let s = 1; s < spanRows; s++) {
-      const r = startRow + s;
-      if (r >= MAJOR_SLOT_COUNT) break;
-      if (grid[r]![col] != null) break;
-      grid[r]![col] = { kind: "occupied", primaryRow: startRow };
+    if (existing?.kind === "stack") {
+      const nextItems = sortStackItems([...existing.items, { type: "schedule", schedule }]);
+      // span 以课程为准；无课则取较大 span
+      const courseSpan = existing.items.find((i) => i.type === "course")
+        ? existing.spanRows
+        : Math.max(existing.spanRows, spanRows);
+      grid[startRow]![col] = {
+        kind: "stack",
+        items: nextItems,
+        spanRows: courseSpan,
+      };
+      if (courseSpan > existing.spanRows) {
+        writeOccupied(grid, startRow, col, courseSpan);
+      }
+      continue;
     }
+
+    grid[startRow]![col] = {
+      kind: "stack",
+      items: [{ type: "schedule", schedule }],
+      spanRows,
+    };
+    writeOccupied(grid, startRow, col, spanRows);
   }
 
   return grid;
 }
 
 /**
- * 预构建 1…maxWeek 全部周矩阵（仅课程）
+ * 预构建 1…maxWeek 全部周矩阵（仅课程）— 兼容旧调用；新路径请用懒窗口
  */
 export function buildAllWeekMatrices(courses: CourseEntry[]): WeekGridData[] {
   const maxWeek = maxWeekFromCourses(courses);
@@ -135,7 +173,7 @@ export function buildAllWeekMatrices(courses: CourseEntry[]): WeekGridData[] {
 }
 
 /**
- * 预构建 1…maxWeek 全部周矩阵（课程 + 日程）
+ * 预构建 1…maxWeek 全部周矩阵（课程 + 日程）— 兼容旧调用；新路径请用懒窗口
  */
 export function buildAllWeekMatricesWithSchedules(
   courses: CourseEntry[],
@@ -147,4 +185,41 @@ export function buildAllWeekMatricesWithSchedules(
     weeks.push(buildWeekGridWithSchedules(w, courses, schedules));
   }
   return weeks;
+}
+
+export type WeekMatrixCache = {
+  maxWeek: number;
+  map: Map<number, WeekGridData>;
+};
+
+/**
+ * 确保中心周 ±radius 的矩阵已构建；删除窗口外缓存
+ */
+export function ensureWeekWindow(
+  cache: WeekMatrixCache,
+  centerWeek: number,
+  courses: CourseEntry[],
+  schedules: ScheduleEntry[] | null,
+  radius = 2,
+): void {
+  const lo = Math.max(1, centerWeek - radius);
+  const hi = Math.min(cache.maxWeek, centerWeek + radius);
+  for (let w = lo; w <= hi; w++) {
+    if (!cache.map.has(w)) {
+      const grid =
+        schedules == null
+          ? buildWeekGrid(w, courses)
+          : buildWeekGridWithSchedules(w, courses, schedules);
+      cache.map.set(w, grid);
+    }
+  }
+  for (const key of Array.from(cache.map.keys())) {
+    if (key < lo || key > hi) cache.map.delete(key);
+  }
+}
+
+/** 取 stack 中的课程（若有） */
+export function stackCourse(cell: GridStack): CourseEntry | null {
+  const item = cell.items.find((i) => i.type === "course");
+  return item?.type === "course" ? item.course : null;
 }

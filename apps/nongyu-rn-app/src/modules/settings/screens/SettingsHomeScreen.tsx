@@ -64,10 +64,18 @@ export function SettingsHomeScreen() {
       onPress: () => router.push("/mine/settings/agent" as Href),
     },
     {
-      key: "about",
-      title: "关于与反馈",
-      description: "版本信息与用户反馈渠道",
-      available: false,
+      key: "version",
+      title: "版本",
+      description: "查看版本并检查更新",
+      available: true,
+      onPress: () => router.push("/mine/settings/version" as Href),
+    },
+    {
+      key: "feedback",
+      title: "反馈与建议",
+      description: "去农屿广场反馈墙",
+      available: true,
+      onPress: () => router.replace("/(tabs)/center?postType=feedback" as Href),
     },
   ];
 
@@ -85,6 +93,9 @@ export function SettingsHomeScreen() {
     try {
       await performJiaowuLogout(queryClient);
       toast.success("已退出登录");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "请稍后重试";
+      toast.error("退出登录失败", { description: msg });
     } finally {
       setLogoutLoading(false);
     }

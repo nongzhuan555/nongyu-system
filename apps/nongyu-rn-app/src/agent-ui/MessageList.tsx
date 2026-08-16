@@ -9,6 +9,9 @@ import { ChatEmptyState } from "./ChatEmptyState";
 interface MessageListProps {
   messages: ChatMessage[];
   onAction?: (text: string) => void;
+  /** 未在生成中时，最近一条 assistant 可展示重试/重新生成 */
+  actionsEnabled?: boolean;
+  onRegenerate?: () => void;
 }
 
 /** 用户消息：右对齐轻气泡 */
@@ -27,27 +30,53 @@ const UserBubble = memo(function UserBubble({ content }: { content: string }) {
 const MessageRow = memo(function MessageRow({
   message,
   onAction,
+  showActions,
+  onRegenerate,
 }: {
   message: ChatMessage;
   onAction?: (text: string) => void;
+  showActions?: boolean;
+  onRegenerate?: () => void;
 }) {
   if (message.role === "user") {
     return <UserBubble content={message.content} />;
   }
-  return <AssistantMessage message={message} onAction={onAction} />;
+  return (
+    <AssistantMessage
+      message={message}
+      onAction={onAction}
+      showActions={showActions}
+      onRegenerate={onRegenerate}
+    />
+  );
 });
 
 /** 消息列表：空态 / FlashList + 智能跟随滚动 */
-export function MessageList({ messages, onAction }: MessageListProps) {
+export function MessageList({
+  messages,
+  onAction,
+  actionsEnabled = false,
+  onRegenerate,
+}: MessageListProps) {
   const styles = useStyles();
   const listRef = useRef<FlashListRef<ChatMessage>>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
 
   const hasUserMessage = messages.some((m) => m.role === "user");
+  const lastMessage = messages[messages.length - 1];
+  const lastAssistantId =
+    actionsEnabled && lastMessage?.role === "assistant" ? lastMessage.id : null;
 
   const renderItem: ListRenderItem<ChatMessage> = useCallback(
-    ({ item }) => <MessageRow message={item} onAction={onAction} />,
-    [onAction],
+    ({ item }) => (
+      <MessageRow
+        message={item}
+        onAction={onAction}
+        showActions={item.id === lastAssistantId}
+        onRegenerate={item.id === lastAssistantId ? onRegenerate : undefined}
+      />
+    ),
+    [onAction, onRegenerate, lastAssistantId],
   );
 
   const keyExtractor = useCallback((m: ChatMessage) => m.id, []);

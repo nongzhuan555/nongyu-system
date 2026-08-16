@@ -1,7 +1,7 @@
 import { useThemeTokens } from "@/theme/ThemeProvider";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useRouter, type Href } from "expo-router";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { TabScreenBackground } from "@/components/navigation/TabScreenBackground";
@@ -19,18 +19,34 @@ const SEGMENTS = [
 
 const KEYWORD_DEBOUNCE_MS = 350;
 
+function parsePostTypeParam(value: string | string[] | undefined): PostType | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === "announcement" || raw === "feedback" || raw === "courtyard") return raw;
+  return null;
+}
+
 /**
  * 广场主界面：搜索 + 玻璃分段 + 列表；反馈/大院发帖入口
+ * 可选 query：`postType`（设置页等深链切到反馈墙等）
  */
 export function CenterScreen() {
   const styles = useStyles();
   const t = useThemeTokens();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [postType, setPostType] = useState<PostType>("announcement");
+  const { postType: postTypeParam } = useLocalSearchParams<{ postType?: string | string[] }>();
+  const [postType, setPostType] = useState<PostType>(
+    () => parsePostTypeParam(postTypeParam) ?? "announcement",
+  );
   const [keywordDraft, setKeywordDraft] = useState("");
   const [keyword, setKeyword] = useState("");
   const canCompose = postType === "feedback" || postType === "courtyard";
+
+  // Tab 常驻挂载：深链进入时同步分段
+  useEffect(() => {
+    const next = parsePostTypeParam(postTypeParam);
+    if (next) setPostType(next);
+  }, [postTypeParam]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

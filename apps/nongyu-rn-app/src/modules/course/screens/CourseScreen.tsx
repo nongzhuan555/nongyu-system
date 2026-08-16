@@ -2,7 +2,7 @@ import { useThemeTokens } from "@/theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type Href, useRouter } from "expo-router";
+import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -19,31 +19,41 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BackToCurrentWeekFab } from "../components/BackToCurrentWeekFab";
 import { CourseDetailSheet } from "../components/CourseDetailSheet";
 import { CourseDiffLegend } from "../components/CourseDiffLegend";
+import { CourseMoreSheet } from "../components/CourseMoreSheet";
+import { CourseWeekSkeleton } from "../components/CourseSkeletons";
 import { PeerLookupSheet } from "../components/PeerLookupSheet";
 import { ScheduleFormSheet } from "../components/ScheduleFormSheet";
 import { SemesterStartPicker } from "../components/SemesterStartPicker";
 import { WeekPager, type EmptyCellTarget } from "../components/WeekPager";
+import { ExamSchedulePanel } from "@/modules/jiaowu/components/ExamSchedulePanel";
 import { fetchAndPersistCourses, loadCourses } from "../data/courseRepository";
 import { lookupPeer } from "../data/courseShareRepository";
 import { AppApiError } from "@/api/appApiError";
 import { COURSE_ROW_HEIGHT } from "../model/coursePrefs";
 import { buildDiffOverlay } from "../model/courseShareDiff";
 import { mergeAdjacentCourseEntries } from "../model/mapJiaowuCourseItems";
-import { computeCurrentWeek } from "../model/semesterWeek";
+import { computeCurrentWeek, isSemesterCoursesFinished } from "../model/semesterWeek";
 import {
-  buildAllWeekMatrices,
-  buildAllWeekMatricesWithSchedules,
-  buildWeekGrid,
+  ensureWeekWindow,
+  maxWeekFromAll,
   maxWeekFromCourses,
+  type WeekMatrixCache,
 } from "../model/weekMatrix";
-import type { CourseEntry, ScheduleEntry, WeekGridData } from "../model/types";
+import type { AttendanceStatus, CourseEntry, ScheduleEntry, WeekGridData } from "../model/types";
 import { useCourseUiStore } from "../store/courseUiStore";
 import { useCourseExt } from "../hooks/useCourseExt";
 import { newCourseExtId } from "../model/genId";
+import { indexAttendanceBySlot, listAttendancesForCourse } from "../model/attendanceSummary";
+import { scheduleOverlapsAnyCourse } from "../model/scheduleOverlap";
 import { TabScreenBackground } from "@/components/navigation/TabScreenBackground";
 import { toast } from "@/components/ui/toast";
+import { confirm } from "@/components/ui/confirm";
+import { track } from "@/modules/telemetry";
 import { useSessionStore } from "@/stores/session";
 import { createThemedStyles } from "@/theme/createThemedStyles";
+
+/** 只读模式下稳定空日程列表，避免每次 render 新建 [] 触发矩阵缓存 effect 死循环 */
+const EMPTY_SCHEDULES: ScheduleEntry[] = [];
 
 /**
  * 课表主屏：本地优先；无本地才抓教务；仅用户点刷新强制同步
@@ -58,7 +68,12 @@ export function CourseScreen() {
   const queryClient = useQueryClient();
   const sheetRef = useRef<BottomSheetModal>(null);
   const scheduleFormRef = useRef<BottomSheetModal>(null);
-  const listRef = useRef<FlatList<WeekGridData>>(null);
+  const listRef = useRef<FlatList<WeekGridData | null>>(null);
+  const paintT0Ref = useRef(Date.now());
+  const stackFrontRef = useRef(new Map<string, number>());
+  const [stackFrontVersion, setStackFrontVersion] = useState(0);
+  const matrixCacheRef = useRef<WeekMatrixCache>({ maxWeek: 1, map: new Map() });
+  const [matrixTick, setMatrixTick] = useState(0);
 
   const studentId = useSessionStore((s) => s.profile?.studentId);
   const semesterStartMs = useCourseUiStore((s) => s.semesterStartMs);
@@ -82,10 +97,16 @@ export function CourseScreen() {
 
   const [pickerVisible, setPickerVisible] = useState(false);
   const [peerLookupVisible, setPeerLookupVisible] = useState(false);
+  const [moreVisible, setMoreVisible] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseEntry | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<ScheduleEntry | null>(null);
   const [scheduleTarget, setScheduleTarget] = useState<EmptyCellTarget | null>(null);
   const [forceRefreshing, setForceRefreshing] = useState(false);
+  /** 课表 Tab 内：周视图 / 考试安排 */
+  const [coursePane, setCoursePane] = useState<"week" | "exam">("week");
+  /** 用户本会话手动切换过 pane；blur 后清除 */
+  const [paneOverride, setPaneOverride] = useState(false);
+  const courseTabFocusedRef = useRef(false);
 
   const isPeerMode = viewMode === "peer" || viewMode === "diff";
   const isDiffMode = viewMode === "diff";
@@ -131,11 +152,76 @@ export function CourseScreen() {
     }
   }, [queryClient, queryKey, studentId]);
 
+  const onPressRefresh = useCallback(async () => {
+    const ok = await confirm({
+      title: "刷新课表",
+      message: "将从教务重新拉取并覆盖本地课表，是否继续？",
+      confirmText: "刷新",
+      cancelText: "取消",
+    });
+    if (ok) await forceRefresh();
+  }, [forceRefresh]);
+
+  const onStackFrontIndexChange = useCallback((key: string, index: number) => {
+    stackFrontRef.current.set(key, index);
+    setStackFrontVersion((v) => v + 1);
+  }, []);
+
   const courses = useMemo(() => mergeAdjacentCourseEntries(data ?? []), [data]);
+
+  const semesterStart = useMemo(
+    () => (semesterStartMs != null ? new Date(semesterStartMs) : null),
+    [semesterStartMs],
+  );
+
+  const semesterFinished = useMemo(
+    () =>
+      !isPeerMode &&
+      isSemesterCoursesFinished({
+        semesterStart,
+        courses,
+      }),
+    [courses, isPeerMode, semesterStart],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      courseTabFocusedRef.current = true;
+      setPaneOverride(false);
+      return () => {
+        courseTabFocusedRef.current = false;
+        setPaneOverride(false);
+      };
+    }, []),
+  );
+
+  useEffect(() => {
+    if (!courseTabFocusedRef.current) return;
+    if (paneOverride) return;
+    if (semesterFinished) {
+      setCoursePane("exam");
+    } else {
+      setCoursePane("week");
+    }
+  }, [paneOverride, semesterFinished]);
+
+  const showExamPane = semesterFinished && coursePane === "exam";
+
+  const switchToWeekPane = useCallback(() => {
+    setPaneOverride(true);
+    setCoursePane("week");
+  }, []);
+
+  const switchToExamPane = useCallback(() => {
+    setPaneOverride(true);
+    setCoursePane("exam");
+  }, []);
+
   const {
     schedules,
     notes,
     todos,
+    attendances,
     createSchedule,
     updateSchedule,
     deleteSchedule,
@@ -144,32 +230,84 @@ export function CourseScreen() {
     createTodo,
     updateTodo,
     deleteTodo,
+    upsertAttendance,
+    deleteAttendance,
   } = useCourseExt();
   const loading = !!studentId && isPending && !data;
   const showError = isError && !data;
 
   const displayCourses = isPeerMode && peer ? peer.courses : courses;
-  const displaySchedules = readOnly ? [] : schedules;
+  const displaySchedules = readOnly ? EMPTY_SCHEDULES : schedules;
 
-  const semesterStart = useMemo(
-    () => (semesterStartMs != null ? new Date(semesterStartMs) : null),
-    [semesterStartMs],
-  );
+  const maxWeek = useMemo(() => {
+    if (isDiffMode && peer) {
+      return Math.max(maxWeekFromCourses(courses), maxWeekFromCourses(peer.courses), 1);
+    }
+    if (readOnly) return maxWeekFromCourses(displayCourses);
+    return maxWeekFromAll(displayCourses, displaySchedules);
+  }, [courses, displayCourses, displaySchedules, isDiffMode, peer, readOnly]);
 
   const weeks = useMemo(() => {
-    if (isDiffMode && peer) {
-      const maxW = Math.max(maxWeekFromCourses(courses), maxWeekFromCourses(peer.courses), 1);
-      return Array.from({ length: maxW }, (_, i) => buildWeekGrid(i + 1, peer.courses));
+    const cache = matrixCacheRef.current;
+    if (cache.maxWeek !== maxWeek) {
+      cache.maxWeek = maxWeek;
+      cache.map.clear();
     }
-    if (readOnly) return buildAllWeekMatrices(displayCourses);
-    return buildAllWeekMatricesWithSchedules(displayCourses, displaySchedules);
-  }, [courses, displayCourses, displaySchedules, isDiffMode, peer, readOnly]);
+    const center = Math.min(Math.max(0, viewWeekIndex), Math.max(0, maxWeek - 1)) + 1;
+    const scheduleSrc = readOnly || isDiffMode ? null : displaySchedules;
+    const courseSrc = isDiffMode && peer ? peer.courses : displayCourses;
+    ensureWeekWindow(cache, center, courseSrc, scheduleSrc, 2);
+    // matrixTick 强制在 ensure 后重读 map
+    void matrixTick;
+    return Array.from({ length: maxWeek }, (_, i) => cache.map.get(i + 1) ?? null);
+  }, [
+    displayCourses,
+    displaySchedules,
+    isDiffMode,
+    matrixTick,
+    maxWeek,
+    peer,
+    readOnly,
+    viewWeekIndex,
+  ]);
+
+  // 课程/日程变化时清空矩阵缓存
+  useEffect(() => {
+    matrixCacheRef.current.map.clear();
+    setMatrixTick((n) => n + 1);
+  }, [displayCourses, displaySchedules, isDiffMode, peer?.studentNo]);
+
+  // 切周清空翻牌正面索引
+  useEffect(() => {
+    stackFrontRef.current.clear();
+    setStackFrontVersion((v) => v + 1);
+  }, [viewWeekIndex]);
 
   const diffOverlays = useMemo(() => {
     if (!isDiffMode || !peer) return null;
-    return weeks.map((_, i) => buildDiffOverlay(i + 1, courses, peer.courses));
-  }, [courses, isDiffMode, peer, weeks]);
-  const maxWeek = Math.max(1, weeks.length);
+    return Array.from({ length: maxWeek }, (_, i) =>
+      buildDiffOverlay(i + 1, courses, peer.courses),
+    );
+  }, [courses, isDiffMode, maxWeek, peer]);
+
+  const onCurrentWeekLayout = useCallback(() => {
+    if (isPeerMode || loading || showError) return;
+    track({
+      event_type: "perf",
+      event_name: "course_week_first_paint",
+      duration_ms: Date.now() - paintT0Ref.current,
+      props: {
+        week_index: viewWeekIndex,
+        max_week: maxWeek,
+      },
+    });
+  }, [isPeerMode, loading, maxWeek, showError, viewWeekIndex]);
+
+  const attendanceSessionBySlot = useMemo(() => {
+    if (readOnly) return undefined;
+    const map = indexAttendanceBySlot(attendances);
+    return map.size > 0 ? map : undefined;
+  }, [attendances, readOnly]);
 
   const currentWeekIndex = useMemo(() => {
     if (!semesterStart) return 0;
@@ -200,13 +338,18 @@ export function CourseScreen() {
 
   const pageHeight = useMemo(() => {
     const top = insets.top + 52;
-    const bottom = insets.bottom + t.tabBar.bottomGapMax + t.tabBar.heightMax + 12;
+    // 中档铺满可视区：少留底缓冲，让末行更贴 Tab；大/小仍留 12 防误触遮挡
+    const bottomExtra = cardSize === "md" ? 2 : 12;
+    const bottom = insets.bottom + t.tabBar.bottomGapMax + t.tabBar.heightMax + bottomExtra;
     return Math.max(320, height - top - bottom);
-  }, [height, insets.bottom, insets.top]);
+  }, [cardSize, height, insets.bottom, insets.top, t.tabBar.bottomGapMax, t.tabBar.heightMax]);
 
   const openDetail = useCallback((course: CourseEntry) => {
     setSelectedCourse(course);
-    sheetRef.current?.present();
+    // 等 setState 提交后再 present，避免整页重渲与上滑动画抢 JS 线程
+    requestAnimationFrame(() => {
+      sheetRef.current?.present();
+    });
   }, []);
 
   const onLookupPeer = useCallback(
@@ -285,7 +428,9 @@ export function CourseScreen() {
       if (readOnly) return;
       setEditingSchedule(schedule);
       setScheduleTarget(null);
-      scheduleFormRef.current?.present();
+      requestAnimationFrame(() => {
+        scheduleFormRef.current?.present();
+      });
     },
     [readOnly],
   );
@@ -295,7 +440,9 @@ export function CourseScreen() {
       if (readOnly) return;
       setEditingSchedule(null);
       setScheduleTarget(target);
-      scheduleFormRef.current?.present();
+      requestAnimationFrame(() => {
+        scheduleFormRef.current?.present();
+      });
     },
     [readOnly],
   );
@@ -303,7 +450,8 @@ export function CourseScreen() {
   const onSubmitSchedule = useCallback(
     async (entry: ScheduleEntry) => {
       if (!studentId) return;
-      if (editingSchedule) {
+      const isEdit = !!editingSchedule;
+      if (isEdit) {
         await updateSchedule({
           id: entry.id,
           patch: {
@@ -314,21 +462,28 @@ export function CourseScreen() {
             startPeriod: entry.startPeriod,
             endPeriod: entry.endPeriod,
             weeksList: entry.weeksList,
+            colorIndex: entry.colorIndex ?? null,
             updatedAt: entry.updatedAt,
           },
         });
+        toast.success("日程已更新");
       } else {
         await createSchedule(entry);
+        toast.success("日程已添加");
+      }
+      if (scheduleOverlapsAnyCourse(entry, courses)) {
+        toast.info("你所添加的日程和课程有重叠，长按卡片可切换");
       }
       scheduleFormRef.current?.dismiss();
     },
-    [createSchedule, editingSchedule, studentId, updateSchedule],
+    [courses, createSchedule, editingSchedule, studentId, updateSchedule],
   );
 
   const onDeleteSchedule = useCallback(
     async (id: string) => {
       if (!studentId) return;
       await deleteSchedule(id);
+      toast.success("日程已删除");
       scheduleFormRef.current?.dismiss();
     },
     [deleteSchedule, studentId],
@@ -342,6 +497,58 @@ export function CourseScreen() {
   const onDismissDetail = useCallback(() => {
     setSelectedCourse(null);
   }, []);
+
+  const selectedAttendance = useMemo(() => {
+    if (!selectedCourse || readOnly) return null;
+    const weekNumber = viewWeekIndex + 1;
+    return (
+      attendances.find(
+        (a) =>
+          a.courseId === selectedCourse.id && a.week === weekNumber && a.day === selectedCourse.day,
+      ) ?? null
+    );
+  }, [attendances, readOnly, selectedCourse, viewWeekIndex]);
+
+  const selectedCourseAttendances = useMemo(() => {
+    if (!selectedCourse || readOnly) return [];
+    return listAttendancesForCourse(attendances, selectedCourse.id);
+  }, [attendances, readOnly, selectedCourse]);
+
+  const onUpsertAttendanceStatus = useCallback(
+    async (status: AttendanceStatus) => {
+      if (readOnly || !studentId || !selectedCourse) return;
+      const now = new Date().toISOString();
+      await upsertAttendance({
+        id: selectedAttendance?.id ?? newCourseExtId(),
+        studentId,
+        courseId: selectedCourse.id,
+        week: viewWeekIndex + 1,
+        day: selectedCourse.day,
+        status,
+        createdAt: selectedAttendance?.createdAt ?? now,
+        updatedAt: now,
+      });
+    },
+    [readOnly, selectedAttendance, selectedCourse, studentId, upsertAttendance, viewWeekIndex],
+  );
+
+  const onClearAttendance = useCallback(async () => {
+    if (readOnly || !selectedAttendance) return;
+    await deleteAttendance(selectedAttendance.id);
+  }, [deleteAttendance, readOnly, selectedAttendance]);
+
+  const onAddScheduleHere = useCallback(() => {
+    if (readOnly || !selectedCourse) return;
+    sheetRef.current?.dismiss();
+    setEditingSchedule(null);
+    setScheduleTarget({
+      weekIndex: viewWeekIndex,
+      day: selectedCourse.day,
+      startPeriod: selectedCourse.startPeriod,
+      endPeriod: selectedCourse.endPeriod,
+    });
+    requestAnimationFrame(() => scheduleFormRef.current?.present());
+  }, [readOnly, selectedCourse, viewWeekIndex]);
 
   /** 弹层打开时硬件返回优先关闭弹层，不交给导航/其它逻辑 */
   useEffect(() => {
@@ -376,9 +583,16 @@ export function CourseScreen() {
   }, [currentWeekIndex, setViewWeekIndex, width]);
 
   const showBackFab =
-    Boolean(semesterStart) && viewWeekIndex !== currentWeekIndex && !loading && !showError;
+    !showExamPane &&
+    Boolean(semesterStart) &&
+    viewWeekIndex !== currentWeekIndex &&
+    !loading &&
+    !showError;
 
   const pickerInitial = semesterStart ?? new Date();
+
+  const headerTitle =
+    isPeerMode && peer ? `查看 ${peer.studentNo}` : showExamPane ? "考试安排" : "农屿课表";
 
   return (
     <View style={styles.root}>
@@ -399,7 +613,7 @@ export function CourseScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
         <View style={styles.titleBlock}>
           <Text style={styles.title} numberOfLines={1}>
-            {isPeerMode && peer ? `查看 ${peer.studentNo}` : "农屿课程表"}
+            {headerTitle}
           </Text>
           {isPeerMode && peer ? (
             <Text style={styles.subTitle} numberOfLines={1}>
@@ -439,26 +653,31 @@ export function CourseScreen() {
             </>
           ) : (
             <>
-              <Pressable
-                onPress={() => setPeerLookupVisible(true)}
-                style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
-                accessibilityLabel="查看他人课表"
-                disabled={!studentId}
-              >
-                <Ionicons name="people-outline" size={20} color={t.color.brand} />
-              </Pressable>
-              <Pressable
-                onPress={() => void forceRefresh()}
-                style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
-                accessibilityLabel="强制刷新课表"
-                disabled={!studentId || forceRefreshing}
-              >
-                {forceRefreshing ? (
-                  <ActivityIndicator size="small" color={t.color.brand} />
-                ) : (
-                  <Ionicons name="refresh" size={20} color={t.color.brand} />
-                )}
-              </Pressable>
+              {semesterFinished ? (
+                <Pressable
+                  onPress={showExamPane ? switchToWeekPane : switchToExamPane}
+                  style={({ pressed }) => [styles.paneToggleBtn, pressed && styles.iconBtnPressed]}
+                  accessibilityLabel={showExamPane ? "查看课表" : "考试安排"}
+                >
+                  <Text style={styles.paneToggleText}>
+                    {showExamPane ? "查看课表" : "考试安排"}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {!showExamPane ? (
+                <Pressable
+                  onPress={() => setMoreVisible(true)}
+                  style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+                  accessibilityLabel="更多"
+                  disabled={!studentId}
+                >
+                  {forceRefreshing ? (
+                    <ActivityIndicator size="small" color={t.color.brand} />
+                  ) : (
+                    <Ionicons name="ellipsis-horizontal" size={20} color={t.color.brand} />
+                  )}
+                </Pressable>
+              ) : null}
               <Pressable
                 onPress={() => router.push("/mine/settings/course" as Href)}
                 style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
@@ -466,13 +685,15 @@ export function CourseScreen() {
               >
                 <Ionicons name="settings-outline" size={20} color={t.color.brand} />
               </Pressable>
-              <Pressable
-                onPress={() => setPickerVisible(true)}
-                style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
-                accessibilityLabel="设置开学日期"
-              >
-                <Ionicons name="calendar-outline" size={20} color={t.color.brand} />
-              </Pressable>
+              {!showExamPane ? (
+                <Pressable
+                  onPress={() => setPickerVisible(true)}
+                  style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+                  accessibilityLabel="设置开学日期"
+                >
+                  <Ionicons name="calendar-outline" size={20} color={t.color.brand} />
+                </Pressable>
+              ) : null}
             </>
           )}
         </View>
@@ -485,9 +706,7 @@ export function CourseScreen() {
           <Text style={styles.hint}>登录后加载课表</Text>
         </View>
       ) : loading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={t.color.brand} size="large" />
-        </View>
+        <CourseWeekSkeleton />
       ) : showError ? (
         <View style={styles.loading}>
           <Text style={styles.errorTitle}>获取课表失败</Text>
@@ -501,6 +720,8 @@ export function CourseScreen() {
             <Text style={styles.retryText}>重试</Text>
           </Pressable>
         </View>
+      ) : showExamPane ? (
+        <ExamSchedulePanel />
       ) : (
         <WeekPager
           weeks={weeks}
@@ -520,6 +741,12 @@ export function CourseScreen() {
           readOnly={readOnly}
           diffOverlays={diffOverlays}
           diffMode={diffMode}
+          stackFrontIndex={stackFrontRef.current}
+          onStackFrontIndexChange={onStackFrontIndexChange}
+          onCurrentWeekLayout={onCurrentWeekLayout}
+          stackFrontVersion={stackFrontVersion}
+          attendanceSessionBySlot={attendanceSessionBySlot}
+          fillViewport={cardSize === "md"}
         />
       )}
 
@@ -534,11 +761,17 @@ export function CourseScreen() {
         course={selectedCourse}
         notes={readOnly ? [] : notes}
         todos={readOnly ? [] : todos}
+        weekNumber={viewWeekIndex + 1}
+        attendance={selectedAttendance}
+        courseAttendances={selectedCourseAttendances}
         onAddNote={onAddNote}
         onDeleteNote={readOnly ? async () => undefined : deleteNote}
         onAddTodo={onAddTodo}
         onToggleTodo={onToggleTodo}
         onDeleteTodo={readOnly ? async () => undefined : deleteTodo}
+        onUpsertAttendance={onUpsertAttendanceStatus}
+        onClearAttendance={onClearAttendance}
+        onAddScheduleHere={readOnly ? undefined : onAddScheduleHere}
         onDismiss={onDismissDetail}
         readOnly={readOnly}
       />
@@ -555,6 +788,14 @@ export function CourseScreen() {
         />
       ) : null}
 
+      <CourseMoreSheet
+        visible={moreVisible}
+        refreshing={forceRefreshing}
+        onClose={() => setMoreVisible(false)}
+        onRefresh={() => void onPressRefresh()}
+        onShare={() => setPeerLookupVisible(true)}
+      />
+
       <PeerLookupSheet
         visible={peerLookupVisible}
         onClose={() => setPeerLookupVisible(false)}
@@ -566,8 +807,14 @@ export function CourseScreen() {
         initialDate={pickerInitial}
         onDismiss={() => setPickerVisible(false)}
         onConfirm={(date) => {
-          setSemesterStart(date);
-          setPickerVisible(false);
+          try {
+            setSemesterStart(date);
+            setPickerVisible(false);
+            toast.success("开学日期已更新");
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : "请稍后重试";
+            toast.error("设置开学日期失败", { description: msg });
+          }
         }}
       />
     </View>
@@ -627,6 +874,19 @@ const useStyles = createThemedStyles((t) => ({
     backgroundColor: t.color.brandMuted,
   },
   exitDiffText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: t.color.brand,
+  },
+  paneToggleBtn: {
+    height: 40,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: t.color.brandMuted,
+  },
+  paneToggleText: {
     fontSize: 13,
     fontWeight: "700",
     color: t.color.brand,

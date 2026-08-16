@@ -60,12 +60,18 @@ func New(cfg *config.Config, store *sqlite.Store, writer *ingest.Writer, syncer 
 		r.Post("/presence/offline", api.handleOffline)
 	})
 
+	r.Route("/v1/internal", func(r chi.Router) {
+		r.Use(internalToken(cfg.InternalToken))
+		r.Post("/events", api.handleInternalIngest)
+	})
+
 	r.Route("/v1/admin", func(r chi.Router) {
 		r.Use(internalToken(cfg.InternalToken))
 		r.Get("/overview", api.handleOverview)
 		r.Get("/metrics/trend", api.handleTrend)
 		r.Get("/metrics/dims", api.handleDims)
 		r.Get("/crashes", api.handleCrashes)
+		r.Get("/llm-proxy-fails", api.handleLlmProxyFails)
 		r.Post("/jobs/aggregate", api.handleAggregate)
 		r.Post("/jobs/purge", api.handlePurge)
 	})

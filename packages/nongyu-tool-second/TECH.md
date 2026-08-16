@@ -9,7 +9,7 @@
 
 - **会话层** `core/session.ts`：内存学号密码 + `x-access-token`
 - **登录** `core/login`：`POST /user/login/v1.0.0/snoLogin`（query：`loginName`/`password`/`sid`）
-- **网络** `core/utils/request.ts`：`baseURL=SECOND_BASE_URL`，自动带 token；业务 `code` 像鉴权失败时自动重登并重放一次；网络错误最多重试 3 次
+- **网络** `core/utils/request.ts`：`baseURL=SECOND_BASE_URL`，自动带 token；鉴权失败（`code=5` / 用户过期文案 / HTTP 401·403）时用内存凭据 `secondLogin`，**并发排队只登一次**并重放；`attachSecondAuthRefreshHooks` 供 App 持久化 token / Toast；网络错误最多重试 3 次（不含已走重登的鉴权失败）
 - **业务** `core/second`：相对 path POST + query，对齐旧版农屿 / i川农文档
 
 ## 已验证（2026-08-15）

@@ -1,6 +1,6 @@
 /** 课表扩展同步：outbox / tombstone 类型 */
 
-export type CourseExtEntity = "schedule" | "note" | "todo";
+export type CourseExtEntity = "schedule" | "note" | "todo" | "attendance";
 
 export type CourseExtOutboxOp = {
   id: string;

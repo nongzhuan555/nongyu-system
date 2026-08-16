@@ -27,6 +27,41 @@ import { useSessionStore } from "@/stores/session";
 const STUDENT_ID_RE = /^\d{9}$/;
 
 /**
+ * 解析 returnTo（expo-router 可能给 string | string[]）
+ */
+function resolveReturnTo(raw: string | string[] | undefined): string | undefined {
+  if (typeof raw === "string" && raw.trim()) return raw.trim();
+  if (Array.isArray(raw)) {
+    const first = raw.find((v) => typeof v === "string" && v.trim());
+    return first?.trim();
+  }
+  return undefined;
+}
+
+/**
+ * 登录成功后离开登录页（不停留）
+ */
+function leaveSecondLoginPage(
+  router: ReturnType<typeof useRouter>,
+  returnTo: string | string[] | undefined,
+): void {
+  const target = resolveReturnTo(returnTo);
+  if (target) {
+    router.replace(target as Href);
+    return;
+  }
+  if (typeof router.canDismiss === "function" && router.canDismiss()) {
+    router.dismiss();
+    return;
+  }
+  if (router.canGoBack()) {
+    router.back();
+    return;
+  }
+  router.replace("/home/second" as Href);
+}
+
+/**
  * 二课独立登录页（对齐旧版 SecondLogin）
  */
 export function SecondLoginScreen() {
@@ -40,7 +75,7 @@ export function SecondLoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
 
   const canSubmit =
     STUDENT_ID_RE.test(studentId.trim()) && password.trim().length > 0 && !submitting;
@@ -62,13 +97,8 @@ export function SecondLoginScreen() {
       }
       refreshSecondAuthFlag();
       toast.success("二课登录成功");
-      if (returnTo) {
-        router.replace(returnTo as Href);
-      } else if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace("/home/second");
-      }
+      // await 之后立刻离页，避免停在登录页
+      leaveSecondLoginPage(router, returnTo);
     } finally {
       setSubmitting(false);
     }
@@ -174,7 +204,7 @@ export function SecondLoginScreen() {
                 "农屿和 i川农是两套独立的系统",
                 "想在农屿上集成 i川农的二课功能需要登录",
                 "使用 i川农 / 二课密码（与教务密码可能不同）",
-                "后续使用中若登录过期再重新登录即可",
+                "后续使用中登录过期会自动重登；若密码失效需重新登录",
               ].map((line) => (
                 <View key={line} style={styles.tipItem}>
                   <Text style={styles.bullet}>•</Text>

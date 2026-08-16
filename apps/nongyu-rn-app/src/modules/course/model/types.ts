@@ -38,6 +38,8 @@ export type ScheduleEntry = {
   endPeriod: number;
   /** 出现在哪些周；空数组视为全周 */
   weeksList: number[];
+  /** 色板下标 0–7；null / 缺省 = 旧版浅底默认样式 */
+  colorIndex?: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -69,19 +71,48 @@ export type CourseTodo = {
   updatedAt: string;
 };
 
-/** 连堂主格 */
-export type GridPrimary = {
-  kind: "primary";
-  course: CourseEntry;
-  /** 向下合并的大课区间行数（≥1） */
+/** 考勤五态：签到 / 迟到 / 缺勤 / 请假 / 未考勤（老师未检查本节） */
+export type AttendanceStatus = "present" | "late" | "absent" | "leave" | "nocheck";
+
+/**
+ * 课程考勤（按课程实例：courseId + 教学周 + 星期）
+ */
+export type CourseAttendance = {
+  id: string;
+  studentId: string;
+  courseId: string;
+  week: number;
+  day: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  status: AttendanceStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** 同格堆叠项：课程或日程 */
+export type StackItem =
+  | { type: "course"; course: CourseEntry }
+  | { type: "schedule"; schedule: ScheduleEntry };
+
+/**
+ * 同格堆叠主格（有课则 items[0] 为课程；日程按 createdAt 升序）
+ */
+export type GridStack = {
+  kind: "stack";
+  items: StackItem[];
   spanRows: number;
 };
 
-/** 自定义日程主格 */
+/** @deprecated 构建已统一为 stack；保留类型兼容旧引用 */
+export type GridPrimary = {
+  kind: "primary";
+  course: CourseEntry;
+  spanRows: number;
+};
+
+/** @deprecated 构建已统一为 stack */
 export type GridSchedule = {
   kind: "schedule";
   schedule: ScheduleEntry;
-  /** 向下合并的大课区间行数（≥1） */
   spanRows: number;
 };
 
@@ -91,7 +122,7 @@ export type GridOccupied = {
   primaryRow: number;
 };
 
-export type GridCell = GridPrimary | GridSchedule | GridOccupied | null;
+export type GridCell = GridStack | GridOccupied | null;
 
 /** 单周：5 行大课区间 × 7 列 */
 export type WeekGridData = GridCell[][];

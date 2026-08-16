@@ -137,18 +137,41 @@ LIMIT ?`, date, metric, limit)
 }
 
 func (s *Store) ListCrashes(ctx context.Context, from, to string, offset, limit int) ([]CrashRow, int, error) {
-	var total int
-	if err := s.read.QueryRowContext(ctx, `
-SELECT COUNT(*) FROM events WHERE event_type='crash' AND stat_date>=? AND stat_date<=?`, from, to).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-	rows, err := s.read.QueryContext(ctx, `
+	return s.listEventsByType(ctx, "crash", from, to, "", offset, limit)
+}
+
+// ListLlmProxyFails 列出平台 LLM 代理失败事件；errorCode 为空则不过滤 event_name。
+func (s *Store) ListLlmProxyFails(ctx context.Context, from, to, errorCode string, offset, limit int) ([]CrashRow, int, error) {
+	return s.listEventsByType(ctx, "llm_proxy_fail", from, to, errorCode, offset, limit)
+}
+
+func (s *Store) listEventsByType(
+	ctx context.Context,
+	eventType, from, to, eventName string,
+	offset, limit int,
+) ([]CrashRow, int, error) {
+	countSQL := `SELECT COUNT(*) FROM events WHERE event_type=? AND stat_date>=? AND stat_date<=?`
+	listSQL := `
 SELECT event_id, user_id, student_no, event_name, app_version, platform, device_brand,
        client_ts_ms, received_at_ms, stat_date, props_json
 FROM events
-WHERE event_type='crash' AND stat_date>=? AND stat_date<=?
-ORDER BY received_at_ms DESC
-LIMIT ? OFFSET ?`, from, to, limit, offset)
+WHERE event_type=? AND stat_date>=? AND stat_date<=?`
+	argsCount := []any{eventType, from, to}
+	argsList := []any{eventType, from, to}
+	if eventName != "" {
+		countSQL += ` AND event_name=?`
+		listSQL += ` AND event_name=?`
+		argsCount = append(argsCount, eventName)
+		argsList = append(argsList, eventName)
+	}
+	listSQL += ` ORDER BY received_at_ms DESC LIMIT ? OFFSET ?`
+	argsList = append(argsList, limit, offset)
+
+	var total int
+	if err := s.read.QueryRowContext(ctx, countSQL, argsCount...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := s.read.QueryContext(ctx, listSQL, argsList...)
 	if err != nil {
 		return nil, 0, err
 	}

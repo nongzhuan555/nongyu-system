@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "appId": 0,
+    "appKey": "<从 Pushy 控制台或 pushy createApp --platform ios 获得>"
+  },
+  "android": {
+    "appId": 0,
+    "appKey": "<从 Pushy 控制台或 pushy createApp --platform android 获得>"
+  }
+}

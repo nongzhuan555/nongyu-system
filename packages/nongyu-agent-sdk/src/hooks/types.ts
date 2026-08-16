@@ -12,8 +12,8 @@ export interface ChatMessage {
   content: string;
   createdAt: number;
 
-  /** 消息渲染状态 */
-  status?: "pending" | "streaming" | "done" | "error";
+  /** 消息渲染状态（stopped = 用户主动打断，可含部分正文） */
+  status?: "pending" | "streaming" | "done" | "error" | "stopped";
 
   /** 工具调用记录（仅 assistant 消息，流式过程中动态追加） */
   toolCalls?: ToolCallRecord[];

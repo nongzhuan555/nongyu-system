@@ -7,6 +7,7 @@ import { useThemeTokens } from "@/theme/ThemeProvider";
 import { useThemePrefsStore, type ThemeAppearance } from "@/theme/themePrefsStore";
 import type { BrandName } from "@/theme/palettes";
 import { brandPalettes } from "@/theme/palettes";
+import { toast } from "@/components/ui/toast";
 
 const THEME_SUGGEST_HREF =
   `/center/compose?postType=feedback&subtype=suggestion&title=${encodeURIComponent("App主题建议")}` as Href;
@@ -36,6 +37,28 @@ export function ThemeSettingsScreen() {
   const setAppearance = useThemePrefsStore((s) => s.setAppearance);
   const brandLocked = appearance === "dark";
 
+  const onSelectBrand = (id: BrandName, label: string) => {
+    if (id === brand) return;
+    try {
+      setBrand(id);
+      toast.success(`品牌色已设为${label}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "请稍后重试";
+      toast.error("设置品牌色失败", { description: msg });
+    }
+  };
+
+  const onSelectAppearance = (id: ThemeAppearance, label: string) => {
+    if (id === appearance) return;
+    try {
+      setAppearance(id);
+      toast.success(`外观已设为${label}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "请稍后重试";
+      toast.error("设置外观失败", { description: msg });
+    }
+  };
+
   return (
     <SettingsPageShell title="主题与外观">
       <ScrollView
@@ -54,7 +77,7 @@ export function ThemeSettingsScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected, disabled: brandLocked }}
                   disabled={brandLocked}
-                  onPress={() => setBrand(opt.id)}
+                  onPress={() => onSelectBrand(opt.id, opt.label)}
                   style={({ pressed }) => [
                     styles.row,
                     pressed && !brandLocked && styles.pressed,
@@ -87,7 +110,7 @@ export function ThemeSettingsScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
-                  onPress={() => setAppearance(opt.id)}
+                  onPress={() => onSelectAppearance(opt.id, opt.label)}
                   style={({ pressed }) => [styles.row, pressed && styles.pressed]}
                 >
                   <View style={styles.textCol}>

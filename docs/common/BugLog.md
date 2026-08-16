@@ -5,6 +5,134 @@
 
 ---
 
+## 2026-08-16 · nongyu-rn-app · 打开课程详情 TypeError undefined is not a function
+
+- **现象**：打开带考勤的课程详情红屏 / 报 `TypeError: undefined is not a function`。
+- **根因**：`listAttendancesForCourse` 使用 `Array.prototype.toSorted`，Hermes 未实现。
+- **修复**：改为 `.slice().sort(...)`。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · 课程详情 VirtualizedList 嵌套警告
+
+- **现象**：打开课程详情时控制台报 `VirtualizedLists should never be nested inside plain ScrollViews`。
+- **根因**：备注/待办限高列表用 RNGH `FlatList`（VirtualizedList）嵌在 `BottomSheetScrollView` 内。
+- **修复**：改回 RNGH `ScrollView` + `map` 渲染，保留滑动时锁定外层 sheet 滚动；手势策略不变。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · 课程详情备注/待办列表无法滚动
+
+- **现象**：详情弹层内备注（及待办）限高列表滑不动。
+- **根因**：① 嵌套在 `BottomSheetScrollView` 内外层抢手势；② 待办整行 `Pressable` 吞掉纵向滑动。
+- **修复**：列表改 RNGH `FlatList` + 滑动时锁定外层滚动；待办仅复选框可点切换，行容器改为 `View`。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · 大卡片课表末行上课时间被底栏挡住
+
+- **现象**：卡片大小为「大」时，左下角上课时间滚到底仍显示不全，易被悬浮 Tab 遮挡。
+- **根因**：`WeekGrid` 表头在 `ScrollView` 外，但 `ScrollView` 仍用整页 `pageHeight` 作 `maxHeight`，可视区实际伸进底栏；且滚动内容无底部留白。
+- **修复**：外层固定为 `pageHeight`，`ScrollView` 改为 `flex:1` 占满表头剩余高度；**仅大卡片**在 `contentContainerStyle` 增加底部 padding，中/小档不加额外留白。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · Metro 无法解析 nongyu-android-widget
+
+- **现象**：`expo start` 预览 bundling 失败：`Unable to resolve "nongyu-android-widget"`（`writeWidgetSchedule.ts`）。
+- **根因**：依赖为 `file:./modules/nongyu-android-widget`；pnpm 在 Windows 上将其 junction 到空的 `.pnpm` store，Metro 只查 `node_modules` 因而解析失败。
+- **修复**：`writeWidgetSchedule` 改为 `requireOptionalNativeModule`，不再 import 该包名；`metro.config.js` `extraNodeModules` 与 `tsconfig` paths 仍直指模块源码，避免其它入口再踩空 junction。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · 小组件同步 Maximum update depth exceeded
+
+- **现象**：bundling 通过后预览红屏，栈指向 `CourseWidgetSyncHost` 的 `setCacheTick`。
+- **根因**：`queryCache.subscribe` 对 observer 类事件也 `setState`；子组件 setState 导致父树重渲染 → observer 再通知 → 无限循环。
+- **修复**：订阅只处理 `added` / `updated` / `removed`。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · 设置项变更缺少 Toast
+
+- **现象**：课表卡片/字号、主题、启动页、网页跳转、Agent 上下文、开学日等改完无成功/失败反馈。
+- **根因**：设置 UI 直接调 store setter，未统一 Toast。
+- **修复**：各设置屏变更路径补 `toast.success` / `toast.error`；清除背景失败改为错误提示；退出登录失败补 error。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · 删除日程/备注/待办成功无 Toast
+
+- **现象**：确认删除后无成功反馈。
+- **根因**：删除成功路径未调用 `toast.success`。
+- **修复**：日程「日程已删除」；备注/待办确认删除后分别提示「备注已删除」「待办已删除」。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · 添加/编辑日程成功无 Toast
+
+- **现象**：保存自定义日程后弹层关闭，无成功反馈（仅重叠时有 info）。
+- **根因**：`onSubmitSchedule` 成功路径未调用 `toast.success`。
+- **修复**：新增成功提示「日程已添加」、编辑「日程已更新」；重叠 info 保留。
+
+---
+
+## 2026-08-15 · nongyu-rn-app · 日程删除无确认弹窗
+
+- **现象**：编辑自定义日程时点「删除日程」直接删除，无二次确认。
+- **根因**：`ScheduleFormSheet.handleDelete` 未走全局 `confirm`；备注/待办已有确认，日程遗漏。
+- **修复**：删除前调用 `confirm`（destructive，文案对齐备注/待办）；Spec §4.8 同步约定。
+
+---
+
+## 2026-08-15 · nongyu-rn-app · 课表 Maximum update depth exceeded
+
+- **现象**：进入课表 Tab 后报 `Maximum update depth exceeded`，页面卡死/红屏。
+- **根因**：① `CourseScreen` 只读模式 `displaySchedules = []` 每次 render 新引用；② `useCourseExt` 在 `data` 未就绪时用内联 `{ schedules: [] }` 兜底，同样每帧新引用；二者进入依赖 `displaySchedules` 的 `useEffect` → `setMatrixTick` → 再渲染死循环。
+- **修复**：模块级稳定空数组/`EMPTY_COURSE_EXT`；只读与未就绪路径复用同一引用。
+
+---
+
+## 2026-08-15 · nongyu-rn-app · 课表 Tab 进入即崩溃
+
+- **现象**：点进课表 Tab 后页面崩溃红屏。
+- **根因**：优化弹层时给 `BottomSheetModal` 传了 `containerHeight`；`@gorhom/bottom-sheet` v5 的 `usePropsValidator` 对该 prop 直接 `invariant`（已弃用，改用 `containerLayoutState`）。
+- **修复**：去掉两处 Sheet 的 `containerHeight`，保留 `enableDynamicSizing={false}` 等其余优化。
+
+---
+
+## 2026-08-15 · nongyu-rn-app · 课表详情/日程弹层打开动画卡顿
+
+- **现象**：点击课程卡或日程卡后 BottomSheet 上滑不够流畅、掉帧。
+- **根因**：① `setState` 与 `present()` 同步执行，整页 `CourseScreen`/`WeekPager` 重渲与上滑动画抢 JS；② `@gorhom/bottom-sheet` v5 默认 `enableDynamicSizing` 仍测高；③ 详情扩展区（考勤/备注/待办）与动画同期挂载。
+- **修复**：`present` 延到下一帧；Sheet 设 `enableDynamicSizing={false}`（勿传已弃用的 `containerHeight`）；`WeekPager` `memo`；详情扩展区在 `onChange` 到位后再挂载。
+
+---
+
+## 2026-08-15 · nongyu-rn-app · 二课登录成功仍停在登录页
+
+- **现象**：二课登录成功后仍停留在登录页，未自动退出。
+- **根因**：成功后的离页仅依赖 `canGoBack`/`replace`，对 expo-router 的 `returnTo` 数组形态与可 dismiss 栈处理不足。
+- **修复**：`leaveSecondLoginPage`：优先 `returnTo` replace → `dismiss` → `back` → 兜底 replace `/home/second`。
+
+---
+
+## 2026-08-15 · nongyu-rn-app · 二课自动重登失败未强制手动登录
+
+- **现象**：本地二课密码失效时自动重登失败，仅 Toast，未清无效密码也未进入登录页。
+- **根因**：`onRefreshFailed` 只清了内存 token，未 `clearSecondPassword`，也未跳转 `/home/second/login`；冷启动学号仅依赖教务 SecureStore，缺 profile 兜底。
+- **修复**：失败时清无效密码 + Toast + 跳转登录页；bootstrap 用 session.profile.studentId 兜底；文档同步验收点。
+
+---
+
+## 2026-08-15 · nongyu-rn-app / nongyu-tool-second · 二课 token 过期未无感重登
+
+- **现象**：二课会话过期后业务请求失败，需用户手动再登；并发请求可能多次打登录。
+- **根因**：工具层虽有简单重登，但缺并发排队、HTTP 401/403 触发、App 侧 MMKV 回写与失败提示；与旧版 RN 拦截器不对齐。
+- **修复**：`request` 拦截器对齐旧版（code=5/过期文案/401·403 + 队列单飞 login）；`attachSecondAuthRefreshHooks` + App bridge 写 MMKV / Toast / 失败清会话。
+
+---
+
 ## 2026-08-15 · nongyu-rn-app · 课表连堂未合并成一张卡
 
 - **现象**：跨两大课区间的连堂（或教务拆成多行的相邻时段）显示为两张独立卡片，不像合并单元格。
@@ -269,3 +397,11 @@
 - **现象**：对比双方课表且非本周时，「退出对比」与右侧「回到本周」半圆叠在一起，难以点按。
 - **根因**：图例条把退出按钮 `marginLeft: auto` 靠右；`BackToCurrentWeekFab` 同样 `right: 0` 且 `top` 落在图例行。
 - **修复**：「退出对比」改到顶栏原「对比课表」槽位；图例条只留模式切换与色点；半圆位置不变。
+
+---
+
+## 2026-08-15 · nongyu-web-admin · LLM Key 页白屏 / Vite 500
+
+- **现象**：打开管理端（尤其 LLM Key 池页）崩溃白屏；Vite 对 `LlmProxyFailsPanel.tsx` 返回 500。
+- **根因**：`src/components/llm/LlmProxyFailsPanel.tsx` 用 `../lib/*`、`../types/*`，实际应向上两级到 `src/lib`、`src/types`，模块解析失败拖垮页面。
+- **修复**：改为 `../../lib/adminApi`、`../../lib/format`、`../../types/dashboard`。

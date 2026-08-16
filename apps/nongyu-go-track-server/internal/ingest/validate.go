@@ -10,12 +10,13 @@ import (
 const maxPropsBytes = 4096
 
 var allowedTypes = map[string]struct{}{
-	"screen_view":  {},
-	"button_click": {},
-	"perf":         {},
-	"app_open":     {},
-	"heartbeat":    {},
-	"crash":        {},
+	"screen_view":    {},
+	"button_click":   {},
+	"perf":           {},
+	"app_open":       {},
+	"heartbeat":      {},
+	"crash":          {},
+	"llm_proxy_fail": {},
 }
 
 type RawEvent struct {

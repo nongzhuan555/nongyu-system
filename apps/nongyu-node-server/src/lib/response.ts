@@ -12,7 +12,13 @@ export function ok<T>(res: Response, data: T, message = "ok") {
   return res.status(200).json(body);
 }
 
-export function fail(res: Response, httpStatus: number, code: number, message: string) {
-  const body: ApiResponse<null> = { code, message, data: null };
+export function fail(
+  res: Response,
+  httpStatus: number,
+  code: number,
+  message: string,
+  data: unknown | null = null,
+) {
+  const body: ApiResponse<unknown> = { code, message, data };
   return res.status(httpStatus).json(body);
 }

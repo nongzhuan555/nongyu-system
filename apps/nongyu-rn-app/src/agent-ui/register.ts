@@ -18,6 +18,8 @@ import { CourseExtSnapshotCard } from "@/components/agent/CourseExtSnapshotCard"
 import { CourseShareDiffCard } from "@/components/agent/CourseShareDiffCard";
 import { PlazaPostListCard } from "@/components/agent/PlazaPostListCard";
 import { PlazaPostDetailCard } from "@/components/agent/PlazaPostDetailCard";
+import { AgentSettingsNavCard } from "@/components/agent/AgentSettingsNavCard";
+import { PLATFORM_LLM_BUSY_NAV_TOOL } from "@/agent/platformLlmBusy";
 
 /**
  * 模块级注册各业务工具的内联渲染组件。
@@ -41,6 +43,7 @@ import { PlazaPostDetailCard } from "@/components/agent/PlazaPostDetailCard";
  * - course_ext_snapshot：课表扩展快照卡片。
  * - course_share_diff：共享课表对比卡片。
  * - plaza_posts_list / plaza_post_detail：广场帖子列表/详情卡片。
+ * - platform_llm_busy_nav：平台模型排队繁忙 → Agent 设置入口。
  *
  * 在 app/_layout.tsx 顶部 `import "@/agent-ui/register"` 即可在启动时完成注册。
  */
@@ -63,6 +66,7 @@ registerToolUI("course_ext_snapshot", CourseExtSnapshotCard);
 registerToolUI("course_share_diff", CourseShareDiffCard);
 registerToolUI("plaza_posts_list", PlazaPostListCard);
 registerToolUI("plaza_post_detail", PlazaPostDetailCard);
+registerToolUI(PLATFORM_LLM_BUSY_NAV_TOOL, AgentSettingsNavCard);
 
 /**
  * 保留空函数供旧调用方兼容，注册实际在 import 时完成。

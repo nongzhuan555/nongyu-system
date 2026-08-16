@@ -49,6 +49,24 @@ const envSchema = z.object({
     .default("202308596"),
   /** 超管出厂默认密码；未配置时无库超管仅能靠已设哈希登录 */
   SUPER_ADMIN_DEFAULT_PASSWORD: z.string().default(""),
+  /** 平台 LLM Key 池开关 */
+  LLM_POOL_ENABLED: z
+    .union([z.boolean(), z.enum(["true", "false", "1", "0"])])
+    .default("true")
+    .transform((v) => v === true || v === "true" || v === "1"),
+  LLM_POOL_DEFAULT_MODEL: z.string().min(1).default("glm-4.7-flash"),
+  LLM_POOL_DEFAULT_BASE_URL: z
+    .string()
+    .min(1)
+    .default("https://open.bigmodel.cn/api/paas/v4")
+    .transform((value) => value.replace(/\/+$/, "")),
+  LLM_POOL_QUEUE_WAIT_MS: z.coerce.number().int().positive().default(15_000),
+  LLM_POOL_FIRST_TOKEN_TIMEOUT_MS: z.coerce.number().int().positive().default(12_000),
+  LLM_POOL_MAX_KEY_RETRIES: z.coerce.number().int().min(0).max(10).default(2),
+  LLM_POOL_USER_DAILY_LIMIT: z.coerce.number().int().positive().default(100),
+  LLM_POOL_LEASE_MAX_MS: z.coerce.number().int().positive().default(300_000),
+  /** AES 密钥材料；池开启时加解密路径要求长度 ≥16 */
+  LLM_KEY_ENCRYPTION_SECRET: z.string().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;

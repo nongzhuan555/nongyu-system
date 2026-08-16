@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { memo, useCallback, useEffect, useRef, type RefObject } from "react";
 import {
   FlatList,
   type ListRenderItemInfo,
@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { WeekGrid } from "./WeekGrid";
 import type { CourseSizeScale } from "../model/coursePrefs";
-import type { CourseEntry, ScheduleEntry, WeekGridData } from "../model/types";
+import type { AttendanceStatus, CourseEntry, ScheduleEntry, WeekGridData } from "../model/types";
 import type { CourseDiffMode } from "../store/courseUiStore";
 import type { DiffOverlayGrid } from "../model/courseShareDiff";
 
@@ -20,7 +20,8 @@ export type EmptyCellTarget = {
 };
 
 type WeekPagerProps = {
-  weeks: WeekGridData[];
+  /** 与 maxWeek 等长；未构建周为 null */
+  weeks: (WeekGridData | null)[];
   pageWidth: number;
   pageHeight: number;
   rowHeight: number;
@@ -33,17 +34,27 @@ type WeekPagerProps = {
   onCoursePress: (course: CourseEntry) => void;
   onSchedulePress: (schedule: ScheduleEntry) => void;
   onEmptyCellPress: (target: EmptyCellTarget) => void;
-  listRef?: RefObject<FlatList<WeekGridData> | null>;
+  listRef?: RefObject<FlatList<WeekGridData | null> | null>;
   readOnly?: boolean;
-  /** 按周索引的 Diff 叠色；与 weeks 等长时启用 */
   diffOverlays?: DiffOverlayGrid[] | null;
   diffMode?: CourseDiffMode;
+  stackFrontIndex: Map<string, number>;
+  onStackFrontIndexChange: (key: string, index: number) => void;
+  /** 翻牌索引版本，驱动 FlatList extraData */
+  stackFrontVersion?: number;
+  /** 当前周 WeekGrid 首次 layout */
+  onCurrentWeekLayout?: () => void;
+  /** courseId:week:day → 本节考勤状态 */
+  attendanceSessionBySlot?: Map<string, AttendanceStatus>;
+  /** 中档铺满可视区、不纵向滚动 */
+  fillViewport?: boolean;
 };
 
 /**
- * 横向分页切周
+ * 横向分页切周（懒矩阵：null 周显示占位）
+ * memo：打开详情弹层时父级 setState 不牵连整表网格重渲
  */
-export function WeekPager({
+export const WeekPager = memo(function WeekPager({
   weeks,
   pageWidth,
   pageHeight,
@@ -61,11 +72,18 @@ export function WeekPager({
   readOnly = false,
   diffOverlays = null,
   diffMode = "conflict",
+  stackFrontIndex,
+  onStackFrontIndexChange,
+  stackFrontVersion = 0,
+  onCurrentWeekLayout,
+  attendanceSessionBySlot,
+  fillViewport = false,
 }: WeekPagerProps) {
-  const innerRef = useRef<FlatList<WeekGridData>>(null);
+  const innerRef = useRef<FlatList<WeekGridData | null>>(null);
   const flatRef = listRef ?? innerRef;
   const maxWeek = weeks.length;
   const didInit = useRef(false);
+  const paintedRef = useRef(false);
 
   useEffect(() => {
     if (didInit.current || weeks.length === 0 || pageWidth <= 0) return;
@@ -89,8 +107,19 @@ export function WeekPager({
     [onIndexChange, pageWidth, viewWeekIndex],
   );
 
+  const handleLayout = useCallback(
+    (index: number) => {
+      if (paintedRef.current) return;
+      if (index !== viewWeekIndex && index !== initialIndex) return;
+      if (!weeks[index]) return;
+      paintedRef.current = true;
+      onCurrentWeekLayout?.();
+    },
+    [initialIndex, onCurrentWeekLayout, viewWeekIndex, weeks],
+  );
+
   const renderItem = useCallback(
-    ({ item, index }: ListRenderItemInfo<WeekGridData>) => (
+    ({ item, index }: ListRenderItemInfo<WeekGridData | null>) => (
       <WeekGrid
         weekIndex={index}
         maxWeek={maxWeek}
@@ -107,27 +136,37 @@ export function WeekPager({
         readOnly={readOnly}
         diffOverlay={diffOverlays?.[index] ?? null}
         diffMode={diffMode}
+        stackFrontIndex={stackFrontIndex}
+        onStackFrontIndexChange={onStackFrontIndexChange}
+        onGridLayout={() => handleLayout(index)}
+        attendanceSessionBySlot={attendanceSessionBySlot}
+        fillViewport={fillViewport}
       />
     ),
     [
+      attendanceSessionBySlot,
       diffMode,
       diffOverlays,
+      fillViewport,
       fontScale,
+      handleLayout,
       highlightTodayColumn,
       maxWeek,
       onCoursePress,
       onSchedulePress,
       onEmptyCellPress,
+      onStackFrontIndexChange,
       pageHeight,
       pageWidth,
       readOnly,
       rowHeight,
       semesterStart,
+      stackFrontIndex,
     ],
   );
 
   const getItemLayout = useCallback(
-    (_: ArrayLike<WeekGridData> | null | undefined, index: number) => ({
+    (_: ArrayLike<WeekGridData | null> | null | undefined, index: number) => ({
       length: pageWidth,
       offset: pageWidth * index,
       index,
@@ -153,7 +192,7 @@ export function WeekPager({
       initialNumToRender={3}
       windowSize={5}
       maxToRenderPerBatch={3}
-      extraData={`${rowHeight}-${fontScale}-${readOnly}-${diffMode}-${diffOverlays ? "d" : "n"}`}
+      extraData={`${rowHeight}-${fontScale}-${readOnly}-${diffMode}-${viewWeekIndex}-${stackFrontVersion}-s${attendanceSessionBySlot?.size ?? 0}-f${fillViewport ? 1 : 0}`}
     />
   );
-}
+});

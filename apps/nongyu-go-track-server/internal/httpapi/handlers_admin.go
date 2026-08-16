@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"nongyu-go-track-server/internal/bizday"
@@ -166,6 +167,69 @@ func (a *API) handleCrashes(w http.ResponseWriter, r *http.Request) {
 	}
 	offset := (page - 1) * pageSize
 	rows, total, err := a.store.ListCrashes(r.Context(), from, to, offset, pageSize)
+	if err != nil {
+		writeFail(w, http.StatusInternalServerError, "INTERNAL", "query failed")
+		return
+	}
+	list := make([]map[string]any, 0, len(rows))
+	for _, c := range rows {
+		list = append(list, map[string]any{
+			"event_id":       c.EventID,
+			"user_id":        nullInt64(c.UserID),
+			"student_no":     nullString(c.StudentNo),
+			"event_name":     c.EventName,
+			"app_version":    nullString(c.AppVersion),
+			"platform":       nullString(c.Platform),
+			"device_brand":   nullString(c.DeviceBrand),
+			"client_ts_ms":   nullInt64(c.ClientTsMs),
+			"received_at_ms": c.ReceivedAtMs,
+			"stat_date":      c.StatDate,
+			"props":          parseProps(c.PropsJSON),
+		})
+	}
+	writeOK(w, http.StatusOK, map[string]any{
+		"list":      list,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+	})
+}
+
+func (a *API) handleLlmProxyFails(w http.ResponseWriter, r *http.Request) {
+	from := r.URL.Query().Get("from")
+	to := r.URL.Query().Get("to")
+	if _, err := bizday.ParseDate(from); err != nil {
+		writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid from")
+		return
+	}
+	if _, err := bizday.ParseDate(to); err != nil {
+		writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid to")
+		return
+	}
+	errorCode := strings.TrimSpace(r.URL.Query().Get("error_code"))
+	page := 1
+	pageSize := 20
+	if raw := r.URL.Query().Get("page"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 {
+			writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid page")
+			return
+		}
+		page = n
+	}
+	if raw := r.URL.Query().Get("page_size"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 {
+			writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid page_size")
+			return
+		}
+		if n > 100 {
+			n = 100
+		}
+		pageSize = n
+	}
+	offset := (page - 1) * pageSize
+	rows, total, err := a.store.ListLlmProxyFails(r.Context(), from, to, errorCode, offset, pageSize)
 	if err != nil {
 		writeFail(w, http.StatusInternalServerError, "INTERNAL", "query failed")
 		return

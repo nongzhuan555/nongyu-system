@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SettingsPageShell } from "../components/SettingsPageShell";
 import { useAppWebPrefsStore } from "../store/appWebPrefsStore";
 import { createThemedStyles } from "@/theme/createThemedStyles";
+import { toast } from "@/components/ui/toast";
 
 /**
  * 网页跳转：应用内打开 vs 系统浏览器
@@ -14,6 +15,17 @@ export function WebOpenSettingsScreen() {
   const insets = useSafeAreaInsets();
   const openWebInApp = useAppWebPrefsStore((s) => s.openWebInApp);
   const setOpenWebInApp = useAppWebPrefsStore((s) => s.setOpenWebInApp);
+
+  const onToggle = (next: boolean) => {
+    if (next === openWebInApp) return;
+    try {
+      setOpenWebInApp(next);
+      toast.success(next ? "已改为应用内打开网页" : "已改为系统浏览器打开");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "请稍后重试";
+      toast.error("设置失败", { description: msg });
+    }
+  };
 
   return (
     <SettingsPageShell title="网页跳转">
@@ -34,7 +46,7 @@ export function WebOpenSettingsScreen() {
             </View>
             <Switch
               value={openWebInApp}
-              onValueChange={setOpenWebInApp}
+              onValueChange={onToggle}
               trackColor={{
                 false: t.color.border,
                 true: t.color.brandMuted,

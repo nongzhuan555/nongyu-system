@@ -47,3 +47,17 @@ func TestValidateOne_OK(t *testing.T) {
 		t.Fatalf("%+v", fields)
 	}
 }
+
+func TestValidateOne_LlmProxyFail(t *testing.T) {
+	fields, err := ValidateOne(RawEvent{
+		EventID:   "550e8400-e29b-41d4-a716-446655440001",
+		EventType: "llm_proxy_fail",
+		EventName: "50210",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fields.EventType != "llm_proxy_fail" {
+		t.Fatalf("%+v", fields)
+	}
+}

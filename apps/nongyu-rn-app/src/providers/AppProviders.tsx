@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
 import { AppToastHost } from "@/components/ui/toast";
 import { AppConfirmHost } from "@/components/ui/confirm";
+import { PushyUpdateProvider } from "@/modules/update";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 
 type AppProvidersProps = {
@@ -23,7 +24,7 @@ const SheetProvider = BottomSheetModalProvider as ComponentType<{
 }>;
 
 /**
- * 全局 Provider 栈：手势、安全区、主题、React Query、BottomSheet、Toast、确认框
+ * 全局 Provider 栈：Pushy 热更、手势、安全区、主题、React Query、BottomSheet、Toast、确认框
  */
 export function AppProviders({ children }: AppProvidersProps) {
   const [queryClient] = useState(
@@ -39,19 +40,21 @@ export function AppProviders({ children }: AppProvidersProps) {
   );
 
   return (
-    <GestureRoot style={styles.root}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <QueryClientProvider client={queryClient}>
-            <SheetProvider>
-              {children}
-              <AppToastHost />
-              <AppConfirmHost />
-            </SheetProvider>
-          </QueryClientProvider>
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </GestureRoot>
+    <PushyUpdateProvider>
+      <GestureRoot style={styles.root}>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <QueryClientProvider client={queryClient}>
+              <SheetProvider>
+                {children}
+                <AppToastHost />
+                <AppConfirmHost />
+              </SheetProvider>
+            </QueryClientProvider>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </GestureRoot>
+    </PushyUpdateProvider>
   );
 }
 

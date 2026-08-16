@@ -1,4 +1,6 @@
 import dayjs from "dayjs";
+import type { CourseEntry } from "./types";
+import { maxWeekFromCourses } from "./weekMatrix";
 
 /**
  * 开学日所在自然周的周一 00:00（本地）
@@ -19,6 +21,20 @@ export function computeCurrentWeek(startDate: Date, now: Date = new Date()): num
   const diffDays = current.diff(monday, "day");
   const week = Math.floor(diffDays / 7) + 1;
   return Math.max(1, week);
+}
+
+/**
+ * 本学期教务课是否已全部上完（仅统计教务课最大周，不含自定义日程）
+ */
+export function isSemesterCoursesFinished(args: {
+  semesterStart: Date | null;
+  courses: CourseEntry[];
+  now?: Date;
+}): boolean {
+  const { semesterStart, courses, now } = args;
+  if (!semesterStart || courses.length === 0) return false;
+  const maxWeek = maxWeekFromCourses(courses);
+  return computeCurrentWeek(semesterStart, now) > maxWeek;
 }
 
 /**

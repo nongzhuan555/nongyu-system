@@ -33,6 +33,24 @@ export async function getTrackCrashes(from: string, to: string, page: number, pa
   return mapCrashes(data, page, pageSize);
 }
 
+export async function getTrackLlmProxyFails(
+  from: string,
+  to: string,
+  page: number,
+  pageSize: number,
+  errorCode?: string,
+) {
+  const query = new URLSearchParams({
+    from,
+    to,
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  if (errorCode) query.set("error_code", errorCode);
+  const data = await trackAdminGet(`/v1/admin/llm-proxy-fails?${query.toString()}`);
+  return mapCrashes(data, page, pageSize);
+}
+
 export async function getTrackTrend(metric: string, from: string, to: string) {
   const query = new URLSearchParams({ metric, from, to });
   const data = await trackAdminGet(`/v1/admin/metrics/trend?${query.toString()}`);

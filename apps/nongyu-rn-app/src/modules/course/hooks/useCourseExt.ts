@@ -11,17 +11,27 @@ import {
   flushOutbox,
   loadLocalCourseExt,
   pullCourseExt,
+  removeAttendance,
   removeNote,
   removeSchedule,
   removeTodo,
+  upsertAttendance,
 } from "../data/courseExtRepository";
-import type { CourseNote, CourseTodo, ScheduleEntry } from "../model/types";
+import type { CourseAttendance, CourseNote, CourseTodo, ScheduleEntry } from "../model/types";
 import { useSessionStore } from "@/stores/session";
 
 const EXT_QUERY_KEY = "course-ext" as const;
 
+/** 稳定空快照：避免 data 未就绪时每次 render 新建 [] 触发下游 effect 死循环 */
+const EMPTY_COURSE_EXT = {
+  schedules: [] as ScheduleEntry[],
+  notes: [] as CourseNote[],
+  todos: [] as CourseTodo[],
+  attendances: [] as CourseAttendance[],
+};
+
 /**
- * 三类课表扩展数据：本地优先 + pull（含 tombstone）+ outbox flush
+ * 课表扩展数据：本地优先 + pull（含 tombstone）+ outbox flush
  * App 回前台时自动 flush outbox
  */
 export function useCourseExt() {
@@ -38,7 +48,9 @@ export function useCourseExt() {
     refetchOnMount: false,
     retry: 1,
     queryFn: async () => {
-      if (!studentId) return { schedules: [], notes: [], todos: [] };
+      if (!studentId) {
+        return EMPTY_COURSE_EXT;
+      }
       const local = loadLocalCourseExt(studentId);
       pullCourseExt(studentId)
         .then((remote) => {
@@ -74,7 +86,7 @@ export function useCourseExt() {
     queryClient.invalidateQueries({ queryKey });
   }, [queryClient, queryKey]);
 
-  const snapshot = data ?? { schedules: [], notes: [], todos: [] };
+  const snapshot = data ?? EMPTY_COURSE_EXT;
 
   const createScheduleMut = useMutation({
     mutationFn: async (entry: ScheduleEntry) => {
@@ -160,10 +172,27 @@ export function useCourseExt() {
     onSuccess: invalidate,
   });
 
+  const upsertAttendanceMut = useMutation({
+    mutationFn: async (entry: CourseAttendance) => {
+      if (!studentId) throw new Error("未登录");
+      await upsertAttendance(studentId, entry);
+    },
+    onSuccess: invalidate,
+  });
+
+  const deleteAttendanceMut = useMutation({
+    mutationFn: async (id: string) => {
+      if (!studentId) throw new Error("未登录");
+      await removeAttendance(studentId, id);
+    },
+    onSuccess: invalidate,
+  });
+
   return {
     schedules: snapshot.schedules,
     notes: snapshot.notes,
     todos: snapshot.todos,
+    attendances: snapshot.attendances,
     createSchedule: createScheduleMut.mutateAsync,
     updateSchedule: updateScheduleMut.mutateAsync,
     deleteSchedule: deleteScheduleMut.mutateAsync,
@@ -173,5 +202,7 @@ export function useCourseExt() {
     createTodo: createTodoMut.mutateAsync,
     updateTodo: updateTodoMut.mutateAsync,
     deleteTodo: deleteTodoMut.mutateAsync,
+    upsertAttendance: upsertAttendanceMut.mutateAsync,
+    deleteAttendance: deleteAttendanceMut.mutateAsync,
   };
 }

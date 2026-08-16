@@ -24,6 +24,12 @@ import type {
   PageResult,
   PatchAdminUserBody,
 } from "../types/users";
+import type {
+  AdminLlmKeyItem,
+  AdminLlmKeyListQuery,
+  CreateLlmKeyBody,
+  PatchLlmKeyBody,
+} from "../types/llmKeys";
 import {
   ADMIN_LOGIN_PATH,
   ADMIN_LOGOUT_PATH,
@@ -38,6 +44,8 @@ import {
   ADMIN_TRACK_OVERVIEW_PATH,
   ADMIN_TRACK_DIMS_PATH,
   ADMIN_TRACK_CRASHES_PATH,
+  ADMIN_TRACK_LLM_PROXY_FAILS_PATH,
+  ADMIN_LLM_KEYS_PATH,
   AUTH_ERROR_CODES,
 } from "./constants";
 import { readSession } from "./storage";
@@ -275,4 +283,48 @@ export async function fetchTrackCrashes(page: number, pageSize = 10): Promise<Tr
     params: { page, pageSize },
   });
   return unwrapData(response.data);
+}
+
+export async function fetchTrackLlmProxyFails(params: {
+  from: string;
+  to: string;
+  page: number;
+  pageSize: number;
+  errorCode?: string;
+}): Promise<TrackCrashPage> {
+  const response = await adminApi.get<ApiEnvelope<TrackCrashPage>>(
+    ADMIN_TRACK_LLM_PROXY_FAILS_PATH,
+    { params },
+  );
+  return unwrapData(response.data);
+}
+
+export async function listAdminLlmKeys(
+  query: AdminLlmKeyListQuery,
+): Promise<PageResult<AdminLlmKeyItem>> {
+  const response = await adminApi.get<ApiEnvelope<PageResult<AdminLlmKeyItem>>>(
+    ADMIN_LLM_KEYS_PATH,
+    { params: query },
+  );
+  return unwrapData(response.data);
+}
+
+export async function createAdminLlmKey(body: CreateLlmKeyBody): Promise<AdminLlmKeyItem> {
+  const response = await adminApi.post<ApiEnvelope<AdminLlmKeyItem>>(ADMIN_LLM_KEYS_PATH, body);
+  return unwrapData(response.data);
+}
+
+export async function patchAdminLlmKey(
+  id: number,
+  body: PatchLlmKeyBody,
+): Promise<AdminLlmKeyItem> {
+  const response = await adminApi.patch<ApiEnvelope<AdminLlmKeyItem>>(
+    `${ADMIN_LLM_KEYS_PATH}/${id}`,
+    body,
+  );
+  return unwrapData(response.data);
+}
+
+export async function deleteAdminLlmKey(id: number): Promise<void> {
+  await adminApi.delete<ApiEnvelope<null>>(`${ADMIN_LLM_KEYS_PATH}/${id}`);
 }

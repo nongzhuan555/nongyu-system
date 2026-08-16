@@ -17,6 +17,7 @@ import {
   matchPresetByBaseURL,
   type AgentProviderPreset,
 } from "../agentProviderPresets";
+import { useAgentContextPrefsStore, type AgentContextMode } from "../store/agentContextPrefsStore";
 import { invalidateNongyuAgent } from "@/agent/agent";
 import { toast } from "@/components/ui/toast";
 import {
@@ -28,14 +29,33 @@ import {
 import { probeAgentConnectivity } from "../probeAgentConnectivity";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
+const CONTEXT_MODE_OPTIONS: {
+  id: AgentContextMode;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    id: "full",
+    label: "完整上下文（默认）",
+    hint: "每次提问会带上本会话所有对话记录（含摘要），模型能记住前文，适合连续追问",
+  },
+  {
+    id: "stateless",
+    label: "无记忆",
+    hint: "每次只发送当前问题与系统提示词，模型看不到历史，更省Token但模型不记得前文",
+  },
+];
+
 /**
- * Agent 设置：服务商预设 + Base URL + 模型名 + API Key
- * 保存前固定发「你好」探测模型连通性，通过后才写入 SecureStore。
+ * Agent 设置：上下文模式 + 服务商预设 + Base URL + 模型名 + API Key
+ * 凭据保存前固定发「你好」探测模型连通性，通过后才写入 SecureStore。
  */
 export function AgentSettingsScreen() {
   const styles = useStyles();
   const t = useThemeTokens();
   const insets = useSafeAreaInsets();
+  const contextMode = useAgentContextPrefsStore((s) => s.contextMode);
+  const setContextMode = useAgentContextPrefsStore((s) => s.setContextMode);
   const [presetId, setPresetId] = useState(AGENT_PROVIDER_PRESETS[0]!.id);
   const [baseURL, setBaseURL] = useState(AGENT_PROVIDER_PRESETS[0]!.baseURL ?? "");
   const [model, setModel] = useState(AGENT_PROVIDER_PRESETS[0]!.defaultModel);
@@ -72,6 +92,20 @@ export function AgentSettingsScreen() {
     }
     setModel(preset.defaultModel);
   }, []);
+
+  const onSelectContextMode = useCallback(
+    (id: AgentContextMode, label: string) => {
+      if (id === contextMode) return;
+      try {
+        setContextMode(id);
+        toast.success(`上下文模式已设为${label}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "请稍后重试";
+        toast.error("设置上下文模式失败", { description: msg });
+      }
+    },
+    [contextMode, setContextMode],
+  );
 
   const onSave = useCallback(async () => {
     const url = baseURL.trim();
@@ -137,6 +171,40 @@ export function AgentSettingsScreen() {
           <ActivityIndicator color={t.color.brand} style={styles.loader} />
         ) : (
           <>
+            <Text style={styles.sectionTitle}>上下文管理</Text>
+            <View style={styles.modeCard}>
+              {CONTEXT_MODE_OPTIONS.map((opt, index) => {
+                const selected = contextMode === opt.id;
+                return (
+                  <View key={opt.id}>
+                    {index > 0 ? <View style={styles.modeDivider} /> : null}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      onPress={() => onSelectContextMode(opt.id, opt.label)}
+                      style={({ pressed }) => [styles.modeRow, pressed && styles.modePressed]}
+                    >
+                      <View style={styles.modeTextCol}>
+                        <Text style={styles.modeTitle}>{opt.label}</Text>
+                        <Text style={styles.modeHint}>{opt.hint}</Text>
+                      </View>
+                      <View style={[styles.radio, selected && styles.radioOn]}>
+                        {selected ? <View style={styles.radioDot} /> : null}
+                      </View>
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
+            <Text style={styles.modeFooterHint}>更改后立即生效；清除 API Key 不会重置此项</Text>
+
+            <View style={styles.platformHintCard}>
+              <Text style={styles.platformHint}>
+                若您未配置自己的大模型API
+                Key，农屿会使用我们自己搭建的基于智谱的免费API调度池为您转发大模型调用，好处是您无需自己承担任何费用，缺点是服务不稳定且大概率遇到排队情况，农屿鼓励用户自行尝试配置大模型，若有此需求可自行上网搜索方法，欢迎大家拥抱AI来为我们的调度池减轻负担
+              </Text>
+            </View>
+
             <Text style={styles.sectionTitle}>服务商</Text>
             <View style={styles.card}>
               <Text style={styles.hint}>点选后自动填入 Base URL 与推荐模型；也可选「自定义」</Text>
@@ -258,6 +326,80 @@ const useStyles = createThemedStyles((t) => ({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: t.color.border,
     gap: t.space.sm,
+  },
+  modeCard: {
+    backgroundColor: t.color.surface,
+    borderRadius: t.radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.color.border,
+    overflow: "hidden",
+  },
+  modeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingVertical: 14,
+    paddingHorizontal: t.space.md,
+    gap: 12,
+  },
+  modePressed: {
+    opacity: 0.88,
+  },
+  modeDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: t.color.border,
+    marginLeft: t.space.md,
+  },
+  modeTextCol: {
+    flex: 1,
+  },
+  modeTitle: {
+    fontSize: t.fontSize.md,
+    fontWeight: "600",
+    color: t.color.text,
+  },
+  modeHint: {
+    marginTop: 4,
+    fontSize: t.fontSize.sm,
+    color: t.color.textSecondary,
+    lineHeight: 18,
+  },
+  modeFooterHint: {
+    marginTop: 4,
+    marginHorizontal: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    color: t.color.textSecondary,
+  },
+  platformHintCard: {
+    marginTop: t.space.md,
+    marginBottom: t.space.sm,
+    padding: t.space.md,
+    borderRadius: t.radius.md,
+    backgroundColor: t.color.surfaceVariant,
+  },
+  platformHint: {
+    fontSize: t.fontSize.sm,
+    lineHeight: 20,
+    color: t.color.textSecondary,
+  },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: t.color.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  radioOn: {
+    borderColor: t.color.brand,
+  },
+  radioDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: t.color.brand,
   },
   hint: {
     fontSize: t.fontSize.sm,

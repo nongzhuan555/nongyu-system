@@ -1,16 +1,18 @@
 import { useThemeTokens } from "@/theme/ThemeProvider";
+import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { toast } from "@/components/ui/toast";
 import { TabScreenBackground } from "@/components/navigation/TabScreenBackground";
 import { openAppUrl } from "@/lib/openAppUrl";
 import { GuestPrompt } from "@/modules/mine/components/GuestPrompt";
 import { InfoGrid } from "@/modules/mine/components/InfoGrid";
 import { ProfileHeader } from "@/modules/mine/components/ProfileHeader";
 import { ServiceList } from "@/modules/mine/components/ServiceList";
+import { ShareSheet } from "@/modules/mine/components/ShareSheet";
 import { ABOUT_URL } from "@/modules/mine/constants/services";
 import type { ServiceItem } from "@/modules/mine/constants/services";
+import { trackClick } from "@/modules/telemetry";
 import { useSessionStore } from "@/stores/session";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
@@ -24,6 +26,7 @@ export function MineScreen() {
   const router = useRouter();
   const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
   const profile = useSessionStore((s) => s.profile);
+  const [shareVisible, setShareVisible] = useState(false);
 
   const tabBarPad = t.tabBar.heightMax + t.tabBar.bottomGapMax + t.space.xl;
 
@@ -42,7 +45,8 @@ export function MineScreen() {
       return;
     }
     if (action.kind === "share") {
-      toast.info("分享功能即将上线");
+      trackClick("share_open");
+      setShareVisible(true);
       return;
     }
     await openAbout();
@@ -82,6 +86,8 @@ export function MineScreen() {
           </>
         )}
       </ScrollView>
+
+      <ShareSheet visible={shareVisible} onClose={() => setShareVisible(false)} />
     </View>
   );
 }

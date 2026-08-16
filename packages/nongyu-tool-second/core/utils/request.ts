@@ -1,5 +1,6 @@
 /**
  * 二课 axios 封装：注入 x-access-token，鉴权失败自动重登并重放一次
+ * 并发撞过期时排队，只打一次 secondLogin（对齐旧版 RN）
  */
 
 import axios, {
@@ -32,13 +33,34 @@ export type SecondHttpLogEvent = {
   hasToken: boolean;
 };
 
+/** App 注入：持久化新 token、轻提示、失败 Toast */
+export type SecondAuthRefreshHooks = {
+  onRefreshStart?: () => void;
+  onTokenRefreshed?: (token: string) => void;
+  onRefreshFailed?: (error: Error) => void;
+};
+
 let httpLogger: ((event: SecondHttpLogEvent) => void) | undefined;
+let authRefreshHooks: SecondAuthRefreshHooks = {};
+
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (reason?: unknown) => void;
+}> = [];
 
 /**
  * 注册开发态 HTTP 结算回调
  */
 export function attachSecondHttpLogger(onSettled: (event: SecondHttpLogEvent) => void): void {
   httpLogger = onSettled;
+}
+
+/**
+ * 注册自动重登副作用（App 写 MMKV / Toast）；幂等覆盖
+ */
+export function attachSecondAuthRefreshHooks(hooks: SecondAuthRefreshHooks): void {
+  authRefreshHooks = hooks ?? {};
 }
 
 function headerHas(headers: AxiosRequestConfig["headers"], name: string): boolean {
@@ -50,6 +72,102 @@ function headerHas(headers: AxiosRequestConfig["headers"], name: string): boolea
   }
   const record = headers as Record<string, unknown>;
   return (record[name] ?? record[name.toLowerCase()]) != null;
+}
+
+function setRequestAccessToken(config: ExtendedAxiosRequestConfig, token: string): void {
+  if (!config.headers) {
+    config.headers = { "x-access-token": token };
+    return;
+  }
+  const headers = config.headers as {
+    set?: (key: string, value: string) => void;
+    [key: string]: unknown;
+  };
+  if (typeof headers.set === "function") {
+    headers.set("x-access-token", token);
+  } else {
+    headers["x-access-token"] = token;
+  }
+}
+
+function processQueue(error: unknown, token: string | null): void {
+  failedQueue.forEach((prom) => {
+    if (error || !token) {
+      prom.reject(error ?? new Error("自动重登未拿到 token"));
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+}
+
+function isLoginRequest(config: ExtendedAxiosRequestConfig): boolean {
+  if (config.skipAuth) return true;
+  const url = config.url ?? "";
+  return url.includes("/user/login/");
+}
+
+function isHttpAuthError(error: unknown): boolean {
+  const status = (error as { response?: { status?: number } })?.response?.status;
+  return status === 401 || status === 403;
+}
+
+function isBusinessAuthFailure(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false;
+  const envelope = data as SecondApiEnvelope;
+  return looksLikeAuthFailure(envelope.message, envelope.code);
+}
+
+/**
+ * 鉴权失效：排队并发，只登录一次，再重放
+ */
+async function handleAutoRelogin(
+  originalConfig: ExtendedAxiosRequestConfig,
+): Promise<AxiosResponse> {
+  if (isLoginRequest(originalConfig)) {
+    return Promise.reject(new Error("登录请求失败，跳过自动重登"));
+  }
+
+  if (originalConfig._reloginAttempted) {
+    return Promise.reject(new Error("登录失效且已尝试过自动重登"));
+  }
+
+  if (isRefreshing) {
+    const token = await new Promise<string>((resolve, reject) => {
+      failedQueue.push({ resolve, reject });
+    });
+    setRequestAccessToken(originalConfig, token);
+    originalConfig._reloginAttempted = true;
+    return service(originalConfig);
+  }
+
+  originalConfig._reloginAttempted = true;
+  isRefreshing = true;
+  authRefreshHooks.onRefreshStart?.();
+
+  try {
+    const { secondLogin } = await import("../login");
+    const loginResult = await secondLogin();
+    if (!loginResult.success || !loginResult.token) {
+      throw new Error(loginResult.message || "登录失效且自动重登失败");
+    }
+
+    setAccessToken(loginResult.token);
+    authRefreshHooks.onTokenRefreshed?.(loginResult.token);
+    processQueue(null, loginResult.token);
+    setRequestAccessToken(originalConfig, loginResult.token);
+    return service(originalConfig);
+  } catch (loginError: unknown) {
+    const err =
+      loginError instanceof Error
+        ? loginError
+        : new Error(resolveSecondErrorMessage(loginError, "自动重登失败"));
+    authRefreshHooks.onRefreshFailed?.(err);
+    processQueue(err, null);
+    return Promise.reject(err);
+  } finally {
+    isRefreshing = false;
+  }
 }
 
 const service: AxiosInstance = axios.create({
@@ -76,27 +194,26 @@ service.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 service.interceptors.response.use(
   async (response: AxiosResponse) => {
     const config = response.config as ExtendedAxiosRequestConfig;
-    const data = response.data as SecondApiEnvelope | undefined;
-    const msg = data && typeof data === "object" ? data.message : undefined;
-    const code = data && typeof data === "object" ? data.code : undefined;
-
-    if (!config.skipAuth && !config._reloginAttempted && looksLikeAuthFailure(msg, code)) {
-      config._reloginAttempted = true;
-      const { secondLogin } = await import("../login");
-      const loginResult = await secondLogin();
-      if (loginResult.success && loginResult.token) {
-        if (config.headers) {
-          (config.headers as Record<string, string>)["x-access-token"] = loginResult.token;
-        }
-        return service(config);
-      }
-      return Promise.reject(new Error(loginResult.message || "登录失效且自动重登失败"));
+    if (!isLoginRequest(config) && isBusinessAuthFailure(response.data)) {
+      return handleAutoRelogin(config);
     }
-
     return response;
   },
   async (error) => {
     const config = error.config as ExtendedAxiosRequestConfig | undefined;
+
+    if (
+      config &&
+      !isLoginRequest(config) &&
+      (isHttpAuthError(error) || isBusinessAuthFailure(error.response?.data))
+    ) {
+      try {
+        return await handleAutoRelogin(config);
+      } catch (reloginError) {
+        return Promise.reject(reloginError);
+      }
+    }
+
     if (config && (config._retryCount || 0) < 3) {
       config._retryCount = (config._retryCount || 0) + 1;
       await new Promise((r) => setTimeout(r, 1000));

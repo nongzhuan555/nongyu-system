@@ -1,4 +1,4 @@
-import type { CourseNote, CourseTodo, ScheduleEntry } from "../model/types";
+import type { CourseAttendance, CourseNote, CourseTodo, ScheduleEntry } from "../model/types";
 import type { CourseExtEntity, CourseExtOutboxOp, CourseExtTombstone } from "../model/syncTypes";
 import {
   readLocalSchedules,
@@ -10,6 +10,9 @@ import {
   readLocalTodos,
   writeLocalTodos,
   clearLocalTodos,
+  readLocalAttendances,
+  writeLocalAttendances,
+  clearLocalAttendances,
 } from "./courseExtLocalStore";
 import {
   enqueueOutbox,
@@ -37,6 +40,9 @@ import {
   createTodoApi,
   updateTodoApi,
   deleteTodoApi,
+  listAttendancesApi,
+  upsertAttendanceApi,
+  deleteAttendanceApi,
   listTombstonesApi,
 } from "./courseExtApi";
 
@@ -44,16 +50,22 @@ export type CourseExtSnapshot = {
   schedules: ScheduleEntry[];
   notes: CourseNote[];
   todos: CourseTodo[];
+  attendances: CourseAttendance[];
 };
 
 function tombstoneKey(entity: CourseExtEntity, entityId: string): string {
   return `${entity}:${entityId}`;
 }
 
+function attendanceSlotKey(a: Pick<CourseAttendance, "courseId" | "week" | "day">): string {
+  return `${a.courseId}:${a.week}:${a.day}`;
+}
+
 function applyTombstonesToLists(
   schedules: ScheduleEntry[],
   notes: CourseNote[],
   todos: CourseTodo[],
+  attendances: CourseAttendance[],
   tombstones: CourseExtTombstone[],
 ): CourseExtSnapshot {
   const dead = new Set(tombstones.map((t) => tombstoneKey(t.entity, t.entityId)));
@@ -61,6 +73,7 @@ function applyTombstonesToLists(
     schedules: schedules.filter((s) => !dead.has(tombstoneKey("schedule", s.id))),
     notes: notes.filter((n) => !dead.has(tombstoneKey("note", n.id))),
     todos: todos.filter((t) => !dead.has(tombstoneKey("todo", t.id))),
+    attendances: attendances.filter((a) => !dead.has(tombstoneKey("attendance", a.id))),
   };
 }
 
@@ -81,13 +94,36 @@ function mergeById<T extends { id: string }>(
 }
 
 /**
- * 拉取远程三类 + tombstone，合并本地，入队未同步 create，再 flush outbox
+ * 考勤按 (courseId, week, day) 去重，远程权威
+ */
+function mergeAttendances(
+  local: CourseAttendance[],
+  remote: CourseAttendance[],
+  tombstones: CourseExtTombstone[],
+): CourseAttendance[] {
+  const dead = new Set(tombstones.filter((t) => t.entity === "attendance").map((t) => t.entityId));
+  const bySlot = new Map<string, CourseAttendance>();
+  for (const r of remote) {
+    if (dead.has(r.id)) continue;
+    bySlot.set(attendanceSlotKey(r), r);
+  }
+  for (const l of local) {
+    if (dead.has(l.id)) continue;
+    const key = attendanceSlotKey(l);
+    if (!bySlot.has(key)) bySlot.set(key, l);
+  }
+  return [...bySlot.values()];
+}
+
+/**
+ * 拉取远程 + tombstone，合并本地，入队未同步 create，再 flush outbox
  */
 export async function pullCourseExt(studentId: string): Promise<CourseExtSnapshot> {
-  const [schedules, notes, todos, remoteTombs] = await Promise.all([
+  const [schedules, notes, todos, attendances, remoteTombs] = await Promise.all([
     listSchedulesApi(),
     listNotesApi(),
     listTodosApi(),
+    listAttendancesApi(),
     listTombstonesApi(),
   ]);
 
@@ -103,6 +139,7 @@ export async function pullCourseExt(studentId: string): Promise<CourseExtSnapsho
   const localSchedules = readLocalSchedules(studentId) ?? [];
   const localNotes = readLocalNotes(studentId) ?? [];
   const localTodos = readLocalTodos(studentId) ?? [];
+  const localAttendances = readLocalAttendances(studentId) ?? [];
 
   const mergedSchedules = mergeById(
     localSchedules,
@@ -122,12 +159,18 @@ export async function pullCourseExt(studentId: string): Promise<CourseExtSnapsho
     "todo",
     tombstones,
   );
+  const mergedAttendances = mergeAttendances(
+    localAttendances,
+    attendances.map((a) => ({ ...a, studentId })),
+    tombstones,
+  );
 
-  // 本地有、远程无、无 tombstone → 入队 create 重推
   const now = new Date().toISOString();
   const remoteScheduleIds = new Set(schedules.map((s) => s.id));
   const remoteNoteIds = new Set(notes.map((n) => n.id));
   const remoteTodoIds = new Set(todos.map((t) => t.id));
+  const remoteAttendanceIds = new Set(attendances.map((a) => a.id));
+  const remoteAttendanceSlots = new Set(attendances.map((a) => attendanceSlotKey(a)));
 
   for (const s of mergedSchedules) {
     if (!remoteScheduleIds.has(s.id)) {
@@ -162,8 +205,18 @@ export async function pullCourseExt(studentId: string): Promise<CourseExtSnapsho
       });
     }
   }
+  for (const a of mergedAttendances) {
+    if (!remoteAttendanceIds.has(a.id) && !remoteAttendanceSlots.has(attendanceSlotKey(a))) {
+      enqueueOutbox(studentId, {
+        op: "create",
+        entity: "attendance",
+        entityId: a.id,
+        payload: a,
+        updatedAt: now,
+      });
+    }
+  }
 
-  // 本地 tombstone 且远程仍有实体 → 入队 delete
   for (const tomb of tombstones) {
     if (tomb.entity === "schedule" && remoteScheduleIds.has(tomb.entityId)) {
       enqueueOutbox(studentId, {
@@ -189,12 +242,27 @@ export async function pullCourseExt(studentId: string): Promise<CourseExtSnapsho
         updatedAt: now,
       });
     }
+    if (tomb.entity === "attendance" && remoteAttendanceIds.has(tomb.entityId)) {
+      enqueueOutbox(studentId, {
+        op: "delete",
+        entity: "attendance",
+        entityId: tomb.entityId,
+        updatedAt: now,
+      });
+    }
   }
 
-  const cleaned = applyTombstonesToLists(mergedSchedules, mergedNotes, mergedTodos, tombstones);
+  const cleaned = applyTombstonesToLists(
+    mergedSchedules,
+    mergedNotes,
+    mergedTodos,
+    mergedAttendances,
+    tombstones,
+  );
   writeLocalSchedules(studentId, cleaned.schedules);
   writeLocalNotes(studentId, cleaned.notes);
   writeLocalTodos(studentId, cleaned.todos);
+  writeLocalAttendances(studentId, cleaned.attendances);
 
   await flushOutbox(studentId);
 
@@ -202,6 +270,7 @@ export async function pullCourseExt(studentId: string): Promise<CourseExtSnapsho
     schedules: readLocalSchedules(studentId) ?? cleaned.schedules,
     notes: readLocalNotes(studentId) ?? cleaned.notes,
     todos: readLocalTodos(studentId) ?? cleaned.todos,
+    attendances: readLocalAttendances(studentId) ?? cleaned.attendances,
   };
 }
 
@@ -217,9 +286,7 @@ export async function flushOutbox(studentId: string): Promise<void> {
   for (const op of ops) {
     try {
       await applyOutboxOp(op);
-      // 成功：delete 时本地 tombstone 已存在；create/update 清同 id 冲突队列已在 enqueue 去重
     } catch (err) {
-      // create 幂等：远程已有则视为成功
       if (op.op === "create" && isAlreadyExistsError(err)) {
         continue;
       }
@@ -248,19 +315,28 @@ async function applyOutboxOp(op: CourseExtOutboxOp): Promise<void> {
     } else await deleteNoteApi(op.entityId);
     return;
   }
-  if (op.op === "create") await createTodoApi(op.payload as CourseTodo);
-  else if (op.op === "update") {
-    await updateTodoApi(
-      op.entityId,
-      op.payload as {
-        content?: string;
-        status?: "pending" | "done";
-        dueDate?: string | null;
-        completedAt?: string | null;
-        updatedAt: string;
-      },
-    );
-  } else await deleteTodoApi(op.entityId);
+  if (op.entity === "todo") {
+    if (op.op === "create") await createTodoApi(op.payload as CourseTodo);
+    else if (op.op === "update") {
+      await updateTodoApi(
+        op.entityId,
+        op.payload as {
+          content?: string;
+          status?: "pending" | "done";
+          dueDate?: string | null;
+          completedAt?: string | null;
+          updatedAt: string;
+        },
+      );
+    } else await deleteTodoApi(op.entityId);
+    return;
+  }
+  // attendance：create/update 均走 upsert
+  if (op.op === "delete") {
+    await deleteAttendanceApi(op.entityId);
+    return;
+  }
+  await upsertAttendanceApi(op.payload as CourseAttendance);
 }
 
 function isAlreadyExistsError(err: unknown): boolean {
@@ -274,6 +350,7 @@ export function loadLocalCourseExt(studentId: string): CourseExtSnapshot {
     readLocalSchedules(studentId) ?? [],
     readLocalNotes(studentId) ?? [],
     readLocalTodos(studentId) ?? [],
+    readLocalAttendances(studentId) ?? [],
     tombstones,
   );
 }
@@ -475,6 +552,60 @@ export async function removeTodo(studentId: string, id: string): Promise<void> {
   }
 }
 
+// ===== Attendances =====
+
+/**
+ * 本地 upsert：同 (courseId, week, day) 复用已有 id
+ */
+export async function upsertAttendance(studentId: string, entry: CourseAttendance): Promise<void> {
+  const list = readLocalAttendances(studentId) ?? [];
+  const idx = list.findIndex(
+    (a) => a.courseId === entry.courseId && a.week === entry.week && a.day === entry.day,
+  );
+  const resolved: CourseAttendance =
+    idx >= 0
+      ? {
+          ...entry,
+          id: list[idx]!.id,
+          createdAt: list[idx]!.createdAt,
+          studentId,
+        }
+      : { ...entry, studentId };
+  const next = idx >= 0 ? list.map((a, i) => (i === idx ? resolved : a)) : [...list, resolved];
+  writeLocalAttendances(studentId, next);
+  try {
+    await upsertAttendanceApi(resolved);
+  } catch {
+    enqueueOutbox(studentId, {
+      op: "create",
+      entity: "attendance",
+      entityId: resolved.id,
+      payload: resolved,
+      updatedAt: resolved.updatedAt,
+    });
+  }
+}
+
+export async function removeAttendance(studentId: string, id: string): Promise<void> {
+  const list = readLocalAttendances(studentId) ?? [];
+  writeLocalAttendances(
+    studentId,
+    list.filter((a) => a.id !== id),
+  );
+  upsertLocalTombstone(studentId, "attendance", id);
+  removeOutboxForEntity(studentId, "attendance", id);
+  try {
+    await deleteAttendanceApi(id);
+  } catch {
+    enqueueOutbox(studentId, {
+      op: "delete",
+      entity: "attendance",
+      entityId: id,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+}
+
 /**
  * 清空某用户全部课表扩展本地数据（登出用）
  */
@@ -482,6 +613,7 @@ export function clearLocalCourseExt(studentId: string): void {
   clearLocalSchedules(studentId);
   clearLocalNotes(studentId);
   clearLocalTodos(studentId);
+  clearLocalAttendances(studentId);
   clearOutbox(studentId);
   clearLocalTombstones(studentId);
 }

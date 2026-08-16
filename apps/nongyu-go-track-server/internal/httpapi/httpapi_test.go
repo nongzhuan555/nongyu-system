@@ -178,6 +178,90 @@ func TestHTTP_IngestIdempotentAndAdmin(t *testing.T) {
 	_ = resp.Body.Close()
 }
 
+func TestHTTP_InternalLlmProxyFail(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "track-internal.db")
+	ctx := context.Background()
+	store, err := sqlite.Open(ctx, dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	cfg := &config.Config{
+		HTTPAddr:             "127.0.0.1:0",
+		DBPath:               dbPath,
+		JWTSecret:            "test-secret-key-16",
+		InternalToken:        "internal-token-16x",
+		PresenceOfflineAfter: 10 * time.Minute,
+		WriteQueueSize:       128,
+		BodyLimitBytes:       1 << 20,
+		UserRatePerMin:       1200,
+		IPRatePerMin:         3000,
+	}
+	writer := ingest.NewWriter(store, nil, cfg.WriteQueueSize)
+	t.Cleanup(writer.Stop)
+	jobs := aggregate.New(store, log)
+	srv := httptest.NewServer(New(cfg, store, writer, nil, jobs, log))
+	t.Cleanup(srv.Close)
+
+	payload := map[string]any{
+		"user_id":    42,
+		"student_no": "202399910",
+		"events": []map[string]any{{
+			"event_id":     "22222222-2222-4222-8222-222222222222",
+			"event_type":   "llm_proxy_fail",
+			"event_name":   "50210",
+			"client_ts_ms": time.Now().UnixMilli(),
+			"props": map[string]any{
+				"error_code":    50210,
+				"error_message": "平台模型调用失败",
+				"model":         "glm-4.7-flash",
+				"stream":        true,
+			},
+		}},
+	}
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/internal/events", bytes.NewReader(body))
+	req.Header.Set("X-Internal-Token", cfg.InternalToken)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("internal ingest %d %s", resp.StatusCode, raw)
+	}
+	var envelope struct {
+		OK   bool `json:"ok"`
+		Data struct {
+			Accepted int `json:"accepted"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if !envelope.OK || envelope.Data.Accepted != 1 {
+		t.Fatalf("envelope %+v %s", envelope, raw)
+	}
+
+	// bad token
+	req, _ = http.NewRequest(http.MethodPost, srv.URL+"/v1/internal/events", bytes.NewReader(body))
+	req.Header.Set("X-Internal-Token", "wrong")
+	req.Header.Set("Content-Type", "application/json")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 403 {
+		t.Fatalf("want 403 got %d", resp.StatusCode)
+	}
+	_ = resp.Body.Close()
+}
+
 func signApp(t *testing.T, secret string, uid int64) string {
 	t.Helper()
 	tok := jwtv5.NewWithClaims(jwtv5.SigningMethodHS256, jwtv5.MapClaims{

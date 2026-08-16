@@ -80,29 +80,43 @@ func applyWritePragmas(ctx context.Context, db *sql.DB) error {
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {
-	raw := migrations.InitSQL()
 	if _, err := db.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY)"); err != nil {
 		return fmt.Errorf("schema_migrations: %w", err)
 	}
-	var n int
-	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM schema_migrations WHERE id=?", "001_init").Scan(&n); err != nil {
-		return fmt.Errorf("check migration: %w", err)
+
+	steps := []struct {
+		id  string
+		sql string
+	}{
+		{"001_init", migrations.InitSQL()},
+		{"002_llm_proxy_fail", migrations.Migration002SQL()},
 	}
-	if n > 0 {
-		return nil
+
+	for _, step := range steps {
+		var n int
+		if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM schema_migrations WHERE id=?", step.id).Scan(&n); err != nil {
+			return fmt.Errorf("check migration %s: %w", step.id, err)
+		}
+		if n > 0 {
+			continue
+		}
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		if err := execSQL(ctx, tx, step.sql); err != nil {
+			_ = tx.Rollback()
+			return fmt.Errorf("apply %s: %w", step.id, err)
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migrations(id) VALUES (?)", step.id); err != nil {
+			_ = tx.Rollback()
+			return fmt.Errorf("record migration %s: %w", step.id, err)
+		}
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("commit migration %s: %w", step.id, err)
+		}
 	}
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	if err := execSQL(ctx, tx, raw); err != nil {
-		return fmt.Errorf("apply 001_init: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migrations(id) VALUES (?)", "001_init"); err != nil {
-		return fmt.Errorf("record migration: %w", err)
-	}
-	return tx.Commit()
+	return nil
 }
 
 func execSQL(ctx context.Context, tx *sql.Tx, script string) error {

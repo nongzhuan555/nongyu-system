@@ -8,6 +8,8 @@ export type ScheduleRow = {
   start_period: number;
   end_period: number;
   weeks_list: string;
+  /** 色板下标 0–7；NULL = 无色默认样式 */
+  color_index: number | null;
   created_at: Date;
   updated_at: Date;
 };
@@ -33,6 +35,17 @@ export type TodoRow = {
   updated_at: Date;
 };
 
+export type AttendanceRow = {
+  id: string;
+  user_id: number;
+  course_id: string;
+  week: number;
+  day: number;
+  status: string;
+  created_at: Date;
+  updated_at: Date;
+};
+
 export type ScheduleDto = {
   id: string;
   title: string;
@@ -42,6 +55,8 @@ export type ScheduleDto = {
   startPeriod: number;
   endPeriod: number;
   weeksList: number[];
+  /** 色板下标 0–7；null = 无色默认样式 */
+  colorIndex: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -65,6 +80,18 @@ export type TodoDto = {
   updatedAt: string;
 };
 
+export type AttendanceStatusDto = "present" | "late" | "absent" | "leave" | "nocheck";
+
+export type AttendanceDto = {
+  id: string;
+  courseId: string;
+  week: number;
+  day: number;
+  status: AttendanceStatusDto;
+  createdAt: string;
+  updatedAt: string;
+};
+
 function toIso(d: Date): string {
   return d.toISOString();
 }
@@ -77,6 +104,12 @@ export function toScheduleDto(row: ScheduleRow): ScheduleDto {
   } catch {
     // ignore
   }
+  const rawColor = row.color_index;
+  const colorIndex =
+    typeof rawColor === "number" && Number.isInteger(rawColor) && rawColor >= 0 && rawColor <= 7
+      ? rawColor
+      : null;
+
   return {
     id: row.id,
     title: row.title,
@@ -86,6 +119,7 @@ export function toScheduleDto(row: ScheduleRow): ScheduleDto {
     startPeriod: row.start_period,
     endPeriod: row.end_period,
     weeksList,
+    colorIndex,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };
@@ -114,7 +148,30 @@ export function toTodoDto(row: TodoRow): TodoDto {
   };
 }
 
-export type TombstoneEntity = "schedule" | "note" | "todo";
+const ATTENDANCE_STATUSES: AttendanceStatusDto[] = [
+  "present",
+  "late",
+  "absent",
+  "leave",
+  "nocheck",
+];
+
+export function toAttendanceDto(row: AttendanceRow): AttendanceDto {
+  const status = ATTENDANCE_STATUSES.includes(row.status as AttendanceStatusDto)
+    ? (row.status as AttendanceStatusDto)
+    : "present";
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    week: row.week,
+    day: row.day,
+    status,
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at),
+  };
+}
+
+export type TombstoneEntity = "schedule" | "note" | "todo" | "attendance";
 
 export type TombstoneRow = {
   entity: string;
@@ -129,8 +186,11 @@ export type TombstoneDto = {
 };
 
 export function toTombstoneDto(row: TombstoneRow): TombstoneDto {
-  const entity =
-    row.entity === "note" || row.entity === "todo" || row.entity === "schedule"
+  const entity: TombstoneEntity =
+    row.entity === "note" ||
+    row.entity === "todo" ||
+    row.entity === "schedule" ||
+    row.entity === "attendance"
       ? row.entity
       : "schedule";
   return {

@@ -4,6 +4,13 @@ import {
   type ChatMessage,
   type ToolCallRecord,
 } from "nongyu-agent-sdk";
+import { getAgentContextMode } from "@/modules/settings/store/agentContextPrefsStore";
+import {
+  buildPlatformBusyNavToolCall,
+  isPlatformLlmPoolBusyError,
+  PLATFORM_LLM_BUSY_REPLY,
+  stripUiOnlyToolCalls,
+} from "@/agent/platformLlmBusy";
 
 /** 流式块（与 useAgentChat 对齐的子集） */
 interface StreamChunk {
@@ -104,6 +111,8 @@ class AgentChatRunner {
   private pendingText = "";
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private textThrottleMs = 40;
+  /** 用于作废已 stop / 被新 run 取代的旧 stream finally，避免竞态清态 */
+  private streamGeneration = 0;
 
   private persistHandler: ((p: AgentChatPersistPayload) => void) | null = null;
   private compactHandler: ((p: AgentChatCompactPayload) => void) | null = null;
@@ -186,28 +195,41 @@ class AgentChatRunner {
     if (!prompt) return "empty";
 
     if (this.isBusy()) {
-      if (!this.matchesView(params.viewKey, params.sessionId)) {
-        return "busy";
-      }
       return "busy";
     }
 
-    this.agent = params.agent;
-    this.sessionId = params.sessionId;
-    this.runKey = params.sessionId ?? params.viewKey;
-    this.llmSummary = params.llmSummary;
-    this.llmCompactedUntilId = params.llmCompactedUntilId;
-    this.error = null;
-    this.lastEndReason = null;
-    this.userStopped = false;
-    this.backgroundedDuringRun = false;
+    this.beginRun(params);
+    await this.runStream(prompt, params.historyMessages, { reuseLastUser: false });
+    return "ok";
+  }
 
-    await this.runStream(prompt, params.historyMessages);
+  /**
+   * 去掉末条 assistant 后，用紧邻 user 的内容重新生成（不追加新 user）。
+   * historyMessages 须以该 user 结尾（已不含目标 assistant）。
+   */
+  async regenerate(params: {
+    agent: Agent;
+    viewKey: string;
+    sessionId: string | null;
+    historyMessages: ChatMessage[];
+    llmSummary?: string;
+    llmCompactedUntilId?: string;
+  }): Promise<"ok" | "busy" | "invalid"> {
+    if (this.isBusy()) return "busy";
+
+    const last = params.historyMessages[params.historyMessages.length - 1];
+    if (!last || last.role !== "user") return "invalid";
+    const prompt = last.content.trim();
+    if (!prompt) return "invalid";
+
+    this.beginRun(params);
+    await this.runStream(prompt, params.historyMessages, { reuseLastUser: true });
     return "ok";
   }
 
   stop(): void {
     if (!this.isBusy()) return;
+    this.streamGeneration += 1;
     this.userStopped = true;
     this.running = false;
     this.backgroundedDuringRun = false;
@@ -218,11 +240,29 @@ class AgentChatRunner {
         // ignore
       }
     }
-    this.finishAssistantAsDone();
+    this.finishAssistantAsStopped();
     this.isLoading = false;
     this.lastEndReason = "stop";
     this.emitPersist("stop");
     this.emit();
+  }
+
+  private beginRun(params: {
+    agent: Agent;
+    viewKey: string;
+    sessionId: string | null;
+    llmSummary?: string;
+    llmCompactedUntilId?: string;
+  }): void {
+    this.agent = params.agent;
+    this.sessionId = params.sessionId;
+    this.runKey = params.sessionId ?? params.viewKey;
+    this.llmSummary = params.llmSummary;
+    this.llmCompactedUntilId = params.llmCompactedUntilId;
+    this.error = null;
+    this.lastEndReason = null;
+    this.userStopped = false;
+    this.backgroundedDuringRun = false;
   }
 
   /** 删除某会话时：若正是当前 run 则 stop */
@@ -307,33 +347,31 @@ class AgentChatRunner {
     }, this.textThrottleMs);
   }
 
-  private finishAssistantAsDone(): void {
+  private finishAssistantAsStopped(): void {
     const aiMsgId = this.streamingMsgId;
     if (!aiMsgId) return;
     this.clearFlushTimer();
     if (this.pendingText) this.flushText(aiMsgId);
     this.messages = this.messages.map((m) =>
       m.id === aiMsgId && (m.status === "streaming" || m.status === "pending")
-        ? { ...m, status: "done" as const }
+        ? { ...m, status: "stopped" as const }
         : m,
     );
     this.streamingMsgId = null;
   }
 
-  private async runStream(prompt: string, historyMessages: ChatMessage[]): Promise<void> {
+  private async runStream(
+    prompt: string,
+    historyMessages: ChatMessage[],
+    options: { reuseLastUser: boolean },
+  ): Promise<void> {
     if (!this.agent) return;
 
+    const gen = ++this.streamGeneration;
     this.running = true;
     this.isLoading = true;
     this.emit();
 
-    const userMsg: ChatMessage = {
-      id: uid("user"),
-      role: "user",
-      content: prompt,
-      createdAt: Date.now(),
-      status: "done",
-    };
     const aiMsgId = uid("ai");
     const aiMsg: ChatMessage = {
       id: aiMsgId,
@@ -345,20 +383,47 @@ class AgentChatRunner {
 
     this.streamingMsgId = aiMsgId;
     this.pendingText = "";
-    this.messages = [...historyMessages, userMsg, aiMsg];
-    this.emit();
-    this.emitPersist("first-user");
+
+    let modelHistory: ChatMessage[];
+    if (options.reuseLastUser) {
+      // historyMessages 已含原 user；UI 不再追加 user
+      this.messages = [...historyMessages, aiMsg];
+      modelHistory = historyMessages.slice(0, -1);
+      this.emit();
+      this.emitPersist("complete");
+    } else {
+      const userMsg: ChatMessage = {
+        id: uid("user"),
+        role: "user",
+        content: prompt,
+        createdAt: Date.now(),
+        status: "done",
+      };
+      this.messages = [...historyMessages, userMsg, aiMsg];
+      modelHistory = historyMessages;
+      this.emit();
+      this.emitPersist("first-user");
+    }
 
     try {
+      const contextMode = getAgentContextMode();
+      const streamHistory =
+        contextMode === "stateless"
+          ? []
+          : chatMessagesToModelMessages(stripUiOnlyToolCalls(modelHistory));
       const streamIterable = this.agent.stream({
         prompt,
-        history: chatMessagesToModelMessages(historyMessages),
-        llmSummary: this.llmSummary,
-        llmCompactedUntilId: this.llmCompactedUntilId,
+        history: streamHistory,
+        ...(contextMode === "stateless"
+          ? {}
+          : {
+              llmSummary: this.llmSummary,
+              llmCompactedUntilId: this.llmCompactedUntilId,
+            }),
       }) as AsyncIterable<StreamChunk>;
 
       for await (const chunk of streamIterable) {
-        if (!this.running) break;
+        if (!this.running || gen !== this.streamGeneration) break;
 
         switch (chunk.type) {
           case "text:delta": {
@@ -435,6 +500,7 @@ class AgentChatRunner {
           case "agent:error": {
             this.clearFlushTimer();
             const err = chunk.error ?? new Error("Agent 未知错误");
+            if (this.applyPlatformBusyReply(aiMsgId, err)) break;
             this.messages = this.messages.map((m) =>
               m.id === aiMsgId ? { ...m, status: "error" as const, error: err.message } : m,
             );
@@ -466,31 +532,64 @@ class AgentChatRunner {
         }
       }
 
-      if (!this.userStopped && !this.error) {
+      if (gen === this.streamGeneration && !this.userStopped && !this.error) {
         this.lastEndReason = "complete";
         this.emitPersist("complete");
       }
     } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        this.finishAssistantAsDone();
+      if (gen !== this.streamGeneration) {
+        // 已被 stop 或新 run 取代
+      } else if (err instanceof DOMException && err.name === "AbortError") {
+        this.finishAssistantAsStopped();
         this.lastEndReason = "stop";
         this.emitPersist("stop");
       } else {
         const e = err instanceof Error ? err : new Error(String(err));
-        this.messages = this.messages.map((m) =>
-          m.id === aiMsgId ? { ...m, status: "error" as const, error: e.message } : m,
-        );
-        this.error = e;
-        this.handleStreamError(e);
-        this.emit();
+        if (!this.applyPlatformBusyReply(aiMsgId, e)) {
+          this.messages = this.messages.map((m) =>
+            m.id === aiMsgId ? { ...m, status: "error" as const, error: e.message } : m,
+          );
+          this.error = e;
+          this.handleStreamError(e);
+          this.emit();
+        }
       }
     } finally {
-      this.running = false;
-      this.isLoading = false;
-      this.streamingMsgId = null;
-      this.clearFlushTimer();
-      this.emit();
+      if (gen === this.streamGeneration) {
+        this.running = false;
+        this.isLoading = false;
+        this.streamingMsgId = null;
+        this.clearFlushTimer();
+        this.emit();
+      }
     }
+  }
+
+  /**
+   * 平台 Key 池排队超时：改写为友好 assistant 回复 + A2UI 跳转设置，不走错误 Toast。
+   * @returns 是否已按繁忙路径处理
+   */
+  private applyPlatformBusyReply(aiMsgId: string, err: Error): boolean {
+    if (!isPlatformLlmPoolBusyError(err)) return false;
+    this.clearFlushTimer();
+    this.pendingText = "";
+    this.messages = this.messages.map((m) =>
+      m.id === aiMsgId
+        ? {
+            ...m,
+            content: PLATFORM_LLM_BUSY_REPLY,
+            toolCalls: [buildPlatformBusyNavToolCall()],
+            status: "done" as const,
+            error: undefined,
+          }
+        : m,
+    );
+    this.error = null;
+    this.lastEndReason = "complete";
+    this.backgroundedDuringRun = false;
+    this.emit();
+    this.emitPersist("complete");
+    return true;
   }
 
   private handleStreamError(err: Error): void {

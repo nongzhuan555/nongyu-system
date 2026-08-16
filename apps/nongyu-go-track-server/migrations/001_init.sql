@@ -16,7 +16,7 @@ CREATE TABLE events (
   client_ts_ms INTEGER NULL,
   received_at_ms INTEGER NOT NULL,
   stat_date TEXT NOT NULL,
-  CHECK (event_type IN ('screen_view','button_click','perf','app_open','heartbeat','crash')),
+  CHECK (event_type IN ('screen_view','button_click','perf','app_open','heartbeat','crash','llm_proxy_fail')),
   CHECK (platform IS NULL OR platform IN ('ios','android'))
 );
 

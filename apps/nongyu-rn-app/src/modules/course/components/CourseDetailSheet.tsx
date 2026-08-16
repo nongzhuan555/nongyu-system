@@ -7,19 +7,40 @@ import {
 } from "@gorhom/bottom-sheet";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
 import { COURSE_TIMES, WEEKDAY_LABELS } from "../model/courseTimes";
-import type { CourseEntry, CourseNote, CourseTodo } from "../model/types";
+import type {
+  AttendanceStatus,
+  CourseAttendance,
+  CourseEntry,
+  CourseNote,
+  CourseTodo,
+} from "../model/types";
+import { CourseAttendanceSection } from "./CourseAttendanceSection";
+import { CourseDetailExtensionsSkeleton } from "./CourseSkeletons";
+import { confirm } from "@/components/ui/confirm";
+import { toast } from "@/components/ui/toast";
 import { lightTokens } from "@/theme/tokens";
+
+/** 备注/待办列表限高，超出局部滚动 */
+const LIST_MAX_HEIGHT = 200;
 
 type CourseDetailSheetProps = {
   course: CourseEntry | null;
   notes: CourseNote[];
   todos: CourseTodo[];
+  weekNumber: number;
+  attendance: CourseAttendance | null;
+  /** 本门课全学期考勤记录 */
+  courseAttendances?: CourseAttendance[];
   onAddNote: (content: string) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
   onAddTodo: (content: string) => Promise<void>;
   onToggleTodo: (id: string, status: "pending" | "done") => Promise<void>;
   onDeleteTodo: (id: string) => Promise<void>;
+  onUpsertAttendance: (status: AttendanceStatus) => Promise<void>;
+  onClearAttendance: () => Promise<void>;
+  onAddScheduleHere?: () => void;
   onDismiss: () => void;
   /** 查看他人 / Diff：只渲染基本信息，不出现备注待办等扩展区 */
   readOnly?: boolean;
@@ -54,11 +75,17 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
       course,
       notes,
       todos,
+      weekNumber,
+      attendance,
+      courseAttendances = [],
       onAddNote,
       onDeleteNote,
       onAddTodo,
       onToggleTodo,
       onDeleteTodo,
+      onUpsertAttendance,
+      onClearAttendance,
+      onAddScheduleHere,
       onDismiss,
       readOnly = false,
     },
@@ -68,6 +95,19 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
     const [noteInput, setNoteInput] = useState("");
     const [todoInput, setTodoInput] = useState("");
     const [busy, setBusy] = useState(false);
+    /** 上滑动画结束后再挂载考勤/备注/待办，避免与动画抢帧 */
+    const [extensionsReady, setExtensionsReady] = useState(false);
+
+    /** 内层列表滑动时暂时关掉外层 BottomSheetScrollView，避免手势被抢走 */
+    const [sheetScrollEnabled, setSheetScrollEnabled] = useState(true);
+
+    const lockSheetScroll = useCallback(() => {
+      setSheetScrollEnabled(false);
+    }, []);
+
+    const unlockSheetScroll = useCallback(() => {
+      setSheetScrollEnabled(true);
+    }, []);
 
     const renderBackdrop = useCallback(
       (props: BottomSheetBackdropProps) => (
@@ -76,13 +116,26 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
       [],
     );
 
+    const handleSheetChange = useCallback((index: number) => {
+      setExtensionsReady(index >= 0);
+      if (index < 0) setSheetScrollEnabled(true);
+    }, []);
+
+    const handleDismiss = useCallback(() => {
+      setExtensionsReady(false);
+      setSheetScrollEnabled(true);
+      setNoteInput("");
+      setTodoInput("");
+      onDismiss();
+    }, [onDismiss]);
+
     const courseNotes = useMemo(
-      () => (course ? notes.filter((n) => n.courseId === course.id) : []),
-      [course, notes],
+      () => (course && extensionsReady ? notes.filter((n) => n.courseId === course.id) : []),
+      [course, extensionsReady, notes],
     );
     const courseTodos = useMemo(
-      () => (course ? todos.filter((t) => t.courseId === course.id) : []),
-      [course, todos],
+      () => (course && extensionsReady ? todos.filter((t) => t.courseId === course.id) : []),
+      [course, extensionsReady, todos],
     );
     const pendingCount = courseTodos.filter((t) => t.status === "pending").length;
 
@@ -110,12 +163,44 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
       }
     }, [busy, onAddTodo, todoInput]);
 
+    const requestDeleteNote = useCallback(
+      async (id: string) => {
+        const ok = await confirm({
+          title: "删除备注",
+          message: "删除后不可恢复，确定删除这条备注？",
+          confirmText: "删除",
+          destructive: true,
+        });
+        if (!ok) return;
+        await onDeleteNote(id);
+        toast.success("备注已删除");
+      },
+      [onDeleteNote],
+    );
+
+    const requestDeleteTodo = useCallback(
+      async (id: string) => {
+        const ok = await confirm({
+          title: "删除待办",
+          message: "删除后不可恢复，确定删除这条待办？",
+          confirmText: "删除",
+          destructive: true,
+        });
+        if (!ok) return;
+        await onDeleteTodo(id);
+        toast.success("待办已删除");
+      },
+      [onDeleteTodo],
+    );
+
     return (
       <BottomSheetModal
         ref={ref}
         snapPoints={snapPoints}
+        enableDynamicSizing={false}
         enablePanDownToClose
-        onDismiss={onDismiss}
+        onChange={handleSheetChange}
+        onDismiss={handleDismiss}
         backdropComponent={renderBackdrop}
         backgroundStyle={styles.sheetBg}
         handleIndicatorStyle={styles.handle}
@@ -123,6 +208,8 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
         <BottomSheetScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          scrollEnabled={sheetScrollEnabled}
+          nestedScrollEnabled
         >
           {course ? (
             <>
@@ -167,14 +254,50 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
                 </View>
               </View>
 
-              {readOnly ? null : (
+              {readOnly ? null : !extensionsReady ? (
+                <CourseDetailExtensionsSkeleton />
+              ) : (
                 <>
+                  <CourseAttendanceSection
+                    weekNumber={weekNumber}
+                    day={course.day}
+                    attendance={attendance}
+                    courseAttendances={courseAttendances}
+                    busy={busy}
+                    onSelect={async (status) => {
+                      setBusy(true);
+                      try {
+                        await onUpsertAttendance(status);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    onClear={async () => {
+                      setBusy(true);
+                      try {
+                        await onClearAttendance();
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  />
+
+                  {onAddScheduleHere ? (
+                    <Pressable
+                      onPress={onAddScheduleHere}
+                      style={({ pressed }) => [styles.addScheduleBtn, pressed && { opacity: 0.88 }]}
+                    >
+                      <Ionicons name="calendar-outline" size={16} color={lightTokens.color.brand} />
+                      <Text style={styles.addScheduleText}>在此时间添加日程</Text>
+                    </Pressable>
+                  ) : null}
+
                   {/* ===== 备注 ===== */}
                   <SectionHeader icon="book-outline" title="备注" count={courseNotes.length} />
                   <Composer
                     value={noteInput}
                     onChangeText={setNoteInput}
-                    placeholder="记下这节课的要点…"
+                    placeholder="记下备注，比如这老师人怎么样..."
                     onSubmit={submitNote}
                     disabled={busy}
                     submitIcon="arrow-up"
@@ -182,17 +305,30 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
                   {courseNotes.length === 0 ? (
                     <EmptyHint icon="book-outline" text="还没有备注，记下重点随时回看" />
                   ) : (
-                    <View style={styles.list}>
+                    <ScrollView
+                      style={styles.listScroll}
+                      contentContainerStyle={styles.list}
+                      nestedScrollEnabled
+                      showsVerticalScrollIndicator
+                      keyboardShouldPersistTaps="handled"
+                      onScrollBeginDrag={lockSheetScroll}
+                      onScrollEndDrag={unlockSheetScroll}
+                      onMomentumScrollEnd={unlockSheetScroll}
+                      onTouchStart={lockSheetScroll}
+                      onTouchEnd={unlockSheetScroll}
+                    >
                       {courseNotes.map((n) => (
-                        <Pressable
-                          key={n.id}
-                          onLongPress={() => onDeleteNote(n.id)}
-                          style={({ pressed }) => [styles.noteCard, pressed && styles.cardPressed]}
-                        >
+                        <View key={n.id} style={styles.noteCard}>
                           <View style={styles.noteAccent} />
-                          <Text style={styles.noteText}>{n.content}</Text>
                           <Pressable
-                            onPress={() => onDeleteNote(n.id)}
+                            style={styles.noteBody}
+                            onLongPress={() => void requestDeleteNote(n.id)}
+                            delayLongPress={350}
+                          >
+                            <Text style={styles.noteText}>{n.content}</Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => void requestDeleteNote(n.id)}
                             hitSlop={10}
                             style={({ pressed }) => [
                               styles.iconBtn,
@@ -205,9 +341,9 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
                               color={lightTokens.color.textSecondary}
                             />
                           </Pressable>
-                        </Pressable>
+                        </View>
                       ))}
-                    </View>
+                    </ScrollView>
                   )}
 
                   {/* ===== 待办 ===== */}
@@ -221,7 +357,7 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
                     <Composer
                       value={todoInput}
                       onChangeText={setTodoInput}
-                      placeholder="加一件要做的事…"
+                      placeholder="添加课程待办，比如小组作业..."
                       onSubmit={submitTodo}
                       disabled={busy}
                       submitIcon="arrow-up"
@@ -229,19 +365,30 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
                     {courseTodos.length === 0 ? (
                       <EmptyHint icon="checkbox-outline" text="没有待办，安心上课" />
                     ) : (
-                      <View style={styles.list}>
+                      <ScrollView
+                        style={styles.listScroll}
+                        contentContainerStyle={styles.list}
+                        nestedScrollEnabled
+                        showsVerticalScrollIndicator
+                        keyboardShouldPersistTaps="handled"
+                        onScrollBeginDrag={lockSheetScroll}
+                        onScrollEndDrag={unlockSheetScroll}
+                        onMomentumScrollEnd={unlockSheetScroll}
+                        onTouchStart={lockSheetScroll}
+                        onTouchEnd={unlockSheetScroll}
+                      >
                         {courseTodos.map((t) => {
                           const done = t.status === "done";
                           return (
-                            <Pressable
-                              key={t.id}
-                              onPress={() => onToggleTodo(t.id, done ? "pending" : "done")}
-                              style={({ pressed }) => [
-                                styles.todoCard,
-                                pressed && styles.cardPressed,
-                              ]}
-                            >
-                              <View style={[styles.todoCheck, done && styles.todoCheckDone]}>
+                            <View key={t.id} style={styles.todoCard}>
+                              <Pressable
+                                onPress={() => onToggleTodo(t.id, done ? "pending" : "done")}
+                                hitSlop={8}
+                                style={[styles.todoCheck, done && styles.todoCheckDone]}
+                                accessibilityRole="checkbox"
+                                accessibilityState={{ checked: done }}
+                                accessibilityLabel={done ? "标记为未完成" : "标记为已完成"}
+                              >
                                 {done ? (
                                   <Ionicons
                                     name="checkmark"
@@ -249,7 +396,7 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
                                     color={lightTokens.color.onBrand}
                                   />
                                 ) : null}
-                              </View>
+                              </Pressable>
                               <Text
                                 style={[styles.todoText, done && styles.todoTextDone]}
                                 numberOfLines={3}
@@ -257,7 +404,7 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
                                 {t.content}
                               </Text>
                               <Pressable
-                                onPress={() => onDeleteTodo(t.id)}
+                                onPress={() => void requestDeleteTodo(t.id)}
                                 hitSlop={10}
                                 style={({ pressed }) => [
                                   styles.iconBtn,
@@ -270,10 +417,10 @@ export const CourseDetailSheet = forwardRef<BottomSheetModal, CourseDetailSheetP
                                   color={lightTokens.color.textSecondary}
                                 />
                               </Pressable>
-                            </Pressable>
+                            </View>
                           );
                         })}
-                      </View>
+                      </ScrollView>
                     )}
                   </View>
                 </>
@@ -400,6 +547,22 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 7,
   },
+  addScheduleBtn: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: `${lightTokens.color.brandMuted}55`,
+  },
+  addScheduleText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: lightTokens.color.brand,
+  },
   tag: {
     flexDirection: "row",
     alignItems: "center",
@@ -477,9 +640,13 @@ const styles = StyleSheet.create({
     backgroundColor: lightTokens.color.border,
   },
   // ===== List =====
+  listScroll: {
+    maxHeight: LIST_MAX_HEIGHT,
+    marginTop: 4,
+  },
   list: {
     gap: 8,
-    marginTop: 4,
+    paddingBottom: 4,
   },
   noteCard: {
     flexDirection: "row",
@@ -491,6 +658,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: lightTokens.color.border,
+  },
+  noteBody: {
+    flex: 1,
   },
   cardPressed: {
     backgroundColor: lightTokens.color.brandMuted,

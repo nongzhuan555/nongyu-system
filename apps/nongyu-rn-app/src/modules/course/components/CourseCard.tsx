@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { getCourseColor } from "../model/colors";
 import { COURSE_META_FONT, COURSE_NAME_FONT, type CourseSizeScale } from "../model/coursePrefs";
 import type { CourseEntry } from "../model/types";
@@ -7,30 +7,29 @@ type CourseCardProps = {
   course: CourseEntry;
   height: number;
   fontScale: CourseSizeScale;
-  onPress: () => void;
+  /** 无 onPress 时纯展示（由堆叠宿主接管手势） */
+  onPress?: () => void;
+  /** 本节考勤完整状态名，如「迟到」；学期汇总不在卡片上 */
+  attendanceSummary?: string | null;
 };
 
 /**
  * 周网格课程卡（对齐旧版：居中课名 / 教室 / 教师）
  */
-export function CourseCard({ course, height, fontScale, onPress }: CourseCardProps) {
+export function CourseCard({
+  course,
+  height,
+  fontScale,
+  onPress,
+  attendanceSummary,
+}: CourseCardProps) {
   const colors = getCourseColor(course.name);
   const nameSize = COURSE_NAME_FONT[fontScale];
   const metaSize = COURSE_META_FONT[fontScale];
+  const summarySize = Math.max(9, metaSize - 1);
 
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        {
-          height,
-          backgroundColor: colors.bg,
-          opacity: pressed ? 0.9 : 1,
-          transform: [{ scale: pressed ? 0.95 : 1 }],
-        },
-      ]}
-    >
+  const body = (
+    <>
       <Text
         numberOfLines={4}
         style={[
@@ -74,6 +73,42 @@ export function CourseCard({ course, height, fontScale, onPress }: CourseCardPro
           {course.teacher}
         </Text>
       ) : null}
+      {attendanceSummary ? (
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.attendance,
+            {
+              color: colors.text,
+              fontSize: summarySize,
+              lineHeight: summarySize + 2,
+            },
+          ]}
+        >
+          {attendanceSummary}
+        </Text>
+      ) : null}
+    </>
+  );
+
+  if (!onPress) {
+    return <View style={[styles.card, { height, backgroundColor: colors.bg }]}>{body}</View>;
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          height,
+          backgroundColor: colors.bg,
+          opacity: pressed ? 0.9 : 1,
+          transform: [{ scale: pressed ? 0.95 : 1 }],
+        },
+      ]}
+    >
+      {body}
     </Pressable>
   );
 }
@@ -101,5 +136,11 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     marginTop: 1,
     textAlign: "center",
+  },
+  attendance: {
+    opacity: 0.72,
+    marginTop: 3,
+    textAlign: "center",
+    fontWeight: "600",
   },
 });

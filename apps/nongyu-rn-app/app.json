@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "nongyu",
+    "scheme": ["nongyu", "wx174b5a4d92447b73"],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -16,7 +16,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nongyu.app",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "associatedDomains": ["applinks:nongyu.app"]
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +27,20 @@
       "package": "com.nongyu.app",
       "versionCode": 1,
       "edgeToEdgeEnabled": true,
-      "permissions": ["android.permission.RECORD_AUDIO"]
+      "permissions": ["android.permission.RECORD_AUDIO"],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            {
+              "scheme": "nongyu",
+              "host": "course"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -37,6 +51,7 @@
       "expo-secure-store",
       "expo-image-picker",
       "expo-web-browser",
+      "expo-native-wechat",
       [
         "expo-splash-screen",
         {

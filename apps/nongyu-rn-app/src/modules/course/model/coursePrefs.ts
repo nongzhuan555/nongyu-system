@@ -9,11 +9,11 @@ export const COURSE_SIZE_LABELS: Record<CourseSizeScale, string> = {
   lg: "大",
 };
 
-/** 大课区间行高（px）；中档对齐旧版 minHeight≈120 */
+/** 大课区间行高（px）；中档在周视图按可视区均分（fillViewport），此值为回退参考 */
 export const COURSE_ROW_HEIGHT: Record<CourseSizeScale, number> = {
   sm: 100,
-  md: 120,
-  lg: 140,
+  md: 110,
+  lg: 130,
 };
 
 /** 卡片课名字号（对齐旧版默认 10） */

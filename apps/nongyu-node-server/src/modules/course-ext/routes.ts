@@ -17,15 +17,21 @@ import {
   insertTodo,
   updateTodo,
   deleteTodo,
+  listAttendances,
+  upsertAttendance,
+  updateAttendance,
+  deleteAttendance,
   upsertTombstone,
   listTombstones,
 } from "./repo.js";
-import { toScheduleDto, toNoteDto, toTodoDto, toTombstoneDto } from "./mapper.js";
+import { toScheduleDto, toNoteDto, toTodoDto, toAttendanceDto, toTombstoneDto } from "./mapper.js";
 
 export const appCourseExtRouter = Router();
 
 const iso = z.string().datetime();
 const uuid = z.string().uuid();
+
+const scheduleColorIndex = z.number().int().min(0).max(7).nullable();
 
 const scheduleCreateSchema = z.object({
   id: uuid,
@@ -36,6 +42,7 @@ const scheduleCreateSchema = z.object({
   startPeriod: z.number().int().min(1).max(10),
   endPeriod: z.number().int().min(1).max(10),
   weeksList: z.array(z.number().int().min(1)).default([]),
+  colorIndex: scheduleColorIndex.optional().default(null),
   createdAt: iso,
   updatedAt: iso,
 });
@@ -48,6 +55,7 @@ const schedulePatchSchema = z.object({
   startPeriod: z.number().int().min(1).max(10).optional(),
   endPeriod: z.number().int().min(1).max(10).optional(),
   weeksList: z.array(z.number().int().min(1)).optional(),
+  colorIndex: scheduleColorIndex.optional(),
   updatedAt: iso,
 });
 
@@ -83,6 +91,23 @@ const todoPatchSchema = z.object({
   updatedAt: iso,
 });
 
+const attendanceStatus = z.enum(["present", "late", "absent", "leave", "nocheck"]);
+
+const attendanceUpsertSchema = z.object({
+  id: uuid,
+  courseId: z.string().min(1).max(128),
+  week: z.number().int().min(1),
+  day: z.number().int().min(1).max(7),
+  status: attendanceStatus,
+  createdAt: iso,
+  updatedAt: iso,
+});
+
+const attendancePatchSchema = z.object({
+  status: attendanceStatus.optional(),
+  updatedAt: iso,
+});
+
 function notFound(): AppError {
   return new AppError(ErrorCodes.USER_NOT_FOUND, "记录不存在", 404);
 }
@@ -112,6 +137,7 @@ appCourseExtRouter.post(
       startPeriod: body.startPeriod,
       endPeriod: body.endPeriod,
       weeksListJson: JSON.stringify(body.weeksList),
+      colorIndex: body.colorIndex ?? null,
       createdAt: body.createdAt,
       updatedAt: body.updatedAt,
     });
@@ -133,6 +159,7 @@ appCourseExtRouter.patch(
       startPeriod: body.startPeriod,
       endPeriod: body.endPeriod,
       weeksListJson: body.weeksList ? JSON.stringify(body.weeksList) : undefined,
+      colorIndex: body.colorIndex,
       updatedAt: body.updatedAt,
     });
     if (!ok2) throw notFound();
@@ -266,6 +293,61 @@ appCourseExtRouter.delete(
     const id = req.params.id;
     await deleteTodo(uid, id);
     await upsertTombstone(uid, "todo", id, new Date().toISOString());
+    ok(res, null);
+  }),
+);
+
+// ===== Attendances =====
+
+appCourseExtRouter.get(
+  "/attendances",
+  requireAppAuth,
+  asyncHandler(async (req, res) => {
+    const rows = await listAttendances(req.appAuth!.uid);
+    ok(res, rows.map(toAttendanceDto));
+  }),
+);
+
+appCourseExtRouter.post(
+  "/attendances",
+  requireAppAuth,
+  asyncHandler(async (req, res) => {
+    const body = attendanceUpsertSchema.parse(req.body);
+    await upsertAttendance(req.appAuth!.uid, {
+      id: body.id,
+      courseId: body.courseId,
+      week: body.week,
+      day: body.day,
+      status: body.status,
+      createdAt: body.createdAt,
+      updatedAt: body.updatedAt,
+    });
+    ok(res, body);
+  }),
+);
+
+appCourseExtRouter.patch(
+  "/attendances/:id",
+  requireAppAuth,
+  asyncHandler(async (req, res) => {
+    const body = attendancePatchSchema.parse(req.body);
+    const ok2 = await updateAttendance(req.appAuth!.uid, req.params.id, {
+      status: body.status,
+      updatedAt: body.updatedAt,
+    });
+    if (!ok2) throw notFound();
+    ok(res, null);
+  }),
+);
+
+appCourseExtRouter.delete(
+  "/attendances/:id",
+  requireAppAuth,
+  asyncHandler(async (req, res) => {
+    const uid = req.appAuth!.uid;
+    const id = req.params.id;
+    await deleteAttendance(uid, id);
+    await upsertTombstone(uid, "attendance", id, new Date().toISOString());
     ok(res, null);
   }),
 );

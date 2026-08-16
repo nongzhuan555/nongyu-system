@@ -1,9 +1,10 @@
 import { appStorage } from "@/storage/mmkv";
-import type { CourseNote, CourseTodo, ScheduleEntry } from "../model/types";
+import type { CourseAttendance, CourseNote, CourseTodo, ScheduleEntry } from "../model/types";
 
 const SCHEDULES_KEY_PREFIX = "course:schedules:";
 const NOTES_KEY_PREFIX = "course:notes:";
 const TODOS_KEY_PREFIX = "course:todos:";
+const ATTENDANCES_KEY_PREFIX = "course:attendances:";
 
 function schedulesKey(studentId: string): string {
   return `${SCHEDULES_KEY_PREFIX}${studentId}`;
@@ -13,6 +14,9 @@ function notesKey(studentId: string): string {
 }
 function todosKey(studentId: string): string {
   return `${TODOS_KEY_PREFIX}${studentId}`;
+}
+function attendancesKey(studentId: string): string {
+  return `${ATTENDANCES_KEY_PREFIX}${studentId}`;
 }
 
 function readArray<T>(key: string): T[] | null {
@@ -71,4 +75,18 @@ export function writeLocalTodos(studentId: string, items: CourseTodo[]): void {
 
 export function clearLocalTodos(studentId: string): void {
   appStorage.delete(todosKey(studentId));
+}
+
+// ===== Attendances =====
+
+export function readLocalAttendances(studentId: string): CourseAttendance[] | null {
+  return readArray<CourseAttendance>(attendancesKey(studentId));
+}
+
+export function writeLocalAttendances(studentId: string, items: CourseAttendance[]): void {
+  writeArray(attendancesKey(studentId), items);
+}
+
+export function clearLocalAttendances(studentId: string): void {
+  appStorage.delete(attendancesKey(studentId));
 }

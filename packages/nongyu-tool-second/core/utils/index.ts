@@ -3,10 +3,12 @@
  */
 
 export {
+  attachSecondAuthRefreshHooks,
   attachSecondHttpLogger,
   postQuery,
   request,
   type ExtendedAxiosRequestConfig,
+  type SecondAuthRefreshHooks,
   type SecondHttpLogEvent,
 } from "./request";
 export {

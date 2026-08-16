@@ -11,6 +11,7 @@ import { clearLocalCourses } from "@/modules/course/data/courseLocalStore";
 import { clearLocalCourseExt } from "@/modules/course/data/courseExtRepository";
 import { clearPersistedCourseBackground } from "@/modules/course/data/courseBackground";
 import { useCourseUiStore } from "@/modules/course/store/courseUiStore";
+import { clearWidgetSchedule } from "@/modules/course/widget/writeWidgetSchedule";
 import { useSessionStore } from "@/stores/session";
 import { personalInfoToSessionProfile } from "@/modules/jiaowu/auth/personalInfoMap";
 import { invalidateNongyuAgent } from "@/agent/agent";
@@ -171,6 +172,7 @@ export async function performJiaowuLogout(queryClient?: QueryClient): Promise<vo
   clearSessionSnapshot();
   clearAiTipMuted();
   useSessionStore.getState().clearSession();
+  await clearWidgetSchedule();
   if (queryClient) {
     queryClient.removeQueries({ queryKey: ["jiaowu"] });
     queryClient.removeQueries({ queryKey: ["second"] });

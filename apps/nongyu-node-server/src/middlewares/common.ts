@@ -10,7 +10,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     return fail(res, 400, ErrorCodes.VALIDATION, message);
   }
   if (isAppError(err)) {
-    return fail(res, err.httpStatus, err.code, err.message);
+    return fail(res, err.httpStatus, err.code, err.message, err.data);
   }
   try {
     createLogger().error({ err }, "unhandled error");

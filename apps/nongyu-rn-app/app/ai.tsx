@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { Agent, ChatMessage } from "nongyu-agent-sdk";
 import { MessageList } from "@/agent-ui/MessageList";
+import { ChatLoadingSkeleton } from "@/agent-ui/ChatLoadingSkeleton";
+import { getAssistantActionLabel } from "@/agent-ui/AssistantMessage";
 import { getOrCreateNongyuAgent } from "@/agent/agent";
 import { agentChatRunner, useAgentChatRunner, useAgentChatRunnerActions } from "@/agent/chatRunner";
 import {
@@ -28,6 +30,7 @@ import {
   touchSession,
   type AgentChatSession,
 } from "@/agent/session";
+import { confirm } from "@/components/ui/confirm";
 import { toast } from "@/components/ui/toast";
 import { useSessionStore } from "@/stores/session";
 import { createThemedStyles } from "@/theme/createThemedStyles";
@@ -266,9 +269,7 @@ export default function AiScreen() {
       </View>
 
       {agent === undefined ? (
-        <View style={styles.center}>
-          <Text style={styles.hint}>加载中</Text>
-        </View>
+        <ChatLoadingSkeleton />
       ) : agent === null ? (
         <UnconfiguredPanel />
       ) : (
@@ -312,8 +313,8 @@ function UnconfiguredPanel() {
       <View style={[styles.emptyIcon, { backgroundColor: themeHexToRgba(t.color.brand, 0.1) }]}>
         <Ionicons name="key-outline" size={28} color={t.color.brand} />
       </View>
-      <Text style={styles.emptyTitle}>先配置模型</Text>
-      <Text style={styles.hint}>在设置中填写 Base URL 与 API Key 后即可开始对话</Text>
+      <Text style={styles.emptyTitle}>暂不可用平台模型</Text>
+      <Text style={styles.hint}>请先登录农屿以使用平台免费模型，或在设置中配置自有 API Key</Text>
       <Pressable
         accessibilityRole="button"
         style={({ pressed }) => [styles.settingsBtn, pressed && { opacity: 0.9 }]}
@@ -352,7 +353,7 @@ function AiChatPanel({
   const styles = useStyles();
   const t = useThemeTokens();
   const snap = useAgentChatRunner();
-  const { send, stop } = useAgentChatRunnerActions();
+  const { send, regenerate, stop } = useAgentChatRunnerActions();
   const [input, setInput] = useState("");
 
   const isLive = agentChatRunner.matchesView(viewKey, sessionId);
@@ -372,13 +373,18 @@ function AiChatPanel({
     }
   }, [isLive, snap.isLoading, snap.lastEndReason, onSessionsMaybeChanged]);
 
-  const submitPrompt = async (prompt: string) => {
+  const submitPrompt = async (prompt: string, historyOverride?: ChatMessage[]) => {
+    const historyMessages =
+      historyOverride ??
+      (agentChatRunner.matchesView(viewKey, sessionId)
+        ? agentChatRunner.getSnapshot().messages
+        : messages);
     const result = await send({
       agent,
       viewKey,
       sessionId,
       prompt,
-      historyMessages: messages,
+      historyMessages,
       llmSummary,
       llmCompactedUntilId,
     });
@@ -391,18 +397,73 @@ function AiChatPanel({
     void submitPrompt(text);
   };
 
+  const onRegenerate = () => {
+    if (isLoading) return;
+    const liveMessages = agentChatRunner.matchesView(viewKey, sessionId)
+      ? agentChatRunner.getSnapshot().messages
+      : messages;
+    const last = liveMessages[liveMessages.length - 1];
+    if (!last || last.role !== "assistant") return;
+    const withoutAssistant = liveMessages.slice(0, -1);
+    const prevUser = withoutAssistant[withoutAssistant.length - 1];
+    if (!prevUser || prevUser.role !== "user") return;
+
+    const actionLabel = getAssistantActionLabel(last);
+    if (!actionLabel) return;
+
+    void (async () => {
+      if (actionLabel === "重新生成") {
+        const ok = await confirm({
+          title: "重新生成",
+          message: "将丢弃当前回复并重新生成，是否继续？",
+          confirmText: "重新生成",
+          cancelText: "取消",
+        });
+        if (!ok) return;
+      }
+
+      const result = await regenerate({
+        agent,
+        viewKey,
+        sessionId,
+        historyMessages: withoutAssistant,
+        llmSummary,
+        llmCompactedUntilId,
+      });
+      if (result === "busy") {
+        toast.info("请等待当前回复完成");
+      }
+    })();
+  };
+
   const onSend = () => {
+    if (isLoading) return;
     const text = input.trim();
-    if (!text || isLoading) return;
+    if (!text) return;
     setInput("");
-    void submitPrompt(text);
+    const history = agentChatRunner.matchesView(viewKey, sessionId)
+      ? agentChatRunner.getSnapshot().messages
+      : messages;
+    void submitPrompt(text, history);
   };
 
   const onStop = () => {
-    stop();
+    void (async () => {
+      const ok = await confirm({
+        title: "停止生成",
+        message: "将停止当前回复，已生成内容会保留。",
+        confirmText: "停止",
+        cancelText: "取消",
+      });
+      if (!ok) return;
+      stop();
+    })();
   };
 
-  const canSend = Boolean(input.trim()) && !isLoading;
+  const inputTrimmed = input.trim();
+  /** 生成中禁用输入，仅展示 Stop；结束后才可再发 */
+  const showStop = isLoading;
+  const sendEnabled = !isLoading && Boolean(inputTrimmed);
 
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   useEffect(() => {
@@ -425,21 +486,27 @@ function AiChatPanel({
   return (
     <View style={styles.body}>
       <View style={styles.listWrap}>
-        <MessageList messages={messages} onAction={onAction} />
+        <MessageList
+          messages={messages}
+          onAction={onAction}
+          actionsEnabled={!isLoading}
+          onRegenerate={onRegenerate}
+        />
       </View>
 
       <View style={[styles.composerWrap, { paddingBottom: composerBottomPad }]}>
-        <View style={styles.composer}>
+        <View style={[styles.composer, isLoading && styles.composerDisabled]}>
           <TextInput
             style={styles.input}
             value={input}
             onChangeText={setInput}
-            placeholder="发消息给农屿 AI"
+            placeholder={isLoading ? "生成中，请稍候…" : "有什么想对农小屿说的吗？"}
             placeholderTextColor={t.color.textSecondary}
             multiline
             editable={!isLoading}
+            accessibilityState={{ disabled: isLoading }}
           />
-          {isLoading ? (
+          {showStop ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="停止生成"
@@ -451,15 +518,15 @@ function AiChatPanel({
           ) : (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="发送"
-              style={[styles.sendBtn, !canSend && styles.sendBtnDisabled]}
+              accessibilityLabel={isLoading ? "打断并发送" : "发送"}
+              style={[styles.sendBtn, !sendEnabled && styles.sendBtnDisabled]}
               onPress={onSend}
-              disabled={!canSend}
+              disabled={!sendEnabled}
             >
               <Ionicons
                 name="arrow-up"
                 size={18}
-                color={canSend ? t.color.onBrand : t.color.textSecondary}
+                color={sendEnabled ? t.color.onBrand : t.color.textSecondary}
               />
             </Pressable>
           )}
@@ -562,6 +629,9 @@ const useStyles = createThemedStyles((t) => ({
     paddingRight: 6,
     paddingVertical: 6,
     minHeight: 48,
+  },
+  composerDisabled: {
+    opacity: 0.72,
   },
   input: {
     flex: 1,

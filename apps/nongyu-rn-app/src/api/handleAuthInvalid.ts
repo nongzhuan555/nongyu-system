@@ -13,6 +13,7 @@ import { clearLocalCourses } from "@/modules/course/data/courseLocalStore";
 import { clearLocalCourseExt } from "@/modules/course/data/courseExtRepository";
 import { clearPersistedCourseBackground } from "@/modules/course/data/courseBackground";
 import { useCourseUiStore } from "@/modules/course/store/courseUiStore";
+import { clearWidgetSchedule } from "@/modules/course/widget/writeWidgetSchedule";
 
 let lastToastAt = 0;
 const TOAST_DEDUP_MS = 2500;
@@ -38,6 +39,7 @@ export async function clearLocalAuthSession(): Promise<void> {
   clearSessionSnapshot();
   clearAiTipMuted();
   useSessionStore.getState().clearSession();
+  await clearWidgetSchedule();
 }
 
 /**

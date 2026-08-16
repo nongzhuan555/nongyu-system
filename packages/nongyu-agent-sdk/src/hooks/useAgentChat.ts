@@ -324,10 +324,12 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") {
-          // 用户主动停止，标记当前消息为 done（保留已有内容）
+          // 用户主动停止，标记为 stopped（保留已有内容）
           setMessages((prev: ChatMessage[]) =>
             prev.map((m: ChatMessage) =>
-              m.id === aiMsgId && m.status === "streaming" ? { ...m, status: "done" as const } : m,
+              m.id === aiMsgId && (m.status === "streaming" || m.status === "pending")
+                ? { ...m, status: "stopped" as const }
+                : m,
             ),
           );
         } else {

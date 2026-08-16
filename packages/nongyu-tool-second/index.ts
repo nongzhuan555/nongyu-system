@@ -19,10 +19,12 @@ export {
 } from "./core/login";
 
 export {
+  attachSecondAuthRefreshHooks,
   attachSecondHttpLogger,
   SECOND_NETWORK_HINT,
   isSecondTimeoutError,
   resolveSecondErrorMessage,
+  type SecondAuthRefreshHooks,
   type SecondHttpLogEvent,
   type SecondResult,
 } from "./core/utils";

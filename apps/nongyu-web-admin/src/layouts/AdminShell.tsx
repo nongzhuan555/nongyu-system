@@ -1,4 +1,5 @@
 import {
+  ApiOutlined,
   AppstoreOutlined,
   BarChartOutlined,
   FileTextOutlined,
@@ -22,6 +23,7 @@ const MENU_ITEMS: MenuProps["items"] = [
   { key: ROUTES.dashboard, icon: <BarChartOutlined />, label: "数据大屏" },
   { key: ROUTES.users, icon: <TeamOutlined />, label: "用户管理" },
   { key: ROUTES.content, icon: <FileTextOutlined />, label: "内容管理" },
+  { key: ROUTES.llmKeys, icon: <ApiOutlined />, label: "LLM Key 池" },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
@@ -29,6 +31,7 @@ const PAGE_TITLES: Record<string, string> = {
   [ROUTES.dashboard]: "数据大屏",
   [ROUTES.users]: "用户管理",
   [ROUTES.content]: "内容管理",
+  [ROUTES.llmKeys]: "LLM Key 池",
 };
 
 function SideMenu({

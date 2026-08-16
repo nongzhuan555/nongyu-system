@@ -32,11 +32,23 @@ export function useAgentChatRunnerActions() {
     [],
   );
 
+  const regenerate = useCallback(
+    async (params: {
+      agent: Agent;
+      viewKey: string;
+      sessionId: string | null;
+      historyMessages: ChatMessage[];
+      llmSummary?: string;
+      llmCompactedUntilId?: string;
+    }) => agentChatRunner.regenerate(params),
+    [],
+  );
+
   const stop = useCallback(() => {
     agentChatRunner.stop();
   }, []);
 
-  return { send, stop };
+  return { send, regenerate, stop };
 }
 
 /** 在 AI 页挂载时注册落盘 / 压缩 / 错误回调 */

@@ -18,15 +18,15 @@ const ENTRIES: EntryItem[] = [
   {
     key: "jiaowu",
     label: "教务系统",
-    hint: "成绩 · 课表 · 选课",
+    hint: "农屿教务功能集成",
     icon: "school",
     href: "/home/jiaowu" as Href,
   },
   {
     key: "second",
     label: "二课系统",
-    hint: "活动 · 学分 · 认证",
-    icon: "trophy",
+    hint: "农屿二课功能集成",
+    icon: "medal",
     href: "/home/second" as Href,
   },
 ];

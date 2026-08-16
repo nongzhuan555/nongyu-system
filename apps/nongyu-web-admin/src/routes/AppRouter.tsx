@@ -3,6 +3,7 @@ import { AdminShell } from "../layouts/AdminShell";
 import { ROUTES } from "../lib/constants";
 import { ContentPage } from "../pages/ContentPage";
 import { DashboardPage } from "../pages/DashboardPage";
+import { LlmKeysPage } from "../pages/LlmKeysPage";
 import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { UsersPage } from "../pages/UsersPage";
@@ -33,6 +34,7 @@ export function AppRouter() {
         <Route path={ROUTES.dashboard} element={<DashboardPage />} />
         <Route path={ROUTES.users} element={<UsersPage />} />
         <Route path={ROUTES.content} element={<ContentPage />} />
+        <Route path={ROUTES.llmKeys} element={<LlmKeysPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

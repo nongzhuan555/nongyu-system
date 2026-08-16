@@ -21,7 +21,8 @@ export type PerformSecondLoginResult = {
 };
 
 /**
- * 二课登录：校验 → 持久化密码与 token → 刷新 second queries
+ * 二课登录：校验 → SecureStore 持久化二课密码 + MMKV token → 刷新 second queries
+ * 本地密码供后续 token 过期时自动重登
  */
 export async function performSecondLogin(
   input: PerformSecondLoginInput,

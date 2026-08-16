@@ -7,6 +7,7 @@
 | PRD      | `docs/forhuman/rawprds/nongyu-rn-app/User/埋点及用户交互PRD.md`（仅埋点采集；不含建议反馈）                                                                     |
 | 状态     | **已实现**（2026-08-15）                                                                                                                                        |
 | 契约     | [`../nongyu-go-track-server/接口文档.md`](../nongyu-go-track-server/接口文档.md)、[`技术选型.md`](../技术选型.md) §6、[`联调指南-埋点.md`](../联调指南-埋点.md) |
+| 技术方案 | [`../tech/自研埋点SDK一期.md`](../tech/自研埋点SDK一期.md)（as-built，供对照实现学习）                                                                          |
 
 ---
 
@@ -19,18 +20,19 @@ Track HTTP 已可本机联调，但 RN 只有 `TRACK_BASE_URL`，没有采集 / 
 1. 已登录用户自动上报：`app_open`、全局 `screen_view`、周期 `heartbeat`；登出尽力 `presence/offline`。
 2. 提供 `track` / `trackClick` / `measure` 给业务显式调用；一期接入底栏 Tab、农屿 AI、退出登录、首页教务/二课入口。
 3. 内存队列 + 定时/满批 flush；失败写入 MMKV，依赖服务端 `event_id` 幂等重试。
-4. JS 全局异常打 `crash`（一期）；原生崩溃二期。
+4. JS 全局异常打 `crash`；**本版不做原生层崩溃**（产品决策 2026-08-15）。
 5. **不**走 Node `appFetch` 信封；成功以 Track `{ ok: true }` 为准。
 
 ## 3. 边界（非目标）
 
 - 不覆盖建议/反馈（PRD「用户交互」段，走广场发帖）。
-- 不实现原生崩溃、不接商用 APM。
+- **原生层崩溃 / 未捕获原生异常：本版明确不做**（不写 native handler、不落 tombstone、不接商用 APM）；仅保留 JS `crash`。
+- 不接商用 APM。
 - 不把课表/列表耗时在本期强制打满；只提供 `measure`，课表页后续自行调用。
 - 不做可追踪 HOC 组件库（一期用函数 API + 少量重点按钮）。
 - 不接管理端 BFF；App 禁止打 Track Admin API。
 - 未登录（无 App JWT）不上报。
-- **跳过独立 tech / plans**：HTTP 契约与选型已锁定，以本 Spec 指导实现。
+- 一期编码前曾跳过独立 tech / plans（HTTP 契约与选型已锁定）；落地后已补 [`../tech/自研埋点SDK一期.md`](../tech/自研埋点SDK一期.md) 作 as-built 说明。仍无独立 plans。
 
 ## 4. 详细需求
 
@@ -92,3 +94,13 @@ Track HTTP 已可本机联调，但 RN 只有 `TRACK_BASE_URL`，没有采集 / 
 3. 重复上报同一 `event_id` 服务端 `duplicated ≥ 1`（SDK 正常路径不主动重发成功事件）。
 4. 登出后 Track/Node 在线态可置 0（或 10 分钟内超时）。
 5. 无 Token 时不发起上报。
+
+---
+
+## 7. 修订记录
+
+| 日期       | 说明                                             |
+| ---------- | ------------------------------------------------ |
+| 2026-08-15 | 初版实现                                         |
+| 2026-08-15 | 产品决策：本版不做原生层崩溃；边界与目标文案同步 |
+| 2026-08-16 | 回链 as-built 技术方案 `tech/自研埋点SDK一期.md` |

@@ -62,7 +62,7 @@ export function PeerLookupSheet({ visible, onClose, onSubmit }: PeerLookupSheetP
       <Pressable style={styles.backdrop} onPress={handleClose}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>查看他人课表</Text>
-          <Text style={styles.desc}>输入对方学号（对方需已开启课表共享）</Text>
+          <Text style={styles.desc}>输入对方学号（对方需在设置开启课表共享）</Text>
           <TextInput
             style={styles.input}
             value={studentNo}

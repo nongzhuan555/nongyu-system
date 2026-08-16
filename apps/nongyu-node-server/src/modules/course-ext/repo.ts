@@ -1,6 +1,6 @@
 import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 import { getPool } from "../../lib/db.js";
-import type { ScheduleRow, NoteRow, TodoRow } from "./mapper.js";
+import type { ScheduleRow, NoteRow, TodoRow, AttendanceRow } from "./mapper.js";
 
 // ===== Schedules =====
 
@@ -23,14 +23,15 @@ export async function insertSchedule(
     startPeriod: number;
     endPeriod: number;
     weeksListJson: string;
+    colorIndex: number | null;
     createdAt: string;
     updatedAt: string;
   },
 ): Promise<void> {
   await getPool().query<ResultSetHeader>(
     `INSERT INTO custom_schedules
-      (id, user_id, title, content, location, day, start_period, end_period, weeks_list, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, user_id, title, content, location, day, start_period, end_period, weeks_list, color_index, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.id,
       userId,
@@ -41,6 +42,7 @@ export async function insertSchedule(
       data.startPeriod,
       data.endPeriod,
       data.weeksListJson,
+      data.colorIndex,
       data.createdAt,
       data.updatedAt,
     ],
@@ -58,6 +60,8 @@ export async function updateSchedule(
     startPeriod?: number;
     endPeriod?: number;
     weeksListJson?: string;
+    /** undefined = 不改；null = 清为无色 */
+    colorIndex?: number | null;
     updatedAt: string;
   },
 ): Promise<boolean> {
@@ -71,6 +75,7 @@ export async function updateSchedule(
     start_period: patch.startPeriod,
     end_period: patch.endPeriod,
     weeks_list: patch.weeksListJson,
+    color_index: patch.colorIndex,
   };
   for (const [col, val] of Object.entries(map)) {
     if (val !== undefined) {
@@ -247,9 +252,82 @@ export async function deleteTodo(userId: number, id: string): Promise<boolean> {
   return res.affectedRows > 0;
 }
 
+// ===== Attendances =====
+
+export async function listAttendances(userId: number): Promise<AttendanceRow[]> {
+  const [rows] = await getPool().query<(AttendanceRow & RowDataPacket)[]>(
+    `SELECT * FROM course_attendances WHERE user_id = ? ORDER BY week ASC, day ASC, created_at ASC`,
+    [userId],
+  );
+  return rows;
+}
+
+/**
+ * 按 (user, course, week, day) upsert；唯一冲突时更新 status / updated_at，保留原 id
+ */
+export async function upsertAttendance(
+  userId: number,
+  data: {
+    id: string;
+    courseId: string;
+    week: number;
+    day: number;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  },
+): Promise<void> {
+  await getPool().query<ResultSetHeader>(
+    `INSERT INTO course_attendances
+      (id, user_id, course_id, week, day, status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       status = VALUES(status),
+       updated_at = VALUES(updated_at)`,
+    [
+      data.id,
+      userId,
+      data.courseId,
+      data.week,
+      data.day,
+      data.status,
+      data.createdAt,
+      data.updatedAt,
+    ],
+  );
+}
+
+export async function updateAttendance(
+  userId: number,
+  id: string,
+  patch: { status?: string; updatedAt: string },
+): Promise<boolean> {
+  const sets: string[] = [];
+  const args: unknown[] = [];
+  if (patch.status !== undefined) {
+    sets.push(`status = ?`);
+    args.push(patch.status);
+  }
+  sets.push(`updated_at = ?`);
+  args.push(patch.updatedAt, userId, id);
+  const [res] = await getPool().query<ResultSetHeader>(
+    `UPDATE course_attendances SET ${sets.join(", ")} WHERE user_id = ? AND id = ?`,
+    args,
+  );
+  return res.affectedRows > 0;
+}
+
+export async function deleteAttendance(userId: number, id: string): Promise<boolean> {
+  const [res] = await getPool().query<ResultSetHeader>(
+    `DELETE FROM course_attendances WHERE user_id = ? AND id = ?`,
+    [userId, id],
+  );
+  return res.affectedRows > 0;
+}
+
 // ===== Tombstones =====
 
-export type TombstoneEntity = "schedule" | "note" | "todo";
+export type TombstoneEntity = "schedule" | "note" | "todo" | "attendance";
 
 export type TombstoneRow = {
   entity: string;

@@ -4,6 +4,7 @@ import { SettingsPageShell } from "../components/SettingsPageShell";
 import { useAppLaunchPrefsStore, type LaunchTab } from "../store/appLaunchPrefsStore";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 import { useThemeTokens } from "@/theme/ThemeProvider";
+import { toast } from "@/components/ui/toast";
 
 const OPTIONS: { id: LaunchTab; label: string; hint: string }[] = [
   { id: "home", label: "首页", hint: "打开 App 后进入首页" },
@@ -19,6 +20,17 @@ export function LaunchSettingsScreen() {
   const t = useThemeTokens();
   const launchTab = useAppLaunchPrefsStore((s) => s.launchTab);
   const setLaunchTab = useAppLaunchPrefsStore((s) => s.setLaunchTab);
+
+  const onSelect = (id: LaunchTab, label: string) => {
+    if (id === launchTab) return;
+    try {
+      setLaunchTab(id);
+      toast.success(`启动页已设为${label}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "请稍后重试";
+      toast.error("设置启动页失败", { description: msg });
+    }
+  };
 
   return (
     <SettingsPageShell title="启动页">
@@ -36,7 +48,7 @@ export function LaunchSettingsScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
-                  onPress={() => setLaunchTab(opt.id)}
+                  onPress={() => onSelect(opt.id, opt.label)}
                   style={({ pressed }) => [styles.row, pressed && styles.pressed]}
                 >
                   <View style={styles.textCol}>

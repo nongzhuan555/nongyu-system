@@ -12,20 +12,28 @@ export const ErrorCodes = {
   POST_NOT_FOUND: 40402,
   VERSION_NOT_FOUND: 40403,
   COURSE_SHARE_NOT_FOUND: 40410,
+  LLM_KEY_NOT_FOUND: 40420,
+  LLM_USER_DAILY_LIMIT: 42910,
+  LLM_USER_BUSY: 42911,
   TRACK_BAD_GATEWAY: 50201,
+  LLM_UPSTREAM_FAILED: 50210,
   TRACK_UNAVAILABLE: 50301,
+  LLM_POOL_UNAVAILABLE: 50310,
+  LLM_POOL_BUSY: 50311,
   INTERNAL: 50000,
 } as const;
 
 export class AppError extends Error {
   readonly code: number;
   readonly httpStatus: number;
+  readonly data: unknown | null;
 
-  constructor(code: number, message: string, httpStatus = 400) {
+  constructor(code: number, message: string, httpStatus = 400, data: unknown | null = null) {
     super(message);
     this.name = "AppError";
     this.code = code;
     this.httpStatus = httpStatus;
+    this.data = data;
   }
 }
 

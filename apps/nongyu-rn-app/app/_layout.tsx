@@ -9,6 +9,8 @@ import { useSecondBootstrap } from "@/modules/second/hooks/useSecondBootstrap";
 import { AuthRoot } from "@/modules/auth/components/AuthRoot";
 import { TelemetryHost, installCrashTracking } from "@/modules/telemetry";
 import { AgentChatRuntimeHost } from "@/agent/chatRunner";
+import { CourseWidgetSyncHost } from "@/modules/course/widget/CourseWidgetSyncHost";
+import { WechatBootstrapHost } from "@/lib/wechat/WechatBootstrapHost";
 
 // 启动时注册 Agent 工具的内联渲染组件（Generative UI）
 import "@/agent-ui/register";
@@ -48,7 +50,9 @@ export default function RootLayout() {
         <StatusBar style="dark" />
         <AuthRoot>
           <TelemetryHost />
+          <WechatBootstrapHost />
           <AgentChatRuntimeHost />
+          <CourseWidgetSyncHost />
           <Stack
             screenOptions={{
               headerStyle: { backgroundColor: lightTokens.color.brandMuted },
@@ -148,6 +152,10 @@ export default function RootLayout() {
             <Stack.Screen
               name="mine/settings/agent"
               options={{ title: "农屿 Agent", headerShown: false }}
+            />
+            <Stack.Screen
+              name="mine/settings/version"
+              options={{ title: "版本", headerShown: false }}
             />
           </Stack>
         </AuthRoot>

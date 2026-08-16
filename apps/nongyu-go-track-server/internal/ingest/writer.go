@@ -17,10 +17,11 @@ var ErrQueueFull = errors.New("write queue full")
 const heartbeatSample = 5 * time.Minute
 
 type BatchIn struct {
-	UserID    int64
-	StudentNo string
-	Events    []RawEvent
-	Now       time.Time
+	UserID       int64
+	StudentNo    string
+	Events       []RawEvent
+	Now          time.Time
+	SkipPresence bool // 服务端写入（如 llm_proxy_fail）不更新在线态
 }
 
 type BatchOut struct {
@@ -178,6 +179,9 @@ func (w *Writer) process(in BatchIn) (BatchOut, error) {
 		if len(okItems) == 0 {
 			return nil
 		}
+		if in.SkipPresence {
+			return nil
+		}
 		return w.store.UpsertPresence(writeCtx, tx, sqlite.Presence{
 			UserID:       in.UserID,
 			Online:       true,
@@ -191,7 +195,7 @@ func (w *Writer) process(in BatchIn) (BatchOut, error) {
 	if err != nil {
 		return BatchOut{}, err
 	}
-	if len(okItems) > 0 && w.syncer != nil {
+	if len(okItems) > 0 && !in.SkipPresence && w.syncer != nil {
 		w.syncer.Notify(in.UserID, true, received)
 	}
 	return out, nil

@@ -4,6 +4,7 @@ export const ROUTES = {
   dashboard: "/dashboard",
   users: "/users",
   content: "/content",
+  llmKeys: "/llm-keys",
 } as const;
 
 export const STORAGE_SESSION_KEY = "nongyu-admin:v1:session";
@@ -23,10 +24,13 @@ export const ADMIN_DASHBOARD_SETTINGS_PATH = "/api/admin/dashboard/settings-dist
 export const ADMIN_TRACK_OVERVIEW_PATH = "/api/admin/track/overview";
 export const ADMIN_TRACK_DIMS_PATH = "/api/admin/track/dims";
 export const ADMIN_TRACK_CRASHES_PATH = "/api/admin/track/crashes";
+export const ADMIN_TRACK_LLM_PROXY_FAILS_PATH = "/api/admin/track/llm-proxy-fails";
+export const ADMIN_LLM_KEYS_PATH = "/api/admin/llm/keys";
 
 export const STUDENT_NO_PATTERN = /^\d{9}$/;
 export const DEFAULT_USER_PAGE_SIZE = 20;
 export const DEFAULT_POST_PAGE_SIZE = 20;
+export const DEFAULT_LLM_KEY_PAGE_SIZE = 20;
 
 export const AUTH_ERROR_CODES = {
   VALIDATION: 40001,
@@ -38,7 +42,13 @@ export const AUTH_ERROR_CODES = {
   ADMIN_REQUIRED: 40302,
   ADMIN_PASSWORD_WRONG: 40303,
   USER_NOT_FOUND: 40401,
+  LLM_KEY_NOT_FOUND: 40420,
+  LLM_USER_DAILY_LIMIT: 42910,
+  LLM_USER_BUSY: 42911,
   TRACK_BAD_GATEWAY: 50201,
+  LLM_UPSTREAM_FAILED: 50210,
   TRACK_UNAVAILABLE: 50301,
+  LLM_POOL_UNAVAILABLE: 50310,
+  LLM_POOL_BUSY: 50311,
   INTERNAL: 50000,
 } as const;

@@ -8,6 +8,7 @@ import { pageParams } from "../../lib/util.js";
 import {
   getTrackCrashes,
   getTrackDims,
+  getTrackLlmProxyFails,
   getTrackOverview,
   getTrackTrend,
   todayBusinessDate,
@@ -76,6 +77,33 @@ adminTrackRouter.get(
     }
     const { page, pageSize } = pageParams(query.page, query.pageSize);
     ok(res, await getTrackCrashes(from, to, page, pageSize));
+  }),
+);
+
+adminTrackRouter.get(
+  "/llm-proxy-fails",
+  requireProvisionedAdminAuth,
+  asyncHandler(async (req, res) => {
+    const query = z
+      .object({
+        from: dateSchema.optional(),
+        to: dateSchema.optional(),
+        page: z.coerce.number().optional(),
+        pageSize: z.coerce.number().optional(),
+        errorCode: z
+          .string()
+          .regex(/^(50210|50310|50311|42910|42911)$/, "errorCode 无效")
+          .optional(),
+      })
+      .parse(req.query);
+    const today = todayBusinessDate();
+    const from = query.from ?? today;
+    const to = query.to ?? today;
+    if (from > to) {
+      throw new AppError(ErrorCodes.VALIDATION, "from 不能晚于 to", 400);
+    }
+    const { page, pageSize } = pageParams(query.page, query.pageSize);
+    ok(res, await getTrackLlmProxyFails(from, to, page, pageSize, query.errorCode));
   }),
 );
 

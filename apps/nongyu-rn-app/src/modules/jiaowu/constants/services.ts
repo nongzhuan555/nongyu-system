@@ -21,7 +21,7 @@ export const JIAOWU_SERVICES: JiaowuServiceItem[] = [
   {
     key: "notice",
     title: "教务通知",
-    hint: "教学公告",
+    hint: "教务网首页通知",
     icon: "notifications-outline",
     href: "/home/jiaowu/notice" as Href,
     requireAuth: false,
@@ -29,7 +29,7 @@ export const JIAOWU_SERVICES: JiaowuServiceItem[] = [
   {
     key: "competition",
     title: "竞赛通知",
-    hint: "竞赛与赛事",
+    hint: "教务网首页竞赛通知",
     icon: "trophy-outline",
     href: "/home/jiaowu/competition" as Href,
     requireAuth: false,
@@ -37,7 +37,7 @@ export const JIAOWU_SERVICES: JiaowuServiceItem[] = [
   {
     key: "progress",
     title: "学业进度",
-    hint: "学分修读",
+    hint: "学分修读情况概览",
     icon: "stats-chart-outline",
     href: "/home/jiaowu/progress" as Href,
     requireAuth: true,
@@ -45,7 +45,7 @@ export const JIAOWU_SERVICES: JiaowuServiceItem[] = [
   {
     key: "score",
     title: "成绩查询",
-    hint: "学期成绩",
+    hint: "全部课程成绩查询",
     icon: "school-outline",
     href: "/home/jiaowu/score" as Href,
     requireAuth: true,
@@ -53,7 +53,7 @@ export const JIAOWU_SERVICES: JiaowuServiceItem[] = [
   {
     key: "rank",
     title: "专业排名",
-    hint: "加权与名次",
+    hint: "有效必修加权",
     icon: "podium-outline",
     href: "/home/jiaowu/rank" as Href,
     requireAuth: true,
@@ -69,7 +69,7 @@ export const JIAOWU_SERVICES: JiaowuServiceItem[] = [
   {
     key: "plan",
     title: "培养方案",
-    hint: "课程计划",
+    hint: "专业培养方案概览",
     icon: "book-outline",
     href: "/home/jiaowu/plan" as Href,
     requireAuth: true,

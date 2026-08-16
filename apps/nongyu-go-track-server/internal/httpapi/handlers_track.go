@@ -54,6 +54,55 @@ func (a *API) handleIngest(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type internalEventsBody struct {
+	UserID    int64              `json:"user_id"`
+	StudentNo string             `json:"student_no"`
+	Events    []ingest.RawEvent `json:"events"`
+}
+
+// handleInternalIngest 供 Node 等内网服务写入；不更新 presence。
+func (a *API) handleInternalIngest(w http.ResponseWriter, r *http.Request) {
+	var body internalEventsBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if isMaxBytes(err) {
+			writeFail(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "body too large")
+			return
+		}
+		writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid json")
+		return
+	}
+	if body.UserID <= 0 {
+		writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "user_id required")
+		return
+	}
+	if len(body.Events) < 1 || len(body.Events) > 100 {
+		writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "events length must be 1-100")
+		return
+	}
+
+	out, err := a.writer.Enqueue(r.Context(), ingest.BatchIn{
+		UserID:       body.UserID,
+		StudentNo:    body.StudentNo,
+		Events:       body.Events,
+		Now:          a.now(),
+		SkipPresence: true,
+	})
+	if errors.Is(err, ingest.ErrQueueFull) {
+		writeFail(w, http.StatusServiceUnavailable, "QUEUE_FULL", "write queue full")
+		return
+	}
+	if err != nil {
+		writeFail(w, http.StatusInternalServerError, "INTERNAL", "ingest failed")
+		return
+	}
+	writeOK(w, http.StatusOK, map[string]any{
+		"accepted":   out.Accepted,
+		"duplicated": out.Duplicated,
+		"rejected":   out.Rejected,
+		"errors":     out.Errors,
+	})
+}
+
 func (a *API) handleOffline(w http.ResponseWriter, r *http.Request) {
 	uid, _ := r.Context().Value(ctxUserID).(int64)
 	defer func() { _, _ = io.Copy(io.Discard, r.Body) }()

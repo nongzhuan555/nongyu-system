@@ -72,6 +72,8 @@ export const THEME_BRAND_KEY = "app:theme_brand";
 export const THEME_APPEARANCE_KEY = "app:theme_appearance";
 /** 启动主 Tab：home | course（缺省 home） */
 export const LAUNCH_TAB_KEY = "app:launch_tab";
+/** Agent 上下文模式：full | stateless（缺省 full） */
+export const AGENT_CONTEXT_MODE_KEY = "app:agent_context_mode";
 
 /**
  * 读取缓存的教务 ASP Cookie
