@@ -30,7 +30,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.nongyu.app",
       "versionCode": 1,
-      "edgeToEdgeEnabled": true,
       "permissions": ["android.permission.RECORD_AUDIO"],
       "intentFilters": [
         {
@@ -70,7 +69,8 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-08-16 · nongyu-rn-app · EAS Gradle 打 JS 包找不到 babel-preset-expo
+
+- **现象**：`eas:build:prod` 在 Run gradlew 的 `:app:createBundleReleaseJsAndAssets` 失败：`Cannot find module 'babel-preset-expo'`（EAGER_BUNDLE 已成功）。
+- **根因**：pnpm 隔离下 Gradle 内 Babel 从 `@babel/core` 目录解析字符串 preset；`babel-preset-expo` 不是应用直接依赖。
+- **修复**：直接安装 `babel-preset-expo` / `expo-font`；`babel.config.js` 改为 `require.resolve`；仓库 `.npmrc` hoist 该 preset；去掉小组件 `file:` 依赖以免与 `nativeModulesDir` 重复 autolink；删除已无效的 `android.edgeToEdgeEnabled`。
+
+---
+
 ## 2026-08-16 · nongyu-rn-app · EAS Android Gradle 配置小组件失败
 
 - **现象**：`eas:build:prod` 在 Run gradlew 阶段失败：`Failed to apply plugin 'expo-autolinking'`，并提示 `'android.defaultConfig.versionName' is not defined`。

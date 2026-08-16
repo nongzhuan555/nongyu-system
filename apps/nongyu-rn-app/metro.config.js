@@ -21,7 +21,7 @@ config.resolver.extraNodeModules = {
   ...(config.resolver.extraNodeModules ?? {}),
   string_decoder: path.dirname(require.resolve("string_decoder/package.json")),
   buffer: path.dirname(require.resolve("buffer/package.json")),
-  // pnpm file: 在 Windows 上可能链到空 store，bundler 必须直指本地 Expo 模块源码
+  // 本地 Expo 模块不进 package.json dependencies（避免与 nativeModulesDir 重复 autolink）
   "nongyu-android-widget": path.resolve(__dirname, "modules/nongyu-android-widget"),
 };
 
