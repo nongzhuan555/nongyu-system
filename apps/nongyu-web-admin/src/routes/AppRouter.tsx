@@ -7,6 +7,7 @@ import { LlmKeysPage } from "../pages/LlmKeysPage";
 import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { UsersPage } from "../pages/UsersPage";
+import { VersionsPage } from "../pages/VersionsPage";
 import { WorkspacePage } from "../pages/WorkspacePage";
 import { GuestOnly } from "./GuestOnly";
 import { RequireAuth } from "./RequireAuth";
@@ -35,6 +36,7 @@ export function AppRouter() {
         <Route path={ROUTES.users} element={<UsersPage />} />
         <Route path={ROUTES.content} element={<ContentPage />} />
         <Route path={ROUTES.llmKeys} element={<LlmKeysPage />} />
+        <Route path={ROUTES.versions} element={<VersionsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

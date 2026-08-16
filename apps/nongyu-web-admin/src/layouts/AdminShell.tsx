@@ -2,6 +2,7 @@ import {
   ApiOutlined,
   AppstoreOutlined,
   BarChartOutlined,
+  CloudUploadOutlined,
   FileTextOutlined,
   KeyOutlined,
   LogoutOutlined,
@@ -24,6 +25,7 @@ const MENU_ITEMS: MenuProps["items"] = [
   { key: ROUTES.users, icon: <TeamOutlined />, label: "用户管理" },
   { key: ROUTES.content, icon: <FileTextOutlined />, label: "内容管理" },
   { key: ROUTES.llmKeys, icon: <ApiOutlined />, label: "LLM Key 池" },
+  { key: ROUTES.versions, icon: <CloudUploadOutlined />, label: "版本管理" },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
@@ -32,6 +34,7 @@ const PAGE_TITLES: Record<string, string> = {
   [ROUTES.users]: "用户管理",
   [ROUTES.content]: "内容管理",
   [ROUTES.llmKeys]: "LLM Key 池",
+  [ROUTES.versions]: "版本管理",
 };
 
 function SideMenu({

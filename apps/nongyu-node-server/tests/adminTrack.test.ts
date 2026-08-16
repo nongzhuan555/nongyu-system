@@ -29,6 +29,45 @@ describe("admin.track", () => {
         res.end(JSON.stringify({ ok: false, error: { code: "INTERNAL", message: "boom" } }));
         return;
       }
+      if (url.pathname === "/v1/admin/sql/query") {
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk: Buffer) => {
+          chunks.push(chunk);
+        });
+        req.on("end", () => {
+          const rawBody = Buffer.concat(chunks).toString("utf8");
+          let sql = "";
+          try {
+            sql = String((JSON.parse(rawBody) as { sql?: string }).sql ?? "");
+          } catch {
+            sql = "";
+          }
+          if (/delete|insert|meta_jobs/i.test(sql)) {
+            res.statusCode = 400;
+            res.end(
+              JSON.stringify({
+                ok: false,
+                error: { code: "INVALID_SQL", message: "only a single SELECT is allowed" },
+              }),
+            );
+            return;
+          }
+          res.statusCode = 200;
+          res.end(
+            JSON.stringify({
+              ok: true,
+              data: {
+                sql: "SELECT * FROM (SELECT metric_key FROM daily_metrics) AS _ny_q LIMIT 501",
+                columns: ["metric_key", "metric_value"],
+                rows: [{ metric_key: "dau", metric_value: 12 }],
+                truncated: false,
+                row_count: 1,
+              },
+            }),
+          );
+        });
+        return;
+      }
       if (url.pathname === "/v1/admin/overview") {
         res.statusCode = 200;
         res.end(
@@ -199,6 +238,34 @@ describe("admin.track", () => {
 
   it("rejects missing jwt", async () => {
     await api().get("/api/admin/track/overview").expect(401);
+  });
+
+  it("maps sql query to camelCase", async () => {
+    const res = await api()
+      .post("/api/admin/track/query")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ sql: "SELECT metric_key FROM daily_metrics" })
+      .expect(200);
+    expect(res.body.data.rowCount).toBe(1);
+    expect(res.body.data.columns).toEqual(["metric_key", "metric_value"]);
+    expect(res.body.data.truncated).toBe(false);
+  });
+
+  it("maps invalid sql to 40001", async () => {
+    const res = await api()
+      .post("/api/admin/track/query")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ sql: "DELETE FROM daily_metrics" })
+      .expect(400);
+    expect(res.body.code).toBe(ErrorCodes.VALIDATION);
+  });
+
+  it("rejects empty sql", async () => {
+    await api()
+      .post("/api/admin/track/query")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ sql: "  " })
+      .expect(400);
   });
 
   it("does not expose track jobs", async () => {

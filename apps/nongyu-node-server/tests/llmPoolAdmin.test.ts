@@ -77,4 +77,19 @@ describe("llm-pool admin + proxy gates", () => {
       .expect(503);
     expect(res.body.code).toBe(50310);
   });
+
+  it("admin proxy requires provisioned jwt and returns pool unavailable when empty", async () => {
+    await registerAppUser({ studentNo: "202311003" });
+    const password = await promoteAdmin("202311003");
+    const token = await adminLogin("202311003", password);
+    const res = await api()
+      .post("/api/admin/llm/v1/chat/completions")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        messages: [{ role: "user", content: "hi" }],
+        stream: false,
+      })
+      .expect(503);
+    expect(res.body.code).toBe(50310);
+  });
 });

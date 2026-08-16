@@ -1,0 +1,11 @@
+apply plugin: "com.android.library"
+apply plugin: "expo-module-gradle-plugin"
+
+android {
+  namespace "expo.modules.nongyuandroidwidget"
+  // Expo autolinking 会读取 library 的 versionName，缺省会导致 EAS Gradle 失败
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}

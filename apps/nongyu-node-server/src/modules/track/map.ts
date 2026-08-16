@@ -139,3 +139,23 @@ export function mapTrend(raw: unknown): { points: { date: string; value: number 
     }),
   };
 }
+
+export function mapSqlQuery(raw: unknown): {
+  sql: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+  truncated: boolean;
+  rowCount: number;
+} {
+  const record = isRecord(raw) ? raw : {};
+  const columns = Array.isArray(record.columns) ? record.columns.map((col) => asString(col)) : [];
+  const rowsRaw = Array.isArray(record.rows) ? record.rows : [];
+  const rows = rowsRaw.filter(isRecord);
+  return {
+    sql: asString(record.sql),
+    columns,
+    rows,
+    truncated: record.truncated === true,
+    rowCount: asNumber(record.row_count, rows.length),
+  };
+}

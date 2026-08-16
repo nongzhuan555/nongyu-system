@@ -31,5 +31,9 @@
     "axios": "catalog:",
     "buffer": "catalog:",
     "iconv-lite": "catalog:"
+  },
+  "devDependencies": {
+    "tsup": "catalog:",
+    "typescript": "catalog:"
   }
 }

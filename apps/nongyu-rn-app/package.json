@@ -11,6 +11,7 @@
     "prebuild": "expo prebuild",
     "eas:build:dev": "eas build --profile development --platform android",
     "eas:build:prod": "eas build --profile production --platform android",
+    "eas-build-post-install": "cd ../.. && pnpm --filter nongyu-tool-jiaowu --filter nongyu-tool-second --filter nongyu-agent-sdk run build",
     "lint": "oxlint .",
     "type-check": "tsc --noEmit"
   },
@@ -27,6 +28,7 @@
     "expo": "~57.0.11",
     "expo-application": "~57.0.2",
     "expo-blur": "~57.0.2",
+    "expo-build-properties": "~57.0.11",
     "expo-clipboard": "~57.0.1",
     "expo-constants": "~57.0.9",
     "expo-dev-client": "~57.0.10",

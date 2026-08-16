@@ -115,7 +115,7 @@ export function ShareSheet({ visible, onClose }: ShareSheetProps) {
       <Pressable style={styles.mask} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.headerRow}>
-            <Text style={styles.title}>分享给好友</Text>
+            <Text style={styles.title}>分享「农屿」给好友</Text>
             {busy ? <ActivityIndicator size="small" color={t.color.brand} /> : null}
           </View>
 

@@ -72,6 +72,7 @@ func New(cfg *config.Config, store *sqlite.Store, writer *ingest.Writer, syncer 
 		r.Get("/metrics/dims", api.handleDims)
 		r.Get("/crashes", api.handleCrashes)
 		r.Get("/llm-proxy-fails", api.handleLlmProxyFails)
+		r.Post("/sql/query", api.handleSQLQuery)
 		r.Post("/jobs/aggregate", api.handleAggregate)
 		r.Post("/jobs/purge", api.handlePurge)
 	})

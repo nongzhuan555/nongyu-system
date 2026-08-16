@@ -17,11 +17,15 @@
     "dayjs": "^1.11.13",
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",
+    "nongyu-agent-sdk": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-grid-layout": "catalog:",
+    "react-markdown": "catalog:",
     "react-resizable": "catalog:",
     "react-router-dom": "^7.1.5",
+    "remark-gfm": "catalog:",
+    "zod": "^3.24.2",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

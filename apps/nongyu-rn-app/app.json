@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-icon.jpg",
       "resizeMode": "contain",
       "backgroundColor": "#E8F5E9"
     },
@@ -17,13 +17,17 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.nongyu.app",
       "buildNumber": "1",
-      "associatedDomains": ["applinks:nongyu.app"]
+      "associatedDomains": ["applinks:nongyu.app"],
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#E8F5E9"
       },
+      "predictiveBackGestureEnabled": false,
       "package": "com.nongyu.app",
       "versionCode": 1,
       "edgeToEdgeEnabled": true,
@@ -56,7 +60,15 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#E8F5E9",
-          "image": "./assets/splash-icon.png"
+          "image": "./assets/splash-icon.jpg"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
         }
       ]
     ],

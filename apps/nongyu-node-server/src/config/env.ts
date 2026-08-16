@@ -19,6 +19,8 @@ export function loadEnvFiles(envFile?: string) {
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
+  /** 生产用 127.0.0.1，避免 3000 直接对公网 */
+  LISTEN_HOST: z.string().min(1).default("0.0.0.0"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   MYSQL_HOST: z.string().min(1),
   MYSQL_PORT: z.coerce.number().int().positive().default(3306),

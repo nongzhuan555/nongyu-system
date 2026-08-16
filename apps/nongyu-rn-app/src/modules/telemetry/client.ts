@@ -3,6 +3,7 @@ import { getAppAccessToken } from "@/api/appClient";
 import { getTrackContext } from "./context";
 import { newEventId } from "./ids";
 import { appendQueue, prependQueue, takeBatch } from "./queue";
+import { settleScreenDwell } from "./screenDwell";
 import { postTrackEvents, postTrackOffline } from "./transport";
 import type { TrackEvent, TrackEventInput } from "./types";
 
@@ -59,9 +60,15 @@ export async function flushPending(): Promise<void> {
 }
 
 /**
- * 登出前：尽量把队列发出并通知离线
+ * 登出前：结算当前页停留，尽量把队列发出并通知离线
  */
 export async function shutdownForLogout(): Promise<void> {
+  try {
+    const leave = settleScreenDwell("logout");
+    if (leave) enqueue(leave);
+  } catch {
+    // 停留结算失败不得挡住登出
+  }
   try {
     await flushPending();
   } catch {

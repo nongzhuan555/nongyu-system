@@ -76,7 +76,7 @@ function attemptMeta(lease: PoolLease, attempt: number, reason: string): Attempt
 
 export async function handleChatCompletions(req: Request, res: Response): Promise<void> {
   assertPoolEnabled();
-  const userId = req.appAuth?.uid;
+  const userId = req.appAuth?.uid ?? req.adminAuth?.uid;
   if (!userId) {
     throw new AppError(ErrorCodes.UNAUTHORIZED, "未认证", 401);
   }

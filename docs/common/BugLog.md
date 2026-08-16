@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-08-16 · nongyu-rn-app · EAS Android Gradle 配置小组件失败
+
+- **现象**：`eas:build:prod` 在 Run gradlew 阶段失败：`Failed to apply plugin 'expo-autolinking'`，并提示 `'android.defaultConfig.versionName' is not defined`。
+- **根因**：本地模块 `nongyu-android-widget` 的 `android/build.gradle` 未声明 `defaultConfig.versionName`；模块原生目录入库后，EAS 才会真正配置该 library。
+- **修复**：补齐 `versionCode 1` / `versionName "1.0.0"`。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · EAS Android Bundle JavaScript 失败
+
+- **现象**：`eas:build:prod` 在 Bundle JavaScript / EAGER_BUNDLE 阶段失败；日志提示找不到 `nongyu-tool-jiaowu` 的 `dist/index.js`。
+- **根因**：workspace 包入口指向 `dist/`，而仓库根 `.gitignore` 忽略了 `dist/`，EAS 按 git 上传源码后远端没有构建产物；本地因已有 `dist/` 可过。
+- **修复**：`apps/nongyu-rn-app` 增加 `eas-build-post-install`，在安装依赖后构建 `nongyu-tool-jiaowu` / `nongyu-tool-second` / `nongyu-agent-sdk`；上述包补齐 `tsup`/`typescript` 为自身 `devDependencies`。另将应用 `.gitignore` 的 `android/`/`ios/` 改为仅根目录 `/android/`/`/ios/`，避免本地 Expo 模块原生目录被误忽略。
+
+---
+
+## 2026-08-16 · nongyu-tool-jiaowu · 教学/竞赛通知清洗漏条与串区
+
+- **现象**：教务首页「教学通知」「竞赛通知」解析不完整；带 `onclick` 的条目丢失，并可能混入长期公告/新闻动态。
+- **根因**：① 正则要求 `title="..." >` 紧邻，无法匹配 `title` 与 `>` 之间的其它属性；② 教学通知从「教学通知」起向后扫到上限，未限制在首个 `ul.notice1`；③ 竞赛通知未用「竞赛通知内容结束」收口。
+- **修复**：属性顺序无关的 `<a href+title>` 正则；教学通知只切首个 `notice1` 列表；竞赛通知在开始/结束注释之间切片；补充 fixture 校验脚本。
+
+---
+
 ## 2026-08-16 · nongyu-rn-app · 打开课程详情 TypeError undefined is not a function
 
 - **现象**：打开带考勤的课程详情红屏 / 报 `TypeError: undefined is not a function`。

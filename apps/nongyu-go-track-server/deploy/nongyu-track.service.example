@@ -1,3 +1,10 @@
+# 复制到 /etc/systemd/system/nongyu-track.service
+# 先创建用户与数据目录，再 enable：
+#   useradd --system --home-dir /var/lib/nongyu-track --create-home --shell /sbin/nologin nongyu-track
+#   mkdir -p /var/lib/nongyu-track /var/backups/nongyu-track
+#   chown -R nongyu-track:nongyu-track /var/lib/nongyu-track /var/backups/nongyu-track
+# EnvironmentFile 由 systemd（root）读取后注入，不必给应用用户读权限。
+
 [Unit]
 Description=nongyu-go-track-server
 After=network.target
@@ -6,7 +13,7 @@ After=network.target
 Type=simple
 User=nongyu-track
 Group=nongyu-track
-EnvironmentFile=-/etc/nongyu-track.env
+EnvironmentFile=/etc/nongyu-track.env
 ExecStart=/usr/local/bin/nongyu-track
 WorkingDirectory=/var/lib/nongyu-track
 Restart=always

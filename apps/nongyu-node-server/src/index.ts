@@ -8,8 +8,8 @@ const env = getEnv();
 const logger = createLogger();
 const app = createApp();
 
-const server = app.listen(env.PORT, () => {
-  logger.info({ port: env.PORT }, "nongyu-node-server listening");
+const server = app.listen(env.PORT, env.LISTEN_HOST, () => {
+  logger.info({ host: env.LISTEN_HOST, port: env.PORT }, "nongyu-node-server listening");
 });
 
 async function shutdown(signal: string) {

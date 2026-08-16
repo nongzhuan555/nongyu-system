@@ -3,8 +3,9 @@ node_modules/
 dist/
 dist-android/
 web-build/
-android/
-ios/
+# 仅忽略应用根目录原生工程；勿误伤 modules/*/android|ios
+/android/
+/ios/
 *.jks
 *.p8
 *.p12

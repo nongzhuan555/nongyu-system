@@ -11,6 +11,7 @@ import {
   getTrackLlmProxyFails,
   getTrackOverview,
   getTrackTrend,
+  queryTrackSql,
   todayBusinessDate,
 } from "./service.js";
 
@@ -122,5 +123,18 @@ adminTrackRouter.get(
       throw new AppError(ErrorCodes.VALIDATION, "from 不能晚于 to", 400);
     }
     ok(res, await getTrackTrend(query.metric, query.from, query.to));
+  }),
+);
+
+adminTrackRouter.post(
+  "/query",
+  requireProvisionedAdminAuth,
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        sql: z.string().trim().min(1).max(8000),
+      })
+      .parse(req.body);
+    ok(res, await queryTrackSql(body.sql));
   }),
 );

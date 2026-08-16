@@ -1,7 +1,7 @@
 import { getEnv } from "../../config/env.js";
 import { businessDayUtcRange } from "../../lib/time.js";
-import { mapCrashes, mapDims, mapOverview, mapTrend } from "./map.js";
-import { trackAdminGet } from "./trackClient.js";
+import { mapCrashes, mapDims, mapOverview, mapSqlQuery, mapTrend } from "./map.js";
+import { trackAdminGet, trackAdminPost } from "./trackClient.js";
 
 export function todayBusinessDate(): string {
   return businessDayUtcRange(getEnv().BUSINESS_TZ).dateKey;
@@ -55,4 +55,9 @@ export async function getTrackTrend(metric: string, from: string, to: string) {
   const query = new URLSearchParams({ metric, from, to });
   const data = await trackAdminGet(`/v1/admin/metrics/trend?${query.toString()}`);
   return mapTrend(data);
+}
+
+export async function queryTrackSql(sql: string) {
+  const data = await trackAdminPost("/v1/admin/sql/query", { sql });
+  return mapSqlQuery(data);
 }

@@ -1,0 +1,20 @@
+# 复制到 /etc/systemd/system/nongyu-node.service
+# 按实际 node 路径修改 ExecStart（which node）
+# 建议 User=nongyu-node，且该用户对 /opt/nongyu-node 有读执行权、对 .env 有读权
+
+[Unit]
+Description=nongyu-node-server
+After=network.target
+# 若本机 MySQL 单元名明确（mysqld.service / mysql.service / mariadb.service），可自行追加 After=
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/nongyu-node
+EnvironmentFile=/opt/nongyu-node/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=3
+# 不把 MySQL 绑进本单元的失败条件，避免 Node 挂了被误判要动数据库
+
+[Install]
+WantedBy=multi-user.target

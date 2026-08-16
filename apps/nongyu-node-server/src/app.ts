@@ -16,6 +16,7 @@ import { adminDashboardRouter } from "./modules/dashboard/routes.js";
 import { adminTrackRouter } from "./modules/track/routes.js";
 import { internalUsersRouter } from "./modules/users/internalRoutes.js";
 import { adminLlmKeysRouter } from "./modules/llm-pool/routes.admin.js";
+import { adminLlmChatRouter } from "./modules/llm-pool/routes.admin-proxy.js";
 import { appLlmRouter } from "./modules/llm-pool/routes.app.js";
 import { requireAppAuth } from "./middlewares/auth.js";
 
@@ -61,6 +62,7 @@ export function createApp() {
   app.use("/api/admin/app-versions", adminVersionsRouter);
   app.use("/api/admin/dashboard", adminDashboardRouter);
   app.use("/api/admin/track", adminTrackRouter);
+  app.use("/api/admin/llm/v1", adminLlmChatRouter);
   app.use("/api/admin/llm/keys", adminLlmKeysRouter);
   app.use("/api/internal/users", internalUsersRouter);
 

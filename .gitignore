@@ -34,6 +34,9 @@ yarn-error.log*
 # 业务 MySQL 连接信息（含口令，禁止入库）
 docs/nongyu-node-server/数据库连接信息.md
 
+# Node 业务机 SSH / 公网 IP 等（禁止入库）
+docs/nongyu-node-server/服务器连接信息.md
+
 # Track 服务器 SSH / 口令等（禁止入库）
 docs/nongyu-go-track-server/服务器连接信息.md
 

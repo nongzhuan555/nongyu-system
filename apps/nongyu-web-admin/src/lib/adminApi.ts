@@ -7,6 +7,8 @@ import type {
   TrackCrashPage,
   TrackDims,
   TrackOverview,
+  TrackSqlQueryResult,
+  TrackTrend,
   UserDistribution,
   UserGrowth,
 } from "../types/dashboard";
@@ -45,6 +47,8 @@ import {
   ADMIN_TRACK_DIMS_PATH,
   ADMIN_TRACK_CRASHES_PATH,
   ADMIN_TRACK_LLM_PROXY_FAILS_PATH,
+  ADMIN_TRACK_QUERY_PATH,
+  ADMIN_TRACK_TREND_PATH,
   ADMIN_LLM_KEYS_PATH,
   AUTH_ERROR_CODES,
 } from "./constants";
@@ -270,10 +274,11 @@ export async function fetchTrackOverview(): Promise<TrackOverview> {
 }
 
 export async function fetchTrackDims(
-  metric: "screen_views" | "perf_p50" | "perf_p95",
+  metric: "screen_views" | "button_clicks" | "perf_p50" | "perf_p95",
+  date?: string,
 ): Promise<TrackDims> {
   const response = await adminApi.get<ApiEnvelope<TrackDims>>(ADMIN_TRACK_DIMS_PATH, {
-    params: { metric, limit: 20 },
+    params: { metric, date, limit: 20 },
   });
   return unwrapData(response.data);
 }
@@ -281,6 +286,24 @@ export async function fetchTrackDims(
 export async function fetchTrackCrashes(page: number, pageSize = 10): Promise<TrackCrashPage> {
   const response = await adminApi.get<ApiEnvelope<TrackCrashPage>>(ADMIN_TRACK_CRASHES_PATH, {
     params: { page, pageSize },
+  });
+  return unwrapData(response.data);
+}
+
+export async function fetchTrackTrend(
+  metric: "dau" | "crash_count" | "app_open_count" | "screen_view_count" | "online_peak",
+  from: string,
+  to: string,
+): Promise<TrackTrend> {
+  const response = await adminApi.get<ApiEnvelope<TrackTrend>>(ADMIN_TRACK_TREND_PATH, {
+    params: { metric, from, to },
+  });
+  return unwrapData(response.data);
+}
+
+export async function queryTrackSql(sql: string): Promise<TrackSqlQueryResult> {
+  const response = await adminApi.post<ApiEnvelope<TrackSqlQueryResult>>(ADMIN_TRACK_QUERY_PATH, {
+    sql,
   });
   return unwrapData(response.data);
 }

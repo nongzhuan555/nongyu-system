@@ -79,7 +79,8 @@
 | `queue.ts`          | MMKV 读写；追加 / 取批 / 失败插回队头；超 300 丢最旧                                           |
 | `client.ts`         | `enqueue`（无 JWT 丢弃）、`flushPending`、`shutdownForLogout`、`props` 敏感键过滤              |
 | `transport.ts`      | 直连 Track 的 HTTP；解析 `{ ok: true, data }`                                                  |
-| `TelemetryHost.tsx` | 已登录驱动：`app_open`、`screen_view`、心跳、定时 flush、AppState                              |
+| `TelemetryHost.tsx` | 已登录驱动：`app_open`、`screen_view` enter/leave、心跳、定时 flush、AppState                  |
+| `screenDwell.ts`    | 可见停留状态机：开表 / 结算 leave / 后台续计                                                   |
 | `crash.ts`          | 全局 JS 异常 → `crash`；保留原 handler（红屏不丢）                                             |
 
 挂载点（`app/_layout.tsx`）：
@@ -96,11 +97,13 @@
 | event_type     | event_name 约定                                          | 谁触发                             |
 | -------------- | -------------------------------------------------------- | ---------------------------------- |
 | `app_open`     | 进程内首次 `cold_start`；再次有 Token 为 `session_start` | Host：`canTrack` 变真              |
-| `screen_view`  | Expo Router `pathname`（无 query）                       | Host：路径变化；跳过 `/login`      |
+| `screen_view`  | Expo Router `pathname`（无 query）                       | Host：enter + leave（见下）        |
 | `heartbeat`    | 固定 `heartbeat`；可带 `props.app_state`                 | Host：60s 定时 + active/background |
 | `button_click` | 稳定英文名，如 `tab_home`、`logout`                      | 业务 `trackClick`                  |
 | `perf`         | 调用方传入，如 `course_week_first_paint`                 | `track` / `measure*`               |
 | `crash`        | `fatal` / `js`                                           | `ErrorUtils`                       |
+
+`screen_view`：进入无 `duration_ms`（`props.phase=enter`）；离开带 `duration_ms`（`phase=leave`，`reason`：`route` / `background` / `logout` / `teardown`）；`duration_ms < 300` 不上报。后台结算后回前台同 path 只续开计时、不重复 enter。
 
 完整上报体在 `enqueue` 内组装：`event_id`、`client_ts_ms`、公共上下文 + 可选 `duration_ms` / `props`。**不传 `user_id`**（服务端从 JWT 解析）。
 
@@ -151,7 +154,7 @@ loop:
 
 - Host：登录后立刻、每 10s、每次心跳、AppState 变化
 - crash：异常后尽力 flush
-- 登出：`shutdownForLogout` 先 flush 再 offline
+- 登出：`shutdownForLogout` 先结算页停留，再 flush，再 offline
 
 ### 5.3 登录会话生命周期（Host）
 
@@ -159,28 +162,32 @@ loop:
 session.hydrated && token
   → app_open（进程标志 processDidOpen 防 Strict Mode 双 cold_start）
   → flush
-  → 订阅 pathname → screen_view
+  → 订阅 pathname
+       · 新 path → 结算上一页 leave → enter + beginScreenDwell
+       · 进 /login → 结算 leave
   → 启 10s flush + 60s heartbeat
-  → AppState active|background → heartbeat(props.app_state) + flush
+  → AppState background → settle leave（停表留 path）+ heartbeat + flush
+  → AppState active → resumeScreenDwell + heartbeat + flush
 
 token 清空 / 未 hydrated
-  → 清 lastPath、停定时器（effect cleanup）
+  → settle teardown、清 lastPath、停定时器
 ```
 
-后台仍发心跳：对齐 PRD「挂后台仍算在线」；进程被杀后靠 Track 超时离线。
+后台仍发心跳：对齐 PRD「挂后台仍算在线」；**页面停留只计可见时长**。进程被杀后靠 Track 超时离线。
 
 ### 5.4 登出
 
 ```text
-performJiaowuLogin 登出路径（示意）
-  → trackClick("logout")     // 仍持有 Token，可入队
+performJiaowuLogout
+  → trackClick("logout")
   → await shutdownForLogout()
+       · settleScreenDwell("logout") → enqueue leave
        · flushPending（吞错）
        · postTrackOffline（吞错；失败靠约 10 分钟超时）
   → 再清会话 / Token
 ```
 
-顺序约束：**offline / 最后一批事件必须在清 Token 之前**，否则 transport 拿不到 Bearer。
+顺序约束：**停留结算 / offline / 最后一批事件必须在清 Token 之前**，否则 transport 拿不到 Bearer。
 
 ### 5.5 JS 崩溃
 
@@ -278,6 +285,7 @@ ErrorUtils.setGlobalHandler
 
 ## 12. 修订记录
 
-| 日期       | 说明                                           |
-| ---------- | ---------------------------------------------- |
-| 2026-08-16 | 按已实现代码补写 as-built 技术方案，供学习对照 |
+| 日期       | 说明                                                            |
+| ---------- | --------------------------------------------------------------- |
+| 2026-08-16 | 按已实现代码补写 as-built 技术方案，供学习对照                  |
+| 2026-08-16 | 补充页面可见停留：`screenDwell` + enter/leave；Admin 聚合仍后置 |

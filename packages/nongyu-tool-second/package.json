@@ -28,5 +28,9 @@
   },
   "dependencies": {
     "axios": "catalog:"
+  },
+  "devDependencies": {
+    "tsup": "catalog:",
+    "typescript": "catalog:"
   }
 }

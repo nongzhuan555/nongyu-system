@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <receiver
+      android:name=".TodayCourseWidget"
+      android:exported="true"
+      android:label="农屿今日课表">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        <action android:name="com.nongyu.app.UPDATE_WIDGET" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/today_course_widget_info" />
+    </receiver>
+  </application>
+</manifest>

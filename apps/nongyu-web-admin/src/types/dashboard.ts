@@ -73,6 +73,18 @@ export type TrackCrashPage = {
   pageSize: number;
 };
 
+export type TrackTrend = {
+  points: { date: string; value: number }[];
+};
+
+export type TrackSqlQueryResult = {
+  sql: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+  truncated: boolean;
+  rowCount: number;
+};
+
 export type GridBreakpoint = "lg" | "md" | "xs";
 
 export type GridItemLayout = {

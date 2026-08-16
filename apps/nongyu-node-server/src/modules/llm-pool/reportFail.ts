@@ -43,13 +43,13 @@ export function reportLlmProxyFailAsync(ctx: LlmProxyFailContext, err: unknown):
 }
 
 export function reportLlmProxyFailFromRequest(req: Request, err: unknown): void {
-  const userId = req.appAuth?.uid;
+  const userId = req.appAuth?.uid ?? req.adminAuth?.uid;
   if (!userId) return;
   const stream = (req.body as { stream?: unknown } | undefined)?.stream === true;
   reportLlmProxyFailAsync(
     {
       userId,
-      studentNo: req.appAuth?.studentNo,
+      studentNo: req.appAuth?.studentNo ?? req.adminAuth?.studentNo,
       stream,
     },
     err,

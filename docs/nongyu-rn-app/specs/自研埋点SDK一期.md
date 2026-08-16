@@ -17,7 +17,7 @@ Track HTTP 已可本机联调，但 RN 只有 `TRACK_BASE_URL`，没有采集 / 
 
 ## 2. 目标
 
-1. 已登录用户自动上报：`app_open`、全局 `screen_view`、周期 `heartbeat`；登出尽力 `presence/offline`。
+1. 已登录用户自动上报：`app_open`、全局 `screen_view`（进入 + **可见停留时长**）、周期 `heartbeat`；登出尽力 `presence/offline`。
 2. 提供 `track` / `trackClick` / `measure` 给业务显式调用；一期接入底栏 Tab、农屿 AI、退出登录、首页教务/二课入口。
 3. 内存队列 + 定时/满批 flush；失败写入 MMKV，依赖服务端 `event_id` 幂等重试。
 4. JS 全局异常打 `crash`；**本版不做原生层崩溃**（产品决策 2026-08-15）。
@@ -31,6 +31,7 @@ Track HTTP 已可本机联调，但 RN 只有 `TRACK_BASE_URL`，没有采集 / 
 - 不把课表/列表耗时在本期强制打满；只提供 `measure`，课表页后续自行调用。
 - 不做可追踪 HOC 组件库（一期用函数 API + 少量重点按钮）。
 - 不接管理端 BFF；App 禁止打 Track Admin API。
+- 不做管理端「页均停留」聚合 / 大屏指标（本期只保证客户端上报带 `duration_ms` 的 leave 事件；Admin 后置）。
 - 未登录（无 App JWT）不上报。
 - 一期编码前曾跳过独立 tech / plans（HTTP 契约与选型已锁定）；落地后已补 [`../tech/自研埋点SDK一期.md`](../tech/自研埋点SDK一期.md) 作 as-built 说明。仍无独立 plans。
 
@@ -44,16 +45,30 @@ Track HTTP 已可本机联调，但 RN 只有 `TRACK_BASE_URL`，没有采集 / 
 
 字段 **snake_case**，对齐 Track 接口文档 §4.1。`user_id` 不传。`event_id` 客户端 UUID。公共上下文：`session_id`（一次 JS 运行时）、`app_version`、`platform`（仅 `ios`/`android`）、`device_brand`。
 
-| event_type     | event_name 约定                                            | 触发                            |
-| -------------- | ---------------------------------------------------------- | ------------------------------- |
-| `app_open`     | 进程内首次 `cold_start`；再次拿到 Token 为 `session_start` | Token 从空变为有                |
-| `screen_view`  | Expo Router `pathname`（无 query）                         | 已登录且路径变化；跳过 `/login` |
-| `heartbeat`    | `heartbeat`                                                | 已登录后每 60s；前后台都发      |
-| `button_click` | 稳定英文/路由名，如 `tab_home`、`nongyu_ai`、`logout`      | 显式 `trackClick`               |
-| `perf`         | 调用方传入                                                 | `measure` / `measureAsync`      |
-| `crash`        | `fatal` / `js`                                             | 全局 JS 异常                    |
+| event_type     | event_name 约定                                            | 触发                       |
+| -------------- | ---------------------------------------------------------- | -------------------------- |
+| `app_open`     | 进程内首次 `cold_start`；再次拿到 Token 为 `session_start` | Token 从空变为有           |
+| `screen_view`  | Expo Router `pathname`（无 query）                         | 见 §4.2.1 进入 / 停留      |
+| `heartbeat`    | `heartbeat`                                                | 已登录后每 60s；前后台都发 |
+| `button_click` | 稳定英文/路由名，如 `tab_home`、`nongyu_ai`、`logout`      | 显式 `trackClick`          |
+| `perf`         | 调用方传入                                                 | `measure` / `measureAsync` |
+| `crash`        | `fatal` / `js`                                             | 全局 JS 异常               |
 
 `props` 禁止密码、Token、Cookie；超 4KB 由服务端截断。
+
+#### 4.2.1 `screen_view` 进入与可见停留
+
+| 时机                          | `duration_ms` | `props`                      | 说明                                                     |
+| ----------------------------- | ------------- | ---------------------------- | -------------------------------------------------------- |
+| 进入（pathname 变化且可追踪） | 不传          | `{ phase: "enter" }`         | 与一期进入埋点兼容；跳过 `/login`                        |
+| 离开结算                      | 可见停留毫秒  | `{ phase: "leave", reason }` | `reason`：`route` / `background` / `logout` / `teardown` |
+
+规则：
+
+1. **可见时长**：进 `background` 先结算；回 `active` 同一 path **续开计时**，**不**重复打 enter。
+2. 切路由、登出（`shutdownForLogout`）、`canTrack` 变假：结算 leave 并清空当前 path。
+3. `duration_ms < 300` 的 leave **不上报**（过滤瞬时跳转噪音）。
+4. 实现：`screenDwell.ts` + `TelemetryHost`；登出路径在清 Token 前结算。
 
 ### 4.3 传输
 
@@ -78,11 +93,13 @@ Track HTTP 已可本机联调，但 RN 只有 `TRACK_BASE_URL`，没有采集 / 
 ```text
 登录/冷启动恢复 Token
   → app_open + 启动 flush/心跳
-  → 路由变化 → screen_view
+  → 路由变化 → screen_view enter + 开表
+  → 切路由 / 进后台 / 登出 → screen_view leave（duration_ms，≥300ms）
+  → 回前台同页 → 续开计时（不再 enter）
   → 重点按钮 → button_click
   → 异常 → crash（入队 flush）
 登出
-  → 尽量 flush + offline → 停定时器 → 清会话
+  → 结算停留 → flush + offline → 停定时器 → 清会话
 ```
 
 ## 6. 验收与测试
@@ -91,16 +108,19 @@ Track HTTP 已可本机联调，但 RN 只有 `TRACK_BASE_URL`，没有采集 / 
 
 1. 本机 Track `/health` 为 `ok`，端口 8082（避开 Metro）。
 2. 已登录 App 切 Tab，Metro `[HTTP]` 出现 `POST .../v1/track/events` 且 `ok: true`。
-3. 重复上报同一 `event_id` 服务端 `duplicated ≥ 1`（SDK 正常路径不主动重发成功事件）。
-4. 登出后 Track/Node 在线态可置 0（或 10 分钟内超时）。
-5. 无 Token 时不发起上报。
+3. 切 Tab 停留数秒后再切：批次中可见同 pathname 的 `screen_view`：一条无 `duration_ms`（`props.phase=enter`），一条带 `duration_ms`（`phase=leave`，`reason=route`）。
+4. 进后台再回前台：离开时有 leave；回前台**无**新的 enter；再切走时 leave 的 `duration_ms` 大致为前台可见段之和（不含后台）。
+5. 重复上报同一 `event_id` 服务端 `duplicated ≥ 1`（SDK 正常路径不主动重发成功事件）。
+6. 登出后 Track/Node 在线态可置 0（或 10 分钟内超时）；登出前应尽量带上当前页 leave。
+7. 无 Token 时不发起上报。
 
 ---
 
 ## 7. 修订记录
 
-| 日期       | 说明                                             |
-| ---------- | ------------------------------------------------ |
-| 2026-08-15 | 初版实现                                         |
-| 2026-08-15 | 产品决策：本版不做原生层崩溃；边界与目标文案同步 |
-| 2026-08-16 | 回链 as-built 技术方案 `tech/自研埋点SDK一期.md` |
+| 日期       | 说明                                                                                   |
+| ---------- | -------------------------------------------------------------------------------------- |
+| 2026-08-15 | 初版实现                                                                               |
+| 2026-08-15 | 产品决策：本版不做原生层崩溃；边界与目标文案同步                                       |
+| 2026-08-16 | 回链 as-built 技术方案 `tech/自研埋点SDK一期.md`                                       |
+| 2026-08-16 | 页面可见停留：enter + leave（`duration_ms`）；后台停表；&lt;300ms 过滤；Admin 聚合后置 |

@@ -1,14 +1,17 @@
 package httpapi
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"nongyu-go-track-server/internal/bizday"
+	"nongyu-go-track-server/internal/sqlguard"
 )
 
 var allowedTrend = map[string]struct{}{
@@ -255,6 +258,48 @@ func (a *API) handleLlmProxyFails(w http.ResponseWriter, r *http.Request) {
 		"total":     total,
 		"page":      page,
 		"page_size": pageSize,
+	})
+}
+
+func (a *API) handleSQLQuery(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		SQL string `json:"sql"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeFail(w, http.StatusBadRequest, "INVALID_SQL", "invalid json")
+		return
+	}
+	prepared, err := sqlguard.Prepare(body.SQL)
+	if err != nil {
+		writeFail(w, http.StatusBadRequest, "INVALID_SQL", err.Error())
+		return
+	}
+	columns, rows, truncated, err := a.store.QueryReadOnly(
+		r.Context(),
+		prepared.ExecSQL,
+		sqlguard.MaxRows,
+	)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			writeFail(w, http.StatusGatewayTimeout, "TIMEOUT", "query timed out")
+			return
+		}
+		a.log.Warn("sql query failed", "err", err)
+		writeFail(w, http.StatusBadRequest, "INVALID_SQL", "sql execution failed")
+		return
+	}
+	if columns == nil {
+		columns = []string{}
+	}
+	if rows == nil {
+		rows = []map[string]any{}
+	}
+	writeOK(w, http.StatusOK, map[string]any{
+		"sql":       prepared.ExecSQL,
+		"columns":   columns,
+		"rows":      rows,
+		"truncated": truncated,
+		"row_count": len(rows),
 	})
 }
 
