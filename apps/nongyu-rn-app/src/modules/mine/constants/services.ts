@@ -28,7 +28,7 @@ export const ADMIN_SERVICE_ITEM: ServiceItem = {
   action: { kind: "admin" },
 };
 
-/** 「更多服务」入口配置（本版本不含评论/回复） */
+/** 「更多服务」入口配置 */
 export const SERVICE_ITEMS: ServiceItem[] = [
   {
     key: "posts",
@@ -36,6 +36,13 @@ export const SERVICE_ITEMS: ServiceItem[] = [
     description: "查看你发布过的内容",
     icon: "document-text-outline",
     action: { kind: "navigate", href: "/mine/posts" },
+  },
+  {
+    key: "replies",
+    title: "留言与回复",
+    description: "查看收到的与我发出的留言",
+    icon: "chatbubbles-outline",
+    action: { kind: "navigate", href: "/mine/replies" },
   },
   {
     key: "share",

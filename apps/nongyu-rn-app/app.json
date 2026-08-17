@@ -30,6 +30,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.nongyu.app",
       "versionCode": 1,
+      "softwareKeyboardLayoutMode": "pan",
       "permissions": ["android.permission.RECORD_AUDIO"],
       "intentFilters": [
         {
@@ -91,9 +92,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "d35f7507-58a6-459b-8e27-9874ea2609fa"
+        "projectId": "17bddde5-83f9-4bed-b69a-af6b3fe7a228"
       }
     },
-    "owner": "devtangleis-team"
+    "owner": "yuanzhoulv"
   }
 }

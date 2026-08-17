@@ -20,8 +20,11 @@ import {
   listAdminHomeGreetings,
   patchAdminHomeGreeting,
 } from "../lib/adminApi";
-import { DEFAULT_HOME_GREETING_PAGE_SIZE } from "../lib/constants";
+import { PageFrame } from "../components/layout/PageFrame";
+import { useForegroundRefresh } from "../hooks/useForegroundRefresh";
+import { DEFAULT_HOME_GREETING_PAGE_SIZE, FOREGROUND_REFRESH_INTERVAL_MS } from "../lib/constants";
 import { formatAdminDateTime } from "../lib/format";
+import { useModalWidth } from "../lib/responsive";
 import type { AdminHomeGreetingItem } from "../types/homeGreetings";
 
 type EnabledFilter = "all" | 0 | 1;
@@ -35,6 +38,7 @@ type FormValues = {
  * 首页 App 打招呼第二句运营配置
  */
 export function HomeGreetingsPage() {
+  const modalWidth = useModalWidth(520);
   const [enabledFilter, setEnabledFilter] = useState<EnabledFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_HOME_GREETING_PAGE_SIZE);
@@ -48,9 +52,11 @@ export function HomeGreetingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<FormValues>();
 
-  const loadList = useEffectEvent(async () => {
-    setLoading(true);
-    setError(null);
+  const loadList = useEffectEvent(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const data = await listAdminHomeGreetings({
         page,
@@ -59,7 +65,9 @@ export function HomeGreetingsPage() {
       });
       setList(data.list);
       setTotal(data.total);
+      if (silent) setError(null);
     } catch (err) {
+      if (silent) return;
       setList([]);
       setTotal(0);
       if (err instanceof AdminApiError) {
@@ -72,13 +80,18 @@ export function HomeGreetingsPage() {
         setError("网络异常，请稍后重试");
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   });
 
   useEffect(() => {
     void loadList();
   }, [page, pageSize, enabledFilter]);
+
+  useForegroundRefresh(() => void loadList(true), {
+    intervalMs: FOREGROUND_REFRESH_INTERVAL_MS,
+    enabled: !modalOpen,
+  });
 
   function openCreate() {
     setEditing(null);
@@ -200,19 +213,14 @@ export function HomeGreetingsPage() {
   };
 
   return (
-    <div className="rounded-3xl bg-white p-4 shadow-card md:p-6">
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-ink">首页问候</h2>
-        <p className="mt-1 text-sm text-muted">
-          配置 App 首页打招呼第二句；全局最多一条启用，启用新的会自动关掉旧的。
-        </p>
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <Space wrap>
+    <PageFrame
+      title="首页问候"
+      description="配置 App 首页打招呼第二句；全局最多一条启用，启用新的会自动关掉旧的。"
+      actions={
+        <>
           <Select
             value={enabledFilter}
-            style={{ width: 140 }}
+            className="w-full sm:w-[140px]"
             options={[
               { value: "all", label: "全部状态" },
               { value: 1, label: "启用" },
@@ -224,12 +232,12 @@ export function HomeGreetingsPage() {
             }}
           />
           <Button onClick={() => void loadList()}>刷新</Button>
-        </Space>
-        <Button type="primary" className="min-h-11" onClick={openCreate}>
-          新建问候语
-        </Button>
-      </div>
-
+          <Button type="primary" onClick={openCreate}>
+            新建问候语
+          </Button>
+        </>
+      }
+    >
       {error ? (
         <Alert
           className="mb-4"
@@ -247,6 +255,7 @@ export function HomeGreetingsPage() {
       <Table
         rowKey="id"
         loading={loading}
+        size="middle"
         columns={columns}
         dataSource={list}
         pagination={pagination}
@@ -257,6 +266,8 @@ export function HomeGreetingsPage() {
       <Modal
         title={editing ? "编辑问候语" : "新建问候语"}
         open={modalOpen}
+        width={modalWidth}
+        centered
         onCancel={() => setModalOpen(false)}
         onOk={() => void handleSubmit()}
         confirmLoading={submitting}
@@ -293,6 +304,6 @@ export function HomeGreetingsPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageFrame>
   );
 }

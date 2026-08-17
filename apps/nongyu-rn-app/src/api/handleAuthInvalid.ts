@@ -7,7 +7,6 @@ import { clearJiaowuToolSession } from "@/modules/jiaowu/auth/jiaowuSession";
 import { clearSecondToolSession } from "@/modules/second/auth/secondSession";
 import { refreshSecondAuthFlag } from "@/modules/second/hooks/useSecondAuth";
 import { APP_AUTH_ERROR_CODES } from "@/api/appApiError";
-import { invalidateNongyuAgent } from "@/agent/agent";
 import { clearAgentChatSessions } from "@/agent/session";
 import { clearLocalCourses } from "@/modules/course/data/courseLocalStore";
 import { clearLocalCourseExt } from "@/modules/course/data/courseExtRepository";
@@ -19,7 +18,8 @@ let lastToastAt = 0;
 const TOAST_DEDUP_MS = 2500;
 
 /**
- * 仅清本地会话（不过 Node logout），用于票已过期/作废场景
+ * 仅清本地会话（不过 Node logout），用于票已过期/作废场景。
+ * invalidateNongyuAgent 用动态 import，避免 appClient → handleAuthInvalid → agent → tools → appClient 环。
  */
 export async function clearLocalAuthSession(): Promise<void> {
   const studentId = useSessionStore.getState().profile?.studentId;
@@ -32,6 +32,7 @@ export async function clearLocalAuthSession(): Promise<void> {
   useCourseUiStore.getState().setBackgroundUri(null);
   await clearCredentials();
   await clearAgentConfig();
+  const { invalidateNongyuAgent } = await import("@/agent/agent");
   invalidateNongyuAgent();
   clearJiaowuToolSession();
   clearSecondToolSession();

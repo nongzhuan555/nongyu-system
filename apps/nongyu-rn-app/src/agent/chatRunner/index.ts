@@ -5,10 +5,11 @@ export type {
   AgentChatPersistPayload,
   AgentChatRunnerSnapshot,
 } from "./agentChatRunner";
-export { AgentChatRuntimeHost } from "./AgentChatRuntimeHost";
 export { installAgentChatBackgroundKeepAlive } from "./backgroundKeepAlive";
 export {
   useAgentChatRunner,
   useAgentChatRunnerActions,
   useAgentChatRunnerBridge,
 } from "./useAgentChatRunner";
+/** Host 放最后，避免经本 barrel 再导入时出现未初始化绑定 */
+export { AgentChatRuntimeHost } from "./AgentChatRuntimeHost";

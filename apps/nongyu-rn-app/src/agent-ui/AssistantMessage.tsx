@@ -1,5 +1,5 @@
 import { createThemedStyles } from "@/theme/createThemedStyles";
-import { memo } from "react";
+import { memo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Markdown from "react-native-markdown-display";
 import type { ChatMessage } from "nongyu-agent-sdk";
@@ -32,6 +32,7 @@ export function getAssistantActionLabel(message: ChatMessage): "重试" | "重�
 /**
  * assistant：无气泡全宽排版（Claude / ChatGPT 风格）
  * 流式用纯 Text，完成后切 Markdown
+ * 工具调用 ≥2 时默认只展示最后一条，可展开查看全部。
  */
 function AssistantMessageInner({
   message,
@@ -42,11 +43,15 @@ function AssistantMessageInner({
   const styles = useStyles();
   const markdownStyles = useMarkdownStyles();
   const t = useThemeTokens();
+  const [toolsExpanded, setToolsExpanded] = useState(false);
   const isStreaming = message.status === "streaming" || message.status === "pending";
   const toolCalls = message.toolCalls ?? [];
   const showTyping = isStreaming && !message.content && toolCalls.length === 0;
   const actionLabel = showActions ? getAssistantActionLabel(message) : null;
   const useMarkdown = !isStreaming && (message.status === "done" || message.status === "stopped");
+  const canCollapseTools = toolCalls.length > 1;
+  const visibleToolCalls = !canCollapseTools || toolsExpanded ? toolCalls : toolCalls.slice(-1);
+  const hiddenToolCount = canCollapseTools && !toolsExpanded ? toolCalls.length - 1 : 0;
 
   return (
     <View style={styles.root}>
@@ -67,9 +72,31 @@ function AssistantMessageInner({
 
       {toolCalls.length > 0 ? (
         <View style={styles.tools}>
-          {toolCalls.map((tc) => (
+          {hiddenToolCount > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`展开此前 ${hiddenToolCount} 个工具调用`}
+              onPress={() => setToolsExpanded(true)}
+              style={({ pressed }) => [styles.toolsToggle, pressed && styles.toolsTogglePressed]}
+            >
+              <Text style={styles.toolsToggleText}>已折叠 {hiddenToolCount} 个工具调用 · 展开</Text>
+            </Pressable>
+          ) : null}
+
+          {visibleToolCalls.map((tc) => (
             <ToolCallView key={tc.callId ?? tc.toolName} tc={tc} onAction={onAction} />
           ))}
+
+          {canCollapseTools && toolsExpanded ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="收起工具调用"
+              onPress={() => setToolsExpanded(false)}
+              style={({ pressed }) => [styles.toolsToggle, pressed && styles.toolsTogglePressed]}
+            >
+              <Text style={styles.toolsToggleText}>收起工具调用</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -121,6 +148,19 @@ const useStyles = createThemedStyles((t) => ({
   tools: {
     marginTop: t.space.sm,
     gap: t.space.sm,
+  },
+  toolsToggle: {
+    alignSelf: "flex-start",
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  toolsTogglePressed: {
+    opacity: 0.7,
+  },
+  toolsToggleText: {
+    fontSize: t.fontSize.sm,
+    color: t.color.textSecondary,
+    fontWeight: "500",
   },
   error: {
     fontSize: t.fontSize.sm,

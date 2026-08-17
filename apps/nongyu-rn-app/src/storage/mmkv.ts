@@ -76,6 +76,10 @@ export const THEME_APPEARANCE_KEY = "app:theme_appearance";
 export const LAUNCH_TAB_KEY = "app:launch_tab";
 /** Agent 上下文模式：full | stateless（缺省 full） */
 export const AGENT_CONTEXT_MODE_KEY = "app:agent_context_mode";
+/** Agent 模型通道：platform | user（缺省按是否有自有凭据推导） */
+export const AGENT_PROVIDER_SOURCE_KEY = "app:agent_provider_source";
+/** 全局下雨特效开关（"1" / "0"；缺省预览期视为开启） */
+export const RAIN_EFFECT_ENABLED_KEY = "app:rain_effect_enabled";
 
 /**
  * 读取缓存的教务 ASP Cookie

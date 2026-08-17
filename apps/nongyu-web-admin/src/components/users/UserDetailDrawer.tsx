@@ -2,6 +2,7 @@ import { Button, Descriptions, Drawer, Modal, Space, Spin, Tag, Tooltip, message
 import { useEffect, useState } from "react";
 import { AdminApiError, fetchAdminUser, patchAdminUser } from "../../lib/adminApi";
 import { displayText, formatAdminDateTime, formatBool, formatGender } from "../../lib/format";
+import { useDrawerWidth } from "../../lib/responsive";
 import type { AdminUserDetail } from "../../types/users";
 import { SetAdminPasswordModal } from "./SetAdminPasswordModal";
 
@@ -28,6 +29,7 @@ export function UserDetailDrawer({
   onClose,
   onChanged,
 }: UserDetailDrawerProps) {
+  const drawerWidth = useDrawerWidth(480);
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,11 +138,11 @@ export function UserDetailDrawer({
     <>
       <Drawer
         title="用户详情"
-        width={480}
+        width={drawerWidth}
         open={open}
         onClose={onClose}
         destroyOnClose
-        styles={{ body: { paddingBottom: 24 } }}
+        styles={{ body: { paddingBottom: "max(24px, env(safe-area-inset-bottom))" } }}
       >
         {loading ? (
           <div className="flex justify-center py-16">

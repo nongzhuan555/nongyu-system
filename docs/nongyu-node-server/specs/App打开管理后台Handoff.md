@@ -90,6 +90,7 @@
 - Ticket 禁止写入业务日志明文（可打 hash 前缀）。
 - 不返回管理员密码或哈希。
 - Handoff 不替代密码登录；密码登录 Spec 不变。
+- **客户端约束（2026-08-17）**：RN / Web **不得**把 ticket 放进可分享 URL（含管理端登录页 query）。合法通道为 App 应用内 WebView 注入 `window.__NONGYU_ADMIN_HANDOFF_TICKET__` 后再调用本 Spec 的 `handoff-redeem`。服务端契约不变；盗链风险由客户端消除 URL 载体。
 
 ### 4.4 文档同步
 
@@ -102,8 +103,9 @@
 ```
 App（已登录 role=1）
   → POST /api/admin/auth/app-handoff (App JWT)
-  → ticket
-  → 打开 https://nongyu.site/admin/login?loginType=in_app&ticket=...
+  → ticket（仅 App 内存）
+  → 应用内 WebView 打开 …/admin/login?loginType=in_app（URL 无 ticket）
+  → 注入 window.__NONGYU_ADMIN_HANDOFF_TICKET__
 Web
   → POST /api/admin/auth/handoff-redeem { ticket }
   → Admin session → /workspace
@@ -131,6 +133,7 @@ Web
 
 ## 7. 修订记录
 
-| 日期       | 说明              |
-| ---------- | ----------------- |
-| 2026-08-16 | 初版 handoff 契约 |
+| 日期       | 说明                                        |
+| ---------- | ------------------------------------------- |
+| 2026-08-16 | 初版 handoff 契约                           |
+| 2026-08-17 | 补充客户端不得把 ticket 放入 URL 的安全约束 |

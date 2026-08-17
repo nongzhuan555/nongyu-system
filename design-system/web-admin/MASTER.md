@@ -2,68 +2,82 @@
 
 ## 1. Core Vision
 
-- **Concept**: Academic Tech (学院派科技感)
-- **Vibe**: Warm, Healing yet Serious (温暖治愈且严谨)
+- **Concept**: Academic Tech（学院派科技感）— 与农屿 RN「川农新绿」同源
+- **Vibe**: Warm, Healing yet Serious（温暖治愈且严谨）
 - **Target**: Students, Student-Admin, Developers
-- **Environment**: Standalone Browser & React Native WebView (High Responsiveness Required)
+- **Environment**: Standalone Browser & React Native WebView（需高响应）
 
 ## 2. Visual Style
 
-- **Pattern**: Bento Grid (便当盒布局)
-- **Border Radius**: Large rounded corners (16px - 24px) for cards and interactive elements.
-- **Glassmorphism**: Subtle use of backdrop-blur (10px) for modals and floating navs.
-- **Shadows**: Soft, diffused shadows (e.g., `shadow-xl` with opacity 0.05).
+- **Pattern**: 贴边壳层 + 内容区卡片；工作台可用轻量 Bento，CRUD 页用统一 PageFrame
+- **Border Radius**: 卡片 12–16px；控件 10–12px（避免过大圆角导致「玩具感」）
+- **Shadows**: 轻扩散阴影，`0 1px 2px / 0.04` + `0 8px 24px / 0.06`，忌厚重悬浮岛
+- **Signature**: 侧栏选中项浅绿底 + 左侧品牌绿竖条
 
-## 3. Color Palette
+## 3. Color Palette（对齐 RN `green`）
 
-| Token              | Color (Hex)               | Usage                                     |
-| ------------------ | ------------------------- | ----------------------------------------- |
-| **Primary**        | `#10B981` (Emerald Green) | Main brand color, positive indicators.    |
-| **Secondary**      | `#FBBF24` (Amber/Yellow)  | Accents, warnings, "sunlight" highlights. |
-| **Background**     | `#F8FAFC` (Slate 50)      | Main background, clean and soft.          |
-| **Card BG**        | `#FFFFFF`                 | Bento grid card background.               |
-| **Text Primary**   | `#1E293B` (Slate 800)     | Headings and primary text.                |
-| **Text Secondary** | `#64748B` (Slate 500)     | Descriptions and meta info.               |
+| Token                 | Color (Hex) | Usage                  |
+| --------------------- | ----------- | ---------------------- |
+| **Primary**           | `#0A7C59`   | 主品牌、主按钮、选中态 |
+| **Primary Container** | `#D4E9DF`   | 菜单选中底、轻强调底   |
+| **On Primary**        | `#FFFFFF`   | 主色上的文字           |
+| **Secondary**         | `#2E7D6E`   | 次强调、图表辅色       |
+| **Tertiary**          | `#8FBF9B`   | 装饰、图表浅色         |
+| **Background**        | `#FAFBFA`   | 主画布                 |
+| **Surface**           | `#FFFFFF`   | 卡片 / 侧栏            |
+| **Surface Variant**   | `#DEE5E1`   | 分区底、表格斑马可选   |
+| **Text Primary**      | `#1F2937`   | 标题与主文案           |
+| **Text Secondary**    | `#424945`   | 说明与元信息           |
+| **Outline**           | `#CFE3DA`   | 边框、分割线           |
+| **Danger**            | `#C62828`   | 危险操作（与 RN 一致） |
+
+> 历史 Emerald `#10B981` / Amber `#FBBF24` 不再作为管理端主色板。
 
 ## 4. Typography
 
-- **Heading**: `Inter` or `System Sans-Serif` (Bold, 600+)
-- **Body**: `Inter` (Regular, 400)
-- **Base Size**: 16px (Browser), scales to 14px for compact mobile views.
+- **UI / Display**: `Source Sans 3`（拉丁）+ `PingFang SC` / `Microsoft YaHei`（中文）
+- **Data / Tabular**: 同族，`tabular-nums`
+- **Scale（桌面）**:
+  - 页标题：22–24px / 600
+  - 区块标题：16px / 600
+  - 正文：14px / 400
+  - 辅助：12–13px / 400，`Text Secondary`
+- **Base**: 14px（管理端桌面密度）；触控场景控件高度 ≥ 44px（`pointer: coarse` 或显式 `min-h-11`）
+- 移动端：Drawer 全宽、Modal 留边、`viewport-fit=cover` + safe-area；窄屏禁用大屏拖拽缩放
 
 ## 5. Technical Specifications
 
 ### React + Ant Design
 
-- **Theme Customization**: Use `ConfigProvider` to override AntD tokens.
-- **Border Radius**: `borderRadius: 16`.
-- **Primary Color**: `#10B981`.
+- `ConfigProvider` 覆盖 token：`colorPrimary: #0A7C59`，`borderRadius: 12`，`controlHeight: 40`
+- Menu 选中：`itemSelectedBg: #D4E9DF`，`itemSelectedColor: #0A7C59`
 
 ### Tailwind CSS
 
-- Use `rounded-2xl` (16px) or `rounded-3xl` (24px).
-- Use `grid-cols-1 md:grid-cols-2 lg:grid-cols-4` for Bento Grid responsiveness.
-- Padding: `p-4 md:p-6`.
+- Token 色：`brand` / `brand-muted` / `canvas` / `ink` / `muted` / `line`
+- 卡片：`rounded-xl` 或 `rounded-2xl`，配合 `shadow-panel` 与 `border-line`
+- 间距：壳层内容 `px-5 py-4`；卡片内 `p-4` / `p-5`
 
-### ECharts (Data Viz)
+### ECharts
 
-- **Colors**: `['#10B981', '#FBBF24', '#34D399', '#FCD34D']`.
-- **Line Style**: Smooth curves (smooth: true).
-- **Tooltips**: Rounded corners, background blur.
+- Colors: `['#0A7C59', '#2E7D6E', '#8FBF9B', '#D4E9DF', '#5A9A86', '#A8C9B8']`
+- Line：`smooth: true`
+- Tooltip：圆角 + 轻 blur
 
-### WebView Optimization
+### Layout
 
-- Ensure `meta viewport` is correct.
-- Avoid fixed heights; use flexbox/grid.
-- Touch targets: Minimum 44x44px.
+- 侧栏贴边固定宽 ~220px，**禁止**大圆角悬浮侧栏岛
+- 顶栏与内容区分层清晰；页内用 `PageFrame`（标题行 + 可选操作 + 白底内容）
+- 触控目标最小 40×40；移动端侧栏抽屉
 
 ## 6. Anti-Patterns (Avoid)
 
-- No harsh neon colors.
-- No 0px border radius (too cold).
-- No cluttered layouts on mobile (stack the Bento cards).
-- No complex hover-only interactions (must work on touch).
+- 不要用 RN 以外的翠绿 / 霓虹绿当主色
+- 不要 0 圆角硬边，也不要 24px+ 圆角铺满所有卡片
+- 不要控件统一 48px 高度造成桌面「虚胖」
+- 不要仅 hover 才能完成的关键（须支持触控）
+- 不要在 CRUD 页堆砌无意义 Bento 装饰
 
 ---
 
-_Created by UI/UX Pro Max for Nongyu System._
+_Aligned with RN green palette · Nongyu System_

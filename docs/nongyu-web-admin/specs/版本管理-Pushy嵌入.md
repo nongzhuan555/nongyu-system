@@ -1,14 +1,14 @@
 # Spec：管理端「版本管理」Pushy iframe 嵌入
 
-| 项        | 内容                                                                    |
-| --------- | ----------------------------------------------------------------------- |
-| 应用      | `apps/nongyu-web-admin`                                                 |
-| 需求类型  | **业务**                                                                |
-| PRD 依据  | 对话约定（侧栏「版本管理」= iframe 套 Pushy 官网）；无独立 forhuman PRD |
-| 视觉准则  | `design-system/web-admin/MASTER.md`                                     |
-| 前置 Spec | `登录与管理端壳.md`                                                     |
-| 状态      | **已实现**（2026-08-16）                                                |
-| 说明      | **跳过独立 tech / plans**；不接自研 `app_versions` API                  |
+| 项        | 内容                                                                           |
+| --------- | ------------------------------------------------------------------------------ |
+| 应用      | `apps/nongyu-web-admin`                                                        |
+| 需求类型  | **业务**                                                                       |
+| PRD 依据  | 对话约定（侧栏「版本管理」= iframe 套 Pushy 官网）；无独立 forhuman PRD        |
+| 视觉准则  | `design-system/web-admin/MASTER.md`                                            |
+| 前置 Spec | `登录与管理端壳.md`                                                            |
+| 状态      | **已废弃**（2026-08-17 起由 `相关网站.md` 取代；Pushy 不再作为管理台菜单入口） |
+| 说明      | **跳过独立 tech / plans**；不接自研 `app_versions` API                         |
 
 ---
 

@@ -12,6 +12,7 @@ import { AgentChatRuntimeHost } from "@/agent/chatRunner";
 import { CourseWidgetSyncHost } from "@/modules/course/widget/CourseWidgetSyncHost";
 import { PostRepliesPollerHost } from "@/modules/center/PostRepliesPollerHost";
 import { WechatBootstrapHost } from "@/lib/wechat/WechatBootstrapHost";
+import { CampusWeatherBootstrapHost } from "@/modules/weather/CampusWeatherBootstrapHost";
 
 // 启动时注册 Agent 工具的内联渲染组件（Generative UI）
 import "@/agent-ui/register";
@@ -53,6 +54,7 @@ export default function RootLayout() {
           <AuthRoot>
             <TelemetryHost />
             <WechatBootstrapHost />
+            <CampusWeatherBootstrapHost />
             <AgentChatRuntimeHost />
             <CourseWidgetSyncHost />
             <PostRepliesPollerHost />
@@ -138,6 +140,10 @@ export default function RootLayout() {
               <Stack.Screen name="web-viewer" options={{ title: "网页", headerShown: false }} />
               <Stack.Screen name="mine/posts" options={{ title: "我的帖子", headerShown: false }} />
               <Stack.Screen
+                name="mine/replies"
+                options={{ title: "留言与回复", headerShown: false }}
+              />
+              <Stack.Screen
                 name="mine/profile"
                 options={{ title: "个人信息", headerShown: false }}
               />
@@ -156,6 +162,10 @@ export default function RootLayout() {
               <Stack.Screen
                 name="mine/settings/theme"
                 options={{ title: "主题与外观", headerShown: false }}
+              />
+              <Stack.Screen
+                name="mine/settings/rain"
+                options={{ title: "下雨特效", headerShown: false }}
               />
               <Stack.Screen
                 name="mine/settings/launch"

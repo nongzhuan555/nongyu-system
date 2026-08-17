@@ -23,6 +23,8 @@ import {
   countRepliesForPosts,
   getAdminReplyForPost,
   listCommentsForPost,
+  listReceivedRepliesForUser,
+  listSentCommentsForUser,
   softDeleteAdminReply,
   softDeleteCommentByAdmin,
   softDeleteCommentByOwner,
@@ -305,6 +307,79 @@ appMyPostRepliesRouter.get(
         createdAt: toIsoUtcRequired(r.createdAt),
       })),
     );
+  }),
+);
+
+/** 映射列表项：无作者字段；publishedAt 取回复 created_at */
+function mapMyPostReplyListItem(r: {
+  replyId: number;
+  postId: number;
+  postType: string;
+  postTitle: string;
+  kind: string;
+  content: string;
+  publishedAt: Date;
+}) {
+  return {
+    replyId: Number(r.replyId),
+    postId: Number(r.postId),
+    postType: r.postType,
+    postTitle: r.postTitle,
+    kind: r.kind,
+    content: r.content,
+    publishedAt: toIsoUtcRequired(r.publishedAt),
+  };
+}
+
+/** 收到的回复 inbox（帖主视角，排除自留言） */
+appMyPostRepliesRouter.get(
+  "/received",
+  requireAppAuth,
+  asyncHandler(async (req, res) => {
+    const query = z
+      .object({
+        page: z.coerce.number().optional(),
+        pageSize: z.coerce.number().optional(),
+      })
+      .parse(req.query);
+    const { page, pageSize, offset } = pageParams(query.page, query.pageSize);
+    const { rows, total } = await listReceivedRepliesForUser({
+      userId: req.appAuth!.uid,
+      offset,
+      pageSize,
+    });
+    ok(res, {
+      list: rows.map(mapMyPostReplyListItem),
+      total,
+      page,
+      pageSize,
+    });
+  }),
+);
+
+/** 我发出的留言（对他人大院帖） */
+appMyPostRepliesRouter.get(
+  "/sent",
+  requireAppAuth,
+  asyncHandler(async (req, res) => {
+    const query = z
+      .object({
+        page: z.coerce.number().optional(),
+        pageSize: z.coerce.number().optional(),
+      })
+      .parse(req.query);
+    const { page, pageSize, offset } = pageParams(query.page, query.pageSize);
+    const { rows, total } = await listSentCommentsForUser({
+      userId: req.appAuth!.uid,
+      offset,
+      pageSize,
+    });
+    ok(res, {
+      list: rows.map(mapMyPostReplyListItem),
+      total,
+      page,
+      pageSize,
+    });
   }),
 );
 

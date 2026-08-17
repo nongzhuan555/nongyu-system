@@ -60,6 +60,7 @@
 | `theme.brand`           | `"green" \| "sakura"`           | 品牌色                                    |
 | `theme.appearance`      | `"light" \| "dark" \| "system"` | 外观                                      |
 | `web.openWebInApp`      | `boolean`                       | `true`=应用内 WebView；`false`=系统浏览器 |
+| `rain.enabled`          | `boolean`                       | 是否允许按校区天气显示下雨特效            |
 | `course.cardSize`       | `"sm" \| "md" \| "lg"`          | 课表卡片档                                |
 | `course.fontSize`       | `"sm" \| "md" \| "lg"`          | 课表卡片字号档                            |
 | `course.semesterStart`  | `string \| null`                | `YYYY-MM-DD` 本地日历日；未设为 `null`    |
@@ -77,6 +78,7 @@
 | `themeBrand`           | `"green" \| "sakura"`           | `useThemePrefsStore.setBrand`                               |
 | `themeAppearance`      | `"light" \| "dark" \| "system"` | `useThemePrefsStore.setAppearance`                          |
 | `openWebInApp`         | `boolean`                       | `useAppWebPrefsStore.setOpenWebInApp`                       |
+| `rainEnabled`          | `boolean`                       | `useRainPrefsStore.setRainEnabled`；切换后刷新校区天气      |
 | `courseCardSize`       | `"sm" \| "md" \| "lg"`          | `useCourseUiStore.setCardSize`                              |
 | `courseFontSize`       | `"sm" \| "md" \| "lg"`          | `useCourseUiStore.setFontSize`                              |
 | `courseSemesterStart`  | `string \| null`                | ISO 日期 `YYYY-MM-DD` 或 `null` 清除；经 `setSemesterStart` |
@@ -97,6 +99,7 @@
 | 「现在是什么主题」                      | `settings_get`，口述 brand/appearance                      |
 | 「换成樱花主题」「开暗色」「跟随系统」  | `settings_update` 对应字段                                 |
 | 「网页用系统浏览器打开」                | `openWebInApp: false`                                      |
+| 「打开下雨特效」「关掉下雨」            | `rainEnabled: true` / `false`                              |
 | 「课表卡片调大一点」「字号调小」        | `courseCardSize` / `courseFontSize`（大/中/小 ↔ lg/md/sm） |
 | 「开学日设为 2026-02-24」「清除开学日」 | `courseSemesterStart`                                      |
 | 「不要高亮今天」                        | `courseHighlightToday: false`                              |
@@ -165,3 +168,4 @@
 | 2026-08-15 | 实现：settings_get / settings_update + agent 注册   |
 | 2026-08-15 | 增补 `launch.tab` / `launchTab`（对齐启动页设置）   |
 | 2026-08-15 | `settings_update` 接入 needsApproval + 全局 confirm |
+| 2026-08-17 | 增补 `rain.enabled` / `rainEnabled`（下雨特效开关） |

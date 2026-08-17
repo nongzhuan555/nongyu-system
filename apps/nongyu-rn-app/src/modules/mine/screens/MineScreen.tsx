@@ -18,6 +18,7 @@ import {
   getAdminHandoffErrorMessage,
   requestAdminHandoff,
 } from "@/modules/mine/data/adminHandoff";
+import { setPendingAdminHandoffTicket } from "@/modules/mine/data/pendingAdminHandoff";
 import { trackClick } from "@/modules/telemetry";
 import { useSessionStore } from "@/stores/session";
 import { createThemedStyles } from "@/theme/createThemedStyles";
@@ -55,8 +56,9 @@ export function MineScreen() {
     setAdminOpening(true);
     try {
       const { ticket } = await requestAdminHandoff();
-      const url = buildAdminHandoffUrl(ticket);
-      await openAppUrl(url, { label: "农屿管理台" });
+      setPendingAdminHandoffTicket(ticket);
+      // ticket 禁止进 URL；强制应用内 WebView 注入
+      await openAppUrl(buildAdminHandoffUrl(), { label: "农屿管理台", forceInApp: true });
     } catch (error) {
       toast.error(getAdminHandoffErrorMessage(error));
     } finally {
@@ -68,6 +70,7 @@ export function MineScreen() {
     const { action } = item;
     if (action.kind === "navigate") {
       if (item.key === "posts") trackClick("mine_posts");
+      if (item.key === "replies") trackClick("mine_replies");
       router.push(action.href);
       return;
     }

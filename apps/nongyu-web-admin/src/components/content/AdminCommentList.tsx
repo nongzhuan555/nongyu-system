@@ -48,7 +48,7 @@ export function AdminCommentList({
 
   if (!comments || comments.length === 0) {
     return (
-      <div className="mt-4 rounded-2xl bg-canvas p-4">
+      <div className="mt-4 rounded-xl bg-elev p-4">
         <span className="mb-2 block text-sm font-medium text-ink">留言</span>
         <Empty description="暂无留言" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       </div>
@@ -56,7 +56,7 @@ export function AdminCommentList({
   }
 
   return (
-    <div className="mt-4 rounded-2xl bg-canvas p-4">
+    <div className="mt-4 rounded-xl bg-elev p-4">
       <span className="mb-3 block text-sm font-medium text-ink">留言 · {comments.length}</span>
       <div className="flex flex-col gap-3">
         {comments.map((c) => (

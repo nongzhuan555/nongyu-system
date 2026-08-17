@@ -40,6 +40,7 @@ export async function truncateAll() {
     "llm_user_usage_daily",
     "llm_api_keys",
     "home_greetings",
+    "agent_chat_suggestions",
     "users",
   ]) {
     await pool.query(`TRUNCATE TABLE ${table}`);

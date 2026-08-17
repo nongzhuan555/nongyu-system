@@ -1,4 +1,4 @@
 // nongyu-agent-sdk 内置工具
 
-export { webFetchTool } from "./WebFetchTool";
+export { webDetailTool } from "./WebDetailTool";
 export { webSearchTool } from "./WebSearchTool";

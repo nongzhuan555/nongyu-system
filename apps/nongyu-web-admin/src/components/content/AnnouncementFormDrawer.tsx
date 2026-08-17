@@ -1,7 +1,8 @@
-import { Button, DatePicker, Drawer, Form, Input, Grid, message } from "antd";
+import { Button, DatePicker, Drawer, Form, Input, message } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useState } from "react";
 import { AdminApiError, createAdminAnnouncement, patchAdminAnnouncement } from "../../lib/adminApi";
+import { useDrawerWidth } from "../../lib/responsive";
 import type { AdminPostItem } from "../../types/posts";
 
 type FormValues = {
@@ -26,8 +27,7 @@ export function AnnouncementFormDrawer({
 }: AnnouncementFormDrawerProps) {
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
-  const screens = Grid.useBreakpoint();
-  const isLg = screens.lg ?? true;
+  const drawerWidth = useDrawerWidth(480);
 
   useEffect(() => {
     if (!open) return;
@@ -75,7 +75,7 @@ export function AnnouncementFormDrawer({
       title={editing ? "编辑公告" : "发布公告"}
       open={open}
       onClose={onClose}
-      width={isLg ? 480 : "100%"}
+      width={drawerWidth}
       destroyOnClose
       extra={
         <Button

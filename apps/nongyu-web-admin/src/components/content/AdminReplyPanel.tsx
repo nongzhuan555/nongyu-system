@@ -46,7 +46,7 @@ export function AdminReplyPanel({ postId, reply, postDeleted, onChanged }: Admin
 
   if (!reply) {
     return (
-      <div className="mt-4 rounded-2xl bg-canvas p-4">
+      <div className="mt-4 rounded-xl bg-elev p-4">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-sm font-medium text-ink">管理员回复</span>
           {!postDeleted && (
@@ -68,7 +68,7 @@ export function AdminReplyPanel({ postId, reply, postDeleted, onChanged }: Admin
   }
 
   return (
-    <div className="mt-4 rounded-2xl bg-canvas p-4">
+    <div className="mt-4 rounded-xl bg-elev p-4">
       <div className="mb-2 flex items-center justify-between">
         <Space size={8} align="center">
           <Tag color="green">管理员回复</Tag>

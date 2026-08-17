@@ -3,12 +3,13 @@ import { AdminShell } from "../layouts/AdminShell";
 import { ROUTES } from "../lib/constants";
 import { ContentPage } from "../pages/ContentPage";
 import { DashboardPage } from "../pages/DashboardPage";
+import { AgentChatSuggestionsPage } from "../pages/AgentChatSuggestionsPage";
 import { HomeGreetingsPage } from "../pages/HomeGreetingsPage";
 import { LlmKeysPage } from "../pages/LlmKeysPage";
 import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { UsersPage } from "../pages/UsersPage";
-import { VersionsPage } from "../pages/VersionsPage";
+import { RelatedSitesPage } from "../pages/RelatedSitesPage";
 import { WorkspacePage } from "../pages/WorkspacePage";
 import { GuestOnly } from "./GuestOnly";
 import { RequireAuth } from "./RequireAuth";
@@ -37,8 +38,10 @@ export function AppRouter() {
         <Route path={ROUTES.users} element={<UsersPage />} />
         <Route path={ROUTES.content} element={<ContentPage />} />
         <Route path={ROUTES.homeGreetings} element={<HomeGreetingsPage />} />
+        <Route path={ROUTES.agentChatSuggestions} element={<AgentChatSuggestionsPage />} />
         <Route path={ROUTES.llmKeys} element={<LlmKeysPage />} />
-        <Route path={ROUTES.versions} element={<VersionsPage />} />
+        <Route path={ROUTES.relatedSites} element={<RelatedSitesPage />} />
+        <Route path="/versions" element={<Navigate replace to={ROUTES.relatedSites} />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

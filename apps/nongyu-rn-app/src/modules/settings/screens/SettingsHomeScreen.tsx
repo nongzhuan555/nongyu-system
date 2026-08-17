@@ -60,6 +60,16 @@ export function SettingsHomeScreen() {
       },
     },
     {
+      key: "rain",
+      title: "下雨特效",
+      description: "根据学院所在校区天气同步模拟下雨效果",
+      available: true,
+      onPress: () => {
+        trackClick("settings_rain");
+        router.push("/mine/settings/rain" as Href);
+      },
+    },
+    {
       key: "launch",
       title: "启动页",
       description: "打开 App 后进入首页或课表",

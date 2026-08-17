@@ -2,6 +2,7 @@ import { KeyOutlined } from "@ant-design/icons";
 import { Form, Input, Modal, message } from "antd";
 import { useState } from "react";
 import { AdminApiError, setAdminUserPassword } from "../../lib/adminApi";
+import { useModalWidth } from "../../lib/responsive";
 
 type PasswordForm = {
   adminPassword: string;
@@ -26,6 +27,7 @@ export function SetAdminPasswordModal({
 }: SetAdminPasswordModalProps) {
   const [form] = Form.useForm<PasswordForm>();
   const [submitting, setSubmitting] = useState(false);
+  const modalWidth = useModalWidth(480);
 
   async function handleOk() {
     if (userId === null) return;
@@ -49,6 +51,8 @@ export function SetAdminPasswordModal({
     <Modal
       title={userLabel ? `设置管理员密码 · ${userLabel}` : "设置管理员密码"}
       open={open}
+      width={modalWidth}
+      centered
       onCancel={() => {
         form.resetFields();
         onClose();

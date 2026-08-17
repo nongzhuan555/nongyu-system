@@ -1,13 +1,13 @@
 # Spec：农屿 Agent WebSearch 工具（自有 Key 限定）
 
-| 项       | 内容                                                                  |
-| -------- | --------------------------------------------------------------------- |
-| 应用     | `apps/nongyu-rn-app`（挂载）；`packages/nongyu-agent-sdk`（导出工具） |
-| 需求类型 | **基建**                                                              |
-| 复用     | SDK `BuiltinTools/WebSearchTool`（`web_search`，DuckDuckGo HTML）     |
-| 入口     | 农屿 AI 对话（`getOrCreateNongyuAgent`）                              |
-| 状态     | **已确认并落地（待人工回归）**（2026-08-15）                          |
-| 技术方案 | 本期跳过                                                              |
+| 项       | 内容                                                                      |
+| -------- | ------------------------------------------------------------------------- |
+| 应用     | `apps/nongyu-rn-app`（挂载）；`packages/nongyu-agent-sdk`（导出工具）     |
+| 需求类型 | **基建**                                                                  |
+| 复用     | SDK `BuiltinTools/WebSearchTool`（`web_search`，Bing CN 主源 + 搜狗备源） |
+| 入口     | 农屿 AI 对话（`getOrCreateNongyuAgent`）                                  |
+| 状态     | **已确认并落地（待人工回归）**（2026-08-15）                              |
+| 技术方案 | 本期跳过                                                                  |
 
 ---
 
@@ -45,7 +45,7 @@
 | 决策     | 结论                                             |
 | -------- | ------------------------------------------------ |
 | 归类     | 基建                                             |
-| 实现     | 复用 SDK DuckDuckGo `webSearchTool`              |
+| 实现     | 复用 SDK `webSearchTool`（Bing CN → 搜狗降级）   |
 | 注入条件 | `resolveAgentProviderConfig().source === "user"` |
 | 审批     | 不需要                                           |
 | 展示     | 本轮无卡片                                       |
@@ -85,6 +85,13 @@ else:
 - `web_search` 保持 SDK 默认 `needsApproval: false`。
 - 不注册 render 组件。
 
+### 5.5 搜索源（稳定性）
+
+- **主源**：`cn.bing.com` HTML 抓取解析。
+- **备源**：主源失败或 0 条结果时，改用 `www.sogou.com` HTML。
+- 双源皆失败时返回结构化空结果（含 `error` 文案），不裸抛导致对话中断。
+- 不依赖 DuckDuckGo（国内网络常超时不可达）。
+
 ---
 
 ## 6. 业务流程
@@ -110,4 +117,4 @@ resolveAgentProviderConfig()
 ## 8. 实现提示（非契约）
 
 - Prompt 可用两段字符串拼接，避免维护两份超长全文时漏改公共部分。
-- DDG HTML 在部分网络环境可能失败；失败由工具抛错，现有 Agent 错误态承接即可，本期不单独做重试 UI。
+- 搜索源为 Bing CN → 搜狗自动降级；双失败返回 `resultCount:0` + `error`，本期不做独立重试 UI。

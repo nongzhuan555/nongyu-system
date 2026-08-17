@@ -6,16 +6,18 @@ import { useAppWebPrefsStore } from "@/modules/settings/store/appWebPrefsStore";
 type OpenAppUrlOptions = {
   /** 失败 Toast 副文案 / WebView 顶栏标题 */
   label?: string;
+  /** 强制应用内 WebView（忽略「网页跳转」偏好） */
+  forceInApp?: boolean;
 };
 
 /**
  * 按「网页跳转」偏好打开外链：
- * - 应用内 → 自建 WebView 页 `/web-viewer`
+ * - 应用内 / forceInApp → 自建 WebView 页 `/web-viewer`
  * - 否则 → 系统浏览器
  */
 export async function openAppUrl(url: string, options?: OpenAppUrlOptions): Promise<void> {
   const label = options?.label?.trim() || undefined;
-  const openWebInApp = useAppWebPrefsStore.getState().openWebInApp;
+  const openWebInApp = options?.forceInApp === true || useAppWebPrefsStore.getState().openWebInApp;
 
   try {
     if (openWebInApp) {

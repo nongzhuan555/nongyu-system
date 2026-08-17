@@ -6,7 +6,7 @@ export { buildSystemPrompt } from "./core/prompt";
 export { tool, ToolRegistry, zodToJsonSchema } from "./core/tool";
 
 // ===== 内置工具 =====
-export { webSearchTool } from "./core/tool/BuiltinTools";
+export { webSearchTool, webDetailTool } from "./core/tool/BuiltinTools";
 
 // ===== 业务工具集 =====
 export { jiaowuTools } from "./core/tool/ExternalTools/jiaowu-tools";

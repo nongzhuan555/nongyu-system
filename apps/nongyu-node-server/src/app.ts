@@ -24,6 +24,10 @@ import { adminLlmKeysRouter } from "./modules/llm-pool/routes.admin.js";
 import { adminLlmChatRouter } from "./modules/llm-pool/routes.admin-proxy.js";
 import { appLlmRouter } from "./modules/llm-pool/routes.app.js";
 import { adminHomeGreetingsRouter, appHomeGreetingRouter } from "./modules/home-greeting/routes.js";
+import {
+  adminAgentChatSuggestionsRouter,
+  appAgentChatSuggestionsRouter,
+} from "./modules/agent-chat-suggestion/routes.js";
 import { requireAppAuth } from "./middlewares/auth.js";
 
 export function createApp() {
@@ -62,6 +66,7 @@ export function createApp() {
   app.use("/api/app/posts", appPostsRouter);
   app.use("/api/app/versions", appVersionsRouter);
   app.use("/api/app/home/greeting", appHomeGreetingRouter);
+  app.use("/api/app/agent/chat-suggestions", appAgentChatSuggestionsRouter);
   app.use("/api/app/llm/v1", requireAppAuth, appLlmRouter);
 
   app.use("/api/admin/auth", adminAuthRouter);
@@ -73,6 +78,7 @@ export function createApp() {
   app.use("/api/admin/llm/v1", adminLlmChatRouter);
   app.use("/api/admin/llm/keys", adminLlmKeysRouter);
   app.use("/api/admin/home-greetings", adminHomeGreetingsRouter);
+  app.use("/api/admin/agent-chat-suggestions", adminAgentChatSuggestionsRouter);
   app.use("/api/internal/users", internalUsersRouter);
 
   app.use(errorHandler);

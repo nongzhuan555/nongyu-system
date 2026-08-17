@@ -50,3 +50,53 @@ export async function deleteComment(postId: number, commentId: number): Promise<
 export async function fetchNewPostReplies(): Promise<NewPostReply[]> {
   return appFetch<NewPostReply[]>("/api/app/users/me/post-replies/new");
 }
+
+/** 我的留言 / 收到的回复列表项（与 Node Spec 对齐） */
+export type MyPostReplyListItem = {
+  replyId: number;
+  postId: number;
+  postType: "feedback" | "courtyard";
+  postTitle: string;
+  kind: "admin_reply" | "comment";
+  content: string;
+  publishedAt: string;
+};
+
+type PageResult<T> = {
+  list: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+/**
+ * GET /api/app/users/me/post-replies/received —— 收到的回复 inbox
+ */
+export async function fetchReceivedPostReplies(params?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<PageResult<MyPostReplyListItem>> {
+  const q = new URLSearchParams({
+    page: String(params?.page ?? 1),
+    pageSize: String(params?.pageSize ?? 20),
+  });
+  return appFetch<PageResult<MyPostReplyListItem>>(
+    `/api/app/users/me/post-replies/received?${q.toString()}`,
+  );
+}
+
+/**
+ * GET /api/app/users/me/post-replies/sent —— 我对他人的留言
+ */
+export async function fetchSentPostReplies(params?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<PageResult<MyPostReplyListItem>> {
+  const q = new URLSearchParams({
+    page: String(params?.page ?? 1),
+    pageSize: String(params?.pageSize ?? 20),
+  });
+  return appFetch<PageResult<MyPostReplyListItem>>(
+    `/api/app/users/me/post-replies/sent?${q.toString()}`,
+  );
+}

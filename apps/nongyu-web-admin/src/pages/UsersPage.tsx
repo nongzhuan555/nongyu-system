@@ -1,9 +1,11 @@
 import { Alert, Button, Input, Select, Space, Table, Tag } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { useEffect, useEffectEvent, useState } from "react";
+import { PageFrame } from "../components/layout/PageFrame";
 import { UserDetailDrawer } from "../components/users/UserDetailDrawer";
+import { useForegroundRefresh } from "../hooks/useForegroundRefresh";
 import { AdminApiError, listAdminUsers } from "../lib/adminApi";
-import { DEFAULT_USER_PAGE_SIZE } from "../lib/constants";
+import { DEFAULT_USER_PAGE_SIZE, FOREGROUND_REFRESH_INTERVAL_MS } from "../lib/constants";
 import { displayText, formatAdminDateTime } from "../lib/format";
 import { useAuthStore } from "../stores/authStore";
 import type { AdminUserListItem, UserRole, UserStatus } from "../types/users";
@@ -29,9 +31,11 @@ export function UsersPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const loadList = useEffectEvent(async () => {
-    setLoading(true);
-    setError(null);
+  const loadList = useEffectEvent(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const data = await listAdminUsers({
         page,
@@ -42,7 +46,9 @@ export function UsersPage() {
       });
       setList(data.list);
       setTotal(data.total);
+      if (silent) setError(null);
     } catch (err) {
+      if (silent) return;
       setList([]);
       setTotal(0);
       if (err instanceof AdminApiError) {
@@ -55,13 +61,18 @@ export function UsersPage() {
         setError("网络异常，请稍后重试");
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   });
 
   useEffect(() => {
     void loadList();
   }, [page, pageSize, keyword, role, status]);
+
+  useForegroundRefresh(() => void loadList(true), {
+    intervalMs: FOREGROUND_REFRESH_INTERVAL_MS,
+    enabled: !drawerOpen,
+  });
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -141,22 +152,20 @@ export function UsersPage() {
   }
 
   return (
-    <div className="rounded-3xl bg-white p-4 shadow-card md:p-6">
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-ink">用户管理</h2>
-          <p className="mt-1 text-sm text-muted">查看用户档案，调整角色与账号状态</p>
-        </div>
+    <PageFrame
+      title="用户管理"
+      description="查看用户档案，调整角色与账号状态"
+      actions={
         <Space wrap>
           <Input
             allowClear
-            className="w-56"
+            className="w-full sm:w-56"
             placeholder="搜索学号 / 姓名"
             value={keywordInput}
             onChange={(event) => setKeywordInput(event.target.value)}
           />
           <Select<RoleFilter>
-            className="w-32"
+            className="w-full sm:w-32"
             value={role}
             onChange={(value) => {
               setRole(value);
@@ -169,7 +178,7 @@ export function UsersPage() {
             ]}
           />
           <Select<StatusFilter>
-            className="w-32"
+            className="w-full sm:w-32"
             value={status}
             onChange={(value) => {
               setStatus(value);
@@ -182,8 +191,8 @@ export function UsersPage() {
             ]}
           />
         </Space>
-      </div>
-
+      }
+    >
       {error ? (
         <Alert
           className="mb-4"
@@ -208,6 +217,7 @@ export function UsersPage() {
         loading={loading}
         columns={columns}
         dataSource={list}
+        size="middle"
         scroll={{ x: 960 }}
         locale={{ emptyText: "暂无用户" }}
         pagination={{
@@ -239,6 +249,6 @@ export function UsersPage() {
           void loadList();
         }}
       />
-    </div>
+    </PageFrame>
   );
 }

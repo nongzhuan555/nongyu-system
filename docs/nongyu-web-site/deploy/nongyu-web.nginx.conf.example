@@ -1,0 +1,47 @@
+# 复制到服务器 /etc/nginx/conf.d/nongyu-web.conf 后：
+# 1. 把 YOUR_WEB_IP / YOUR_NODE_UPSTREAM 换成实际值（Upstream 无尾斜杠，如 http://8.137.82.17）
+# 2. nginx -t && systemctl reload nginx
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name YOUR_WEB_IP;
+
+    # 管理端 LLM 流式：关闭缓冲
+    location /api/admin/llm/ {
+        proxy_pass YOUR_NODE_UPSTREAM;
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
+    location /api/ {
+        proxy_pass YOUR_NODE_UPSTREAM;
+        proxy_http_version 1.1;
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
+    location = /admin {
+        return 301 /admin/;
+    }
+
+    # Vite base=/admin/ → 产物落在 /var/www/admin/
+    location /admin/ {
+        root /var/www;
+        try_files $uri $uri/ /admin/index.html;
+    }
+
+    location / {
+        root /var/www/site;
+        try_files $uri $uri/ /index.html;
+    }
+}

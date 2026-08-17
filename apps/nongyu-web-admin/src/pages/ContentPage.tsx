@@ -1,6 +1,7 @@
 import { Tabs } from "antd";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { PageFrame } from "../components/layout/PageFrame";
 import { PostListPanel } from "../components/content/PostListPanel";
 import { contentTabToPostType, type ContentTabKey } from "../types/posts";
 
@@ -14,12 +15,7 @@ export function ContentPage() {
   const tab = useMemo(() => parseTab(searchParams.get("tab")), [searchParams]);
 
   return (
-    <div className="rounded-3xl bg-white p-4 shadow-card md:p-6">
-      <div className="mb-2">
-        <h2 className="text-lg font-semibold text-ink">内容管理</h2>
-        <p className="mt-1 text-sm text-muted">管理官方公告与用户反馈、建议</p>
-      </div>
-
+    <PageFrame title="内容管理" description="管理官方公告与用户反馈、建议">
       <Tabs
         activeKey={tab}
         onChange={(key) => {
@@ -62,6 +58,6 @@ export function ContentPage() {
           },
         ]}
       />
-    </div>
+    </PageFrame>
   );
 }

@@ -20,12 +20,11 @@ export async function requestAdminHandoff(): Promise<AppHandoffResult> {
 export const ADMIN_WEB_BASE_URL = "http://101.43.34.229/admin";
 
 /**
- * 构造带 handoff 参数的管理台登录 URL
+ * 构造管理台登录 URL（仅 loginType；ticket 禁止出现在 URL）
  */
-export function buildAdminHandoffUrl(ticket: string): string {
+export function buildAdminHandoffUrl(): string {
   const url = new URL(`${ADMIN_WEB_BASE_URL}/login`);
   url.searchParams.set("loginType", "in_app");
-  url.searchParams.set("ticket", ticket);
   return url.toString();
 }
 

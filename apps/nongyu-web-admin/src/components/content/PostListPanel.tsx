@@ -1,8 +1,9 @@
 import { Alert, Button, Input, Switch, Table, Tag, Space, message } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { useEffect, useEffectEvent, useState } from "react";
+import { useForegroundRefresh } from "../../hooks/useForegroundRefresh";
 import { AdminApiError, listAdminPosts } from "../../lib/adminApi";
-import { DEFAULT_POST_PAGE_SIZE } from "../../lib/constants";
+import { DEFAULT_POST_PAGE_SIZE, FOREGROUND_REFRESH_INTERVAL_MS } from "../../lib/constants";
 import { displayText, formatAdminDateTime, formatCoverageRate } from "../../lib/format";
 import type { AdminPostItem, PostType } from "../../types/posts";
 import { AnnouncementFormDrawer } from "./AnnouncementFormDrawer";
@@ -32,9 +33,11 @@ export function PostListPanel({ postType, title, allowCreate }: PostListPanelPro
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminPostItem | null>(null);
 
-  const loadList = useEffectEvent(async () => {
-    setLoading(true);
-    setError(null);
+  const loadList = useEffectEvent(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const data = await listAdminPosts({
         page,
@@ -46,7 +49,9 @@ export function PostListPanel({ postType, title, allowCreate }: PostListPanelPro
       });
       setList(data.list);
       setTotal(data.total);
+      if (silent) setError(null);
     } catch (err) {
+      if (silent) return;
       setList([]);
       setTotal(0);
       if (err instanceof AdminApiError) {
@@ -59,13 +64,18 @@ export function PostListPanel({ postType, title, allowCreate }: PostListPanelPro
         setError("网络异常，请稍后重试");
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   });
 
   useEffect(() => {
     void loadList();
   }, [page, pageSize, keyword, subtype, includeDeleted, postType]);
+
+  useForegroundRefresh(() => void loadList(true), {
+    intervalMs: FOREGROUND_REFRESH_INTERVAL_MS,
+    enabled: !detailOpen && !formOpen,
+  });
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -153,12 +163,15 @@ export function PostListPanel({ postType, title, allowCreate }: PostListPanelPro
     <div>
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-ink">{title}</h2>
+          <h2 className="text-[15px] font-semibold text-ink">{title}</h2>
         </div>
-        <Space wrap>
+        <Space
+          wrap
+          className="w-full lg:w-auto [&_.ant-input-affix-wrapper]:w-full [&_.ant-input-affix-wrapper]:sm:w-48 [&_.ant-select]:w-full [&_.ant-select]:sm:w-auto"
+        >
           <Input
             allowClear
-            className="w-48"
+            className="w-full sm:w-48"
             placeholder="搜索标题 / 正文"
             value={keywordInput}
             onChange={(event) => setKeywordInput(event.target.value)}
@@ -166,7 +179,7 @@ export function PostListPanel({ postType, title, allowCreate }: PostListPanelPro
           {postType === "announcement" ? (
             <Input
               allowClear
-              className="w-36"
+              className="w-full sm:w-36"
               placeholder="子类型精确筛选"
               value={subtypeInput}
               onChange={(event) => setSubtypeInput(event.target.value)}

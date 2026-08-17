@@ -2,6 +2,8 @@ import { Button } from "antd";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Layouts } from "react-grid-layout";
 import { DashboardGrid, type DashboardGridData } from "../components/dashboard/DashboardGrid";
+import { PageFrame } from "../components/layout/PageFrame";
+import { useForegroundRefresh } from "../hooks/useForegroundRefresh";
 import {
   AdminApiError,
   fetchDashboardOverview,
@@ -12,7 +14,7 @@ import {
   fetchUserDistribution,
   fetchUserGrowth,
 } from "../lib/adminApi";
-import { AUTH_ERROR_CODES } from "../lib/constants";
+import { AUTH_ERROR_CODES, FOREGROUND_REFRESH_INTERVAL_MS } from "../lib/constants";
 import {
   clearDashboardPrefs,
   defaultDashboardPrefs,
@@ -67,9 +69,11 @@ export function DashboardPage() {
   const [trackError, setTrackError] = useState<string | null>(null);
   const [crashPage, setCrashPage] = useState(1);
 
-  const loadCore = useEffectEvent(async (range: GrowthRange) => {
-    setCoreLoading(true);
-    setCoreError(null);
+  const loadCore = useEffectEvent(async (range: GrowthRange, silent = false) => {
+    if (!silent) {
+      setCoreLoading(true);
+      setCoreError(null);
+    }
     try {
       const [overview, growth, distribution, settings] = await Promise.all([
         fetchDashboardOverview(),
@@ -78,16 +82,19 @@ export function DashboardPage() {
         fetchSettingsDistribution(),
       ]);
       setData((prev) => ({ ...prev, overview, growth, distribution, settings }));
+      if (silent) setCoreError(null);
     } catch (err) {
-      setCoreError(messageFromError(err, false));
+      if (!silent) setCoreError(messageFromError(err, false));
     } finally {
-      setCoreLoading(false);
+      if (!silent) setCoreLoading(false);
     }
   });
 
-  const loadTrack = useEffectEvent(async (page: number) => {
-    setTrackLoading(true);
-    setTrackError(null);
+  const loadTrack = useEffectEvent(async (page: number, silent = false) => {
+    if (!silent) {
+      setTrackLoading(true);
+      setTrackError(null);
+    }
     try {
       const [trackOverview, screens, dwell, buttons, p50, p95, crashes] = await Promise.all([
         fetchTrackOverview(),
@@ -108,10 +115,11 @@ export function DashboardPage() {
         perfP95: p95.items,
         crashes,
       }));
+      if (silent) setTrackError(null);
     } catch (err) {
-      setTrackError(messageFromError(err, true));
+      if (!silent) setTrackError(messageFromError(err, true));
     } finally {
-      setTrackLoading(false);
+      if (!silent) setTrackLoading(false);
     }
   });
 
@@ -119,6 +127,14 @@ export function DashboardPage() {
     void loadCore(prefs.growthRange);
     void loadTrack(crashPage);
   }, []);
+
+  useForegroundRefresh(
+    () => {
+      void loadCore(prefsRef.current.growthRange, true);
+      void loadTrack(crashPage, true);
+    },
+    { intervalMs: FOREGROUND_REFRESH_INTERVAL_MS },
+  );
 
   function persistPrefs(next: DashboardPrefsV1) {
     setPrefs(next);
@@ -169,23 +185,18 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px]">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted">
-            查看系统运行状态与用户行为。按住卡片标题左侧 ∷
-            拖动可换位，右下角可缩放；图表区域本身不拖动以免抢 tooltip。
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button className="min-h-11" onClick={handleRefresh}>
-            刷新
-          </Button>
-          <Button className="min-h-11" onClick={handleResetLayout}>
-            恢复默认布局
-          </Button>
-        </div>
-      </div>
+    <PageFrame
+      bare
+      className="max-w-[1600px]"
+      title="数据大屏"
+      description="查看运行状态与用户行为。桌面端可拖动画布卡片；手机端仅浏览，布局编辑请到宽屏。"
+      actions={
+        <>
+          <Button onClick={handleRefresh}>刷新</Button>
+          <Button onClick={handleResetLayout}>恢复默认布局</Button>
+        </>
+      }
+    >
       <DashboardGrid
         prefs={prefs}
         data={data}
@@ -203,6 +214,6 @@ export function DashboardPage() {
           void handleCrashPageChange(page);
         }}
       />
-    </div>
+    </PageFrame>
   );
 }

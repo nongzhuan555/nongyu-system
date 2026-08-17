@@ -18,6 +18,11 @@ import {
   type AgentProviderPreset,
 } from "../agentProviderPresets";
 import { useAgentContextPrefsStore, type AgentContextMode } from "../store/agentContextPrefsStore";
+import {
+  resolveEffectiveProviderSourceForUi,
+  useAgentProviderSourcePrefsStore,
+  type AgentProviderSourcePref,
+} from "../store/agentProviderSourcePrefsStore";
 import { invalidateNongyuAgent } from "@/agent/agent";
 import { toast } from "@/components/ui/toast";
 import {
@@ -46,8 +51,25 @@ const CONTEXT_MODE_OPTIONS: {
   },
 ];
 
+const PROVIDER_SOURCE_OPTIONS: {
+  id: AgentProviderSourcePref;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    id: "platform",
+    label: "农屿后台",
+    hint: "使用农屿平台调度池（可能排队）；无需自有 Key",
+  },
+  {
+    id: "user",
+    label: "自有 Key",
+    hint: "直连你配置的兼容接口；可使用联网搜索等自有能力",
+  },
+];
+
 /**
- * Agent 设置：上下文模式 + 服务商预设 + Base URL + 模型名 + API Key
+ * Agent 设置：模型通道 + 上下文模式 + 服务商预设 + Base URL + 模型名 + API Key
  * 凭据保存前固定发「你好」探测模型连通性，通过后才写入 SecureStore。
  */
 export function AgentSettingsScreen() {
@@ -56,15 +78,19 @@ export function AgentSettingsScreen() {
   const insets = useSafeAreaInsets();
   const contextMode = useAgentContextPrefsStore((s) => s.contextMode);
   const setContextMode = useAgentContextPrefsStore((s) => s.setContextMode);
+  const storedSource = useAgentProviderSourcePrefsStore((s) => s.storedSource);
+  const setProviderSource = useAgentProviderSourcePrefsStore((s) => s.setProviderSource);
   const [presetId, setPresetId] = useState(AGENT_PROVIDER_PRESETS[0]!.id);
   const [baseURL, setBaseURL] = useState(AGENT_PROVIDER_PRESETS[0]!.baseURL ?? "");
   const [model, setModel] = useState(AGENT_PROVIDER_PRESETS[0]!.defaultModel);
   const [apiKey, setApiKey] = useState("");
+  const [hasSavedConfig, setHasSavedConfig] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const isCustom = presetId === CUSTOM_PROVIDER_ID;
   const activePreset = AGENT_PROVIDER_PRESETS.find((p) => p.id === presetId);
+  const effectiveSource = resolveEffectiveProviderSourceForUi(hasSavedConfig, storedSource);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +103,9 @@ export function AgentSettingsScreen() {
         setBaseURL(config.baseURL);
         setApiKey(config.apiKey);
         setModel(config.model || matched.defaultModel);
+        setHasSavedConfig(true);
+      } else {
+        setHasSavedConfig(false);
       }
       setLoading(false);
     })();
@@ -107,6 +136,24 @@ export function AgentSettingsScreen() {
     [contextMode, setContextMode],
   );
 
+  const onSelectProviderSource = useCallback(
+    (id: AgentProviderSourcePref, label: string) => {
+      if (id === "user" && !hasSavedConfig) return;
+      // 已显式写入且相同则跳过；未写入时若有效态已是该项则惰性跳过
+      if (storedSource === id) return;
+      if (storedSource == null && effectiveSource === id) return;
+      try {
+        setProviderSource(id);
+        invalidateNongyuAgent();
+        toast.success(`模型通道已设为${label}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "请稍后重试";
+        toast.error("设置模型通道失败", { description: msg });
+      }
+    },
+    [effectiveSource, hasSavedConfig, setProviderSource, storedSource],
+  );
+
   const onSave = useCallback(async () => {
     const url = baseURL.trim();
     const key = apiKey.trim();
@@ -132,15 +179,17 @@ export function AgentSettingsScreen() {
         return;
       }
       await saveAgentConfig({ baseURL: url, apiKey: key, model: modelName });
+      setHasSavedConfig(true);
+      setProviderSource("user");
       invalidateNongyuAgent();
-      toast.success("已保存", { description: "模型连通性正常" });
+      toast.success("已保存", { description: "模型连通性正常，已切换到自有 Key" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "请稍后重试";
       toast.error("保存失败", { description: msg });
     } finally {
       setSaving(false);
     }
-  }, [baseURL, apiKey, model]);
+  }, [baseURL, apiKey, model, setProviderSource]);
 
   const onClear = useCallback(async () => {
     setSaving(true);
@@ -152,6 +201,7 @@ export function AgentSettingsScreen() {
       setBaseURL(first.baseURL ?? "");
       setModel(first.defaultModel);
       setApiKey("");
+      setHasSavedConfig(false);
       toast.success("已清除");
     } catch {
       toast.error("清除失败");
@@ -171,6 +221,49 @@ export function AgentSettingsScreen() {
           <ActivityIndicator color={t.color.brand} style={styles.loader} />
         ) : (
           <>
+            <Text style={styles.sectionTitle}>模型通道</Text>
+            <View style={styles.modeCard}>
+              {PROVIDER_SOURCE_OPTIONS.map((opt, index) => {
+                const selected = effectiveSource === opt.id;
+                const disabled = opt.id === "user" && !hasSavedConfig;
+                return (
+                  <View key={opt.id}>
+                    {index > 0 ? <View style={styles.modeDivider} /> : null}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected, disabled }}
+                      disabled={disabled}
+                      onPress={() => onSelectProviderSource(opt.id, opt.label)}
+                      style={({ pressed }) => [
+                        styles.modeRow,
+                        disabled && styles.modeDisabled,
+                        pressed && !disabled && styles.modePressed,
+                      ]}
+                    >
+                      <View style={styles.modeTextCol}>
+                        <Text style={[styles.modeTitle, disabled && styles.modeTitleDisabled]}>
+                          {opt.label}
+                        </Text>
+                        <Text style={styles.modeHint}>
+                          {disabled ? "请先在下方保存 API Key 后再选用" : opt.hint}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.radio,
+                          selected && styles.radioOn,
+                          disabled && styles.radioDisabled,
+                        ]}
+                      >
+                        {selected ? <View style={styles.radioDot} /> : null}
+                      </View>
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
+            <Text style={styles.modeFooterHint}>更改后立即生效；清除 API Key 不会重置通道偏好</Text>
+
             <Text style={styles.sectionTitle}>上下文管理</Text>
             <View style={styles.modeCard}>
               {CONTEXT_MODE_OPTIONS.map((opt, index) => {
@@ -200,8 +293,8 @@ export function AgentSettingsScreen() {
 
             <View style={styles.platformHintCard}>
               <Text style={styles.platformHint}>
-                若您未配置自己的大模型API
-                Key，农屿会使用我们自己搭建的基于智谱的免费API调度池为您转发大模型调用，好处是您无需自己承担任何费用，缺点是服务不稳定且大概率遇到排队情况，农屿鼓励用户自行尝试配置大模型，若有此需求可自行上网搜索方法，欢迎大家拥抱AI来为我们的调度池减轻负担
+                未配置自有 Key 时默认走农屿智谱调度池（免费，可能排队）。配置 Key
+                后仍可随时切回农屿后台，无需清除凭据。鼓励自行配置兼容接口，减轻平台池压力。
               </Text>
             </View>
 
@@ -344,6 +437,9 @@ const useStyles = createThemedStyles((t) => ({
   modePressed: {
     opacity: 0.88,
   },
+  modeDisabled: {
+    opacity: 0.55,
+  },
   modeDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: t.color.border,
@@ -356,6 +452,9 @@ const useStyles = createThemedStyles((t) => ({
     fontSize: t.fontSize.md,
     fontWeight: "600",
     color: t.color.text,
+  },
+  modeTitleDisabled: {
+    color: t.color.textSecondary,
   },
   modeHint: {
     marginTop: 4,
@@ -394,6 +493,9 @@ const useStyles = createThemedStyles((t) => ({
   },
   radioOn: {
     borderColor: t.color.brand,
+  },
+  radioDisabled: {
+    borderColor: t.color.border,
   },
   radioDot: {
     width: 12,

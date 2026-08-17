@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "axios": "catalog:",
+    "buffer": "catalog:",
     "iconv-lite": "catalog:",
     "mitt": "catalog:",
     "nongyu-tool-jiaowu": "workspace:*",

@@ -16,6 +16,8 @@ import {
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { useEffect, useEffectEvent, useState } from "react";
 import { LlmProxyFailsPanel } from "../components/llm/LlmProxyFailsPanel";
+import { PageFrame } from "../components/layout/PageFrame";
+import { useForegroundRefresh } from "../hooks/useForegroundRefresh";
 import {
   AdminApiError,
   createAdminLlmKey,
@@ -23,8 +25,9 @@ import {
   listAdminLlmKeys,
   patchAdminLlmKey,
 } from "../lib/adminApi";
-import { DEFAULT_LLM_KEY_PAGE_SIZE } from "../lib/constants";
+import { DEFAULT_LLM_KEY_PAGE_SIZE, FOREGROUND_REFRESH_INTERVAL_MS } from "../lib/constants";
 import { displayText, formatAdminDateTime } from "../lib/format";
+import { useModalWidth } from "../lib/responsive";
 import type { AdminLlmKeyItem, LlmKeyStatus } from "../types/llmKeys";
 
 type StatusFilter = "all" | LlmKeyStatus;
@@ -41,6 +44,7 @@ type FormValues = {
 };
 
 export function LlmKeysPage() {
+  const modalWidth = useModalWidth(560);
   const [status, setStatus] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_LLM_KEY_PAGE_SIZE);
@@ -54,9 +58,11 @@ export function LlmKeysPage() {
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<FormValues>();
 
-  const loadList = useEffectEvent(async () => {
-    setLoading(true);
-    setError(null);
+  const loadList = useEffectEvent(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const data = await listAdminLlmKeys({
         page,
@@ -65,7 +71,9 @@ export function LlmKeysPage() {
       });
       setList(data.list);
       setTotal(data.total);
+      if (silent) setError(null);
     } catch (err) {
+      if (silent) return;
       setList([]);
       setTotal(0);
       if (err instanceof AdminApiError) {
@@ -78,13 +86,18 @@ export function LlmKeysPage() {
         setError("网络异常，请稍后重试");
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   });
 
   useEffect(() => {
     void loadList();
   }, [page, pageSize, status]);
+
+  useForegroundRefresh(() => void loadList(true), {
+    intervalMs: FOREGROUND_REFRESH_INTERVAL_MS,
+    enabled: !modalOpen,
+  });
 
   function openCreate() {
     setEditing(null);
@@ -269,7 +282,7 @@ export function LlmKeysPage() {
   };
 
   return (
-    <>
+    <PageFrame title="LLM Key 池" description="管理代理密钥与失败记录">
       <Tabs
         items={[
           {
@@ -281,7 +294,7 @@ export function LlmKeysPage() {
                   <Space wrap>
                     <Select
                       value={status}
-                      style={{ width: 140 }}
+                      className="w-full sm:w-[140px]"
                       options={[
                         { value: "all", label: "全部状态" },
                         { value: 1, label: "启用" },
@@ -315,6 +328,7 @@ export function LlmKeysPage() {
                 <Table
                   rowKey="id"
                   loading={loading}
+                  size="middle"
                   columns={columns}
                   dataSource={list}
                   pagination={pagination}
@@ -335,6 +349,8 @@ export function LlmKeysPage() {
       <Modal
         title={editing ? "编辑密钥" : "添加密钥"}
         open={modalOpen}
+        width={modalWidth}
+        centered
         onCancel={() => setModalOpen(false)}
         onOk={() => void handleSubmit()}
         confirmLoading={submitting}
@@ -379,6 +395,6 @@ export function LlmKeysPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </PageFrame>
   );
 }

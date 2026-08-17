@@ -1,13 +1,5 @@
 import { useThemeTokens } from "@/theme/ThemeProvider";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +13,7 @@ import { CommentComposer } from "@/modules/center/components/CommentComposer";
 import { CommentList } from "@/modules/center/components/CommentList";
 import { PostDetailSkeleton } from "@/modules/center/components/PostDetailSkeleton";
 import { subtypeLabel } from "@/modules/center/constants/subtypes";
+import { useComposerKeyboardInset } from "@/modules/center/hooks/useComposerKeyboardInset";
 import { formatPublishedAt, stripHtml } from "@/modules/center/utils/format";
 import { trackClick } from "@/modules/telemetry";
 import { createThemedStyles } from "@/theme/createThemedStyles";
@@ -36,6 +29,7 @@ export function PostDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const composerBottomInset = useComposerKeyboardInset(insets.bottom);
 
   const detailKey = ["posts", "detail", id] as const;
 
@@ -173,15 +167,13 @@ export function PostDetailScreen() {
         )}
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex1}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={insets.top}
-      >
+      <View style={styles.flex1}>
         <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + t.space.xl }]}
+          style={styles.flex1}
+          contentContainerStyle={[styles.content, { paddingBottom: t.space.xl }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           {query.isPending ? (
             <PostDetailSkeleton />
@@ -221,9 +213,13 @@ export function PostDetailScreen() {
         </ScrollView>
 
         {post?.postType === "courtyard" ? (
-          <CommentComposer pending={addComment.isPending} onPost={(c) => addComment.mutate(c)} />
+          <CommentComposer
+            pending={addComment.isPending}
+            onPost={(c) => addComment.mutate(c)}
+            bottomInset={composerBottomInset}
+          />
         ) : null}
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

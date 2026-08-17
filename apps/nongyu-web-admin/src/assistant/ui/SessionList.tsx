@@ -1,4 +1,4 @@
-import { Button, Popconfirm } from "antd";
+import { Popconfirm } from "antd";
 import dayjs from "dayjs";
 import type { AgentChatSession } from "../storage/sessionTypes";
 
@@ -33,40 +33,59 @@ export function SessionList({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
       <div className="flex gap-2">
-        <Button className="min-h-11 flex-1" onClick={onNew}>
+        <button
+          type="button"
+          className="min-h-11 flex-1 rounded-xl bg-brand px-3 text-sm font-medium text-white transition-colors hover:bg-brand/90"
+          onClick={onNew}
+        >
           新对话
-        </Button>
+        </button>
         <Popconfirm title="清空全部对话？" onConfirm={onClearAll}>
-          <Button className="min-h-11" danger disabled={sessions.length === 0}>
+          <button
+            type="button"
+            disabled={sessions.length === 0}
+            className="min-h-11 rounded-xl border border-line-soft px-3 text-sm text-red-600 transition-colors hover:bg-elev disabled:opacity-40"
+          >
             清空
-          </Button>
+          </button>
         </Popconfirm>
       </div>
-      {[...groups.entries()].map(([label, items]) => (
-        <div key={label}>
-          <p className="mb-1 text-xs text-muted">{label}</p>
-          <ul className="flex flex-col gap-1">
-            {items.map((item) => (
-              <li key={item.id} className="flex items-center gap-1">
-                <button
-                  type="button"
-                  className={`min-h-11 flex-1 truncate rounded-xl px-3 text-left text-sm ${
-                    item.id === activeId ? "bg-brand/10 text-brand" : "bg-canvas"
-                  }`}
-                  onClick={() => onSelect(item.id)}
-                >
-                  {item.title}
-                </button>
-                <Button size="small" danger type="text" onClick={() => onDelete(item.id)}>
-                  删
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      {sessions.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted">暂无会话</p>
+      ) : (
+        [...groups.entries()].map(([label, items]) => (
+          <div key={label}>
+            <p className="mb-2 px-1 text-xs font-medium text-muted">{label}</p>
+            <ul className="flex flex-col gap-1.5">
+              {items.map((item) => (
+                <li key={item.id} className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    className={`min-h-11 flex-1 truncate rounded-xl px-3 text-left text-sm transition-colors ${
+                      item.id === activeId
+                        ? "bg-brand-muted font-medium text-brand"
+                        : "bg-surface text-ink hover:bg-elev"
+                    }`}
+                    onClick={() => onSelect(item.id)}
+                  >
+                    {item.title}
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs text-muted transition-colors hover:bg-elev hover:text-red-600"
+                    aria-label="删除会话"
+                    onClick={() => onDelete(item.id)}
+                  >
+                    删
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      )}
     </div>
   );
 }

@@ -235,6 +235,88 @@ export async function softDeleteRepliesOfPost(conn: PoolConnection, postId: numb
   );
 }
 
+/** 我的留言 / 收到的回复列表行（App 侧不带作者身份） */
+export type MyPostReplyListRow = {
+  replyId: number;
+  postId: number;
+  postType: "feedback" | "courtyard" | "announcement";
+  postTitle: string;
+  kind: ReplyKind;
+  content: string;
+  publishedAt: Date;
+};
+
+/**
+ * 收到的回复 inbox：当前用户作为帖主，且回复作者不是自己；双方未软删。
+ * 按回复时间倒序分页。
+ */
+export async function listReceivedRepliesForUser(params: {
+  userId: number;
+  offset: number;
+  pageSize: number;
+}): Promise<{ rows: MyPostReplyListRow[]; total: number }> {
+  const pool = getPool();
+  const where = `p.author_user_id = ?
+    AND r.author_user_id <> ?
+    AND r.deleted_at IS NULL AND p.deleted_at IS NULL
+    AND r.kind IN ('admin_reply', 'comment')`;
+  const args = [params.userId, params.userId];
+  const [countRows] = await pool.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS c
+     FROM post_replies r
+     JOIN posts p ON p.id = r.post_id
+     WHERE ${where}`,
+    args,
+  );
+  const [rows] = await pool.query<(MyPostReplyListRow & RowDataPacket)[]>(
+    `SELECT r.id AS replyId, p.id AS postId, p.post_type AS postType, p.title AS postTitle,
+            r.kind AS kind, r.content AS content, r.created_at AS publishedAt
+     FROM post_replies r
+     JOIN posts p ON p.id = r.post_id
+     WHERE ${where}
+     ORDER BY r.created_at DESC, r.id DESC
+     LIMIT ? OFFSET ?`,
+    [...args, params.pageSize, params.offset],
+  );
+  return { rows, total: Number(countRows[0]?.c ?? 0) };
+}
+
+/**
+ * 我发出的留言：当前用户对他人大院帖的 comment；双方未软删。
+ * 按留言时间倒序分页。
+ */
+export async function listSentCommentsForUser(params: {
+  userId: number;
+  offset: number;
+  pageSize: number;
+}): Promise<{ rows: MyPostReplyListRow[]; total: number }> {
+  const pool = getPool();
+  const where = `r.author_user_id = ?
+    AND p.author_user_id <> ?
+    AND r.kind = 'comment'
+    AND p.post_type = 'courtyard'
+    AND r.deleted_at IS NULL AND p.deleted_at IS NULL`;
+  const args = [params.userId, params.userId];
+  const [countRows] = await pool.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS c
+     FROM post_replies r
+     JOIN posts p ON p.id = r.post_id
+     WHERE ${where}`,
+    args,
+  );
+  const [rows] = await pool.query<(MyPostReplyListRow & RowDataPacket)[]>(
+    `SELECT r.id AS replyId, p.id AS postId, p.post_type AS postType, p.title AS postTitle,
+            r.kind AS kind, r.content AS content, r.created_at AS publishedAt
+     FROM post_replies r
+     JOIN posts p ON p.id = r.post_id
+     WHERE ${where}
+     ORDER BY r.created_at DESC, r.id DESC
+     LIMIT ? OFFSET ?`,
+    [...args, params.pageSize, params.offset],
+  );
+  return { rows, total: Number(countRows[0]?.c ?? 0) };
+}
+
 /**
  * 轮询：取当前用户作为帖子作者的「未通知」回复，同事务内置位 notified_author=1。
  * 必须在事务内调用。单次最多 50 条；超过则下次轮询继续。

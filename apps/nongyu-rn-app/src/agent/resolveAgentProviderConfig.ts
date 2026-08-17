@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/config/env";
+import { resolvePreferredProviderSource } from "@/modules/settings/store/agentProviderSourcePrefsStore";
 import { loadAgentConfig } from "@/storage/agentConfig";
 import { useSessionStore } from "@/stores/session";
 
@@ -12,12 +13,24 @@ export type AgentProviderConfig = {
   source: "user" | "platform";
 };
 
+function platformConfig(token: string): AgentProviderConfig {
+  return {
+    baseURL: `${API_BASE_URL}/api/app/llm/v1`,
+    apiKey: token,
+    model: PLATFORM_LLM_MODEL,
+    source: "platform",
+  };
+}
+
 /**
- * 解析 Agent 模型配置：自有 Key 优先；否则在有 App JWT 时走平台代理。
+ * 解析 Agent 模型配置：按设备级通道偏好；偏好自有但无凭据时回退平台代理。
  */
 export async function resolveAgentProviderConfig(): Promise<AgentProviderConfig | null> {
   const user = await loadAgentConfig();
-  if (user) {
+  const pref = resolvePreferredProviderSource(!!user);
+  const token = useSessionStore.getState().token?.trim();
+
+  if (pref === "user" && user) {
     return {
       baseURL: user.baseURL,
       apiKey: user.apiKey,
@@ -26,13 +39,7 @@ export async function resolveAgentProviderConfig(): Promise<AgentProviderConfig 
     };
   }
 
-  const token = useSessionStore.getState().token?.trim();
+  // pref === "user" 但无凭据，或 pref === "platform"
   if (!token) return null;
-
-  return {
-    baseURL: `${API_BASE_URL}/api/app/llm/v1`,
-    apiKey: token,
-    model: PLATFORM_LLM_MODEL,
-    source: "platform",
-  };
+  return platformConfig(token);
 }

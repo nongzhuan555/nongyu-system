@@ -1,7 +1,8 @@
-import { Button, Descriptions, Drawer, Grid, Modal, Skeleton, Space, Tag, message } from "antd";
+import { Button, Descriptions, Drawer, Modal, Skeleton, Space, Tag, message } from "antd";
 import { useEffect, useState } from "react";
 import { AdminApiError, deleteAdminPost, fetchAdminPost } from "../../lib/adminApi";
 import { displayText, formatAdminDateTime, formatCoverageRate } from "../../lib/format";
+import { useDrawerWidth } from "../../lib/responsive";
 import type { AdminPostItem } from "../../types/posts";
 import { AdminCommentList } from "./AdminCommentList";
 import { AdminReplyPanel } from "./AdminReplyPanel";
@@ -25,8 +26,7 @@ export function PostDetailDrawer({
   onEdit,
   onReplyChanged,
 }: PostDetailDrawerProps) {
-  const screens = Grid.useBreakpoint();
-  const isLg = screens.lg ?? true;
+  const drawerWidth = useDrawerWidth(480);
   const [detail, setDetail] = useState<AdminPostItem | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -89,13 +89,7 @@ export function PostDetailDrawer({
   }
 
   return (
-    <Drawer
-      title="内容详情"
-      open={open}
-      onClose={onClose}
-      width={isLg ? 480 : "100%"}
-      destroyOnClose
-    >
+    <Drawer title="内容详情" open={open} onClose={onClose} width={drawerWidth} destroyOnClose>
       {current ? (
         <div className="space-y-6">
           <Descriptions column={1} size="small">
@@ -126,7 +120,7 @@ export function PostDetailDrawer({
 
           <div>
             <p className="mb-2 text-sm font-medium text-ink">正文</p>
-            <div className="whitespace-pre-wrap rounded-2xl bg-canvas p-4 text-sm text-ink">
+            <div className="whitespace-pre-wrap rounded-xl bg-elev p-4 text-sm text-ink">
               {current.content}
             </div>
           </div>

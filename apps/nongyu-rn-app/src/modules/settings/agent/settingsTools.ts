@@ -5,8 +5,11 @@ import { z } from "zod";
 import { tool } from "nongyu-agent-sdk";
 import { useAppLaunchPrefsStore } from "@/modules/settings/store/appLaunchPrefsStore";
 import { useAppWebPrefsStore } from "@/modules/settings/store/appWebPrefsStore";
+import { useRainPrefsStore } from "@/modules/settings/store/rainPrefsStore";
 import { useCourseUiStore } from "@/modules/course/store/courseUiStore";
 import { useThemePrefsStore } from "@/theme/themePrefsStore";
+import { useCampusWeatherStore } from "@/modules/weather/campusWeatherStore";
+import { useSessionStore } from "@/stores/session";
 import { loadAgentConfig } from "@/storage/agentConfig";
 
 const brandSchema = z.enum(["green", "sakura"]).describe("品牌色：green=川农新绿，sakura=樱花浅粉");
@@ -47,6 +50,7 @@ function formatLocalDateOnly(ms: number): string {
 type SettingsSnapshot = {
   theme: { brand: "green" | "sakura"; appearance: "light" | "dark" | "system" };
   web: { openWebInApp: boolean };
+  rain: { enabled: boolean };
   launch: { tab: "home" | "course" };
   course: {
     cardSize: "sm" | "md" | "lg";
@@ -60,6 +64,7 @@ type SettingsSnapshot = {
 async function buildSnapshot(): Promise<SettingsSnapshot> {
   const theme = useThemePrefsStore.getState();
   const web = useAppWebPrefsStore.getState();
+  const rain = useRainPrefsStore.getState();
   const launch = useAppLaunchPrefsStore.getState();
   const course = useCourseUiStore.getState();
   const agentCfg = await loadAgentConfig();
@@ -71,6 +76,9 @@ async function buildSnapshot(): Promise<SettingsSnapshot> {
     },
     web: {
       openWebInApp: web.openWebInApp,
+    },
+    rain: {
+      enabled: rain.rainEnabled,
     },
     launch: {
       tab: launch.launchTab,
@@ -91,7 +99,7 @@ async function buildSnapshot(): Promise<SettingsSnapshot> {
 export const settingsGetTool = tool({
   name: "settings_get",
   description:
-    "查询当前 App 系统设置快照：主题（品牌色/外观）、网页打开方式、启动页（首页或课表）、课表偏好（卡片与字号档、开学日、今日列高亮）、以及农屿 Agent 是否已配置模型。不包含课表背景图，也不返回 API Key。",
+    "查询当前 App 系统设置快照：主题（品牌色/外观）、网页打开方式、下雨特效开关、启动页（首页或课表）、课表偏好（卡片与字号档、开学日、今日列高亮）、以及农屿 Agent 是否已配置模型。不包含课表背景图，也不返回 API Key。",
   inputSchema: z.object({}),
   async execute() {
     const snapshot = await buildSnapshot();
@@ -103,6 +111,7 @@ const updateInputSchema = z.object({
   themeBrand: brandSchema.optional(),
   themeAppearance: appearanceSchema.optional(),
   openWebInApp: z.boolean().optional().describe("true=应用内浏览器打开链接，false=系统浏览器"),
+  rainEnabled: z.boolean().optional().describe("true=允许按校区天气显示下雨特效，false=关闭雨效"),
   launchTab: launchTabSchema.optional(),
   courseCardSize: sizeSchema.optional(),
   courseFontSize: sizeSchema.optional(),
@@ -142,6 +151,9 @@ export function formatSettingsUpdateConfirmMessage(input: unknown): string {
   if (typeof args.openWebInApp === "boolean") {
     lines.push(`· 网页打开 → ${args.openWebInApp ? "应用内" : "系统浏览器"}`);
   }
+  if (typeof args.rainEnabled === "boolean") {
+    lines.push(`· 下雨特效 → ${args.rainEnabled ? "开" : "关"}`);
+  }
   if (typeof args.launchTab === "string") {
     lines.push(`· 启动页 → ${LAUNCH_LABEL[args.launchTab] ?? args.launchTab}`);
   }
@@ -169,7 +181,7 @@ export function formatSettingsUpdateConfirmMessage(input: unknown): string {
 export const settingsUpdateTool = tool({
   name: "settings_update",
   description:
-    "更新 App 系统设置（可改多项，至少一项）。支持：themeBrand、themeAppearance、openWebInApp、launchTab（home|course）、courseCardSize、courseFontSize、courseSemesterStart（YYYY-MM-DD 或 null）、courseHighlightToday。禁止改课表背景图与 Agent API Key/Base URL/模型——若用户要改凭据，请口头引导去「设置 → 农屿 Agent」。执行前会弹出确认框，用户取消则不修改。",
+    "更新 App 系统设置（可改多项，至少一项）。支持：themeBrand、themeAppearance、openWebInApp、rainEnabled、launchTab（home|course）、courseCardSize、courseFontSize、courseSemesterStart（YYYY-MM-DD 或 null）、courseHighlightToday。禁止改课表背景图与 Agent API Key/Base URL/模型——若用户要改凭据，请口头引导去「设置 → 农屿 Agent」。执行前会弹出确认框，用户取消则不修改。",
   inputSchema: updateInputSchema,
   needsApproval: true,
   async execute(args) {
@@ -177,6 +189,7 @@ export const settingsUpdateTool = tool({
       args.themeBrand !== undefined ||
       args.themeAppearance !== undefined ||
       args.openWebInApp !== undefined ||
+      args.rainEnabled !== undefined ||
       args.launchTab !== undefined ||
       args.courseCardSize !== undefined ||
       args.courseFontSize !== undefined ||
@@ -201,6 +214,15 @@ export const settingsUpdateTool = tool({
       if (args.openWebInApp !== undefined) {
         useAppWebPrefsStore.getState().setOpenWebInApp(args.openWebInApp);
         updated.push("openWebInApp");
+      }
+      if (args.rainEnabled !== undefined) {
+        useRainPrefsStore.getState().setRainEnabled(args.rainEnabled);
+        updated.push("rainEnabled");
+        // 与设置页一致：切换开关立即刷新校区天气
+        const profile = useSessionStore.getState().profile;
+        if (profile) {
+          void useCampusWeatherStore.getState().refreshFromProfile(profile);
+        }
       }
       if (args.launchTab !== undefined) {
         useAppLaunchPrefsStore.getState().setLaunchTab(args.launchTab);

@@ -391,6 +391,110 @@ describe("postReplies", () => {
     expect(cyDetail.body.data.comments[0].authorStudentNo).toBe("202400022");
   });
 
+  it("GET received/sent lists: filters, soft-delete, pagination, no author fields", async () => {
+    const author = await registerAppUser({ studentNo: "202400024", deviceId: "d24" });
+    const peer = await registerAppUser({ studentNo: "202400025", deviceId: "d25" });
+    // 管理员须为另一用户，否则 admin_reply.author_user_id === 帖主会被 received 过滤掉
+    await registerAppUser({ studentNo: "202400026", deviceId: "d26" });
+    await promoteAdmin("202400026", "AdminPass1");
+    const adminToken = await adminLogin("202400026", "AdminPass1");
+
+    const fbId = await createPost(author.token, "feedback", "我的反馈");
+    const myCyId = await createPost(author.token, "courtyard", "我的大院");
+    const peerCyId = await createPost(peer.token, "courtyard", "他人大院");
+
+    await api()
+      .post(`/api/admin/posts/${fbId}/reply`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ content: "管理员回复" })
+      .expect(200);
+    const peerComment = await api()
+      .post(`/api/app/posts/${myCyId}/comments`)
+      .set("Authorization", `Bearer ${peer.token}`)
+      .send({ content: "他人留言" })
+      .expect(200);
+    // 自己在自己帖下留言：不进 received，也不进 sent
+    await api()
+      .post(`/api/app/posts/${myCyId}/comments`)
+      .set("Authorization", `Bearer ${author.token}`)
+      .send({ content: "自留言" })
+      .expect(200);
+    // 对他人帖留言：进 sent
+    const sentCreated = await api()
+      .post(`/api/app/posts/${peerCyId}/comments`)
+      .set("Authorization", `Bearer ${author.token}`)
+      .send({ content: "我对他人的留言" })
+      .expect(200);
+
+    const received = await api()
+      .get("/api/app/users/me/post-replies/received")
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+    expect(received.body.data.total).toBe(2);
+    expect(received.body.data.list).toHaveLength(2);
+    const receivedKinds = received.body.data.list.map((r: { kind: string }) => r.kind).sort();
+    expect(receivedKinds).toEqual(["admin_reply", "comment"]);
+    expect(received.body.data.list[0]).not.toHaveProperty("authorName");
+    expect(received.body.data.list[0]).toHaveProperty("publishedAt");
+    expect(received.body.data.list.every((r: { content: string }) => r.content !== "自留言")).toBe(
+      true,
+    );
+
+    // 分页：在 total=2 时 pageSize=1 应拆页
+    const page1 = await api()
+      .get("/api/app/users/me/post-replies/received?page=1&pageSize=1")
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+    expect(page1.body.data.list).toHaveLength(1);
+    expect(page1.body.data.pageSize).toBe(1);
+    expect(page1.body.data.total).toBe(2);
+    const page2 = await api()
+      .get("/api/app/users/me/post-replies/received?page=2&pageSize=1")
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+    expect(page2.body.data.list).toHaveLength(1);
+    expect(page2.body.data.list[0].replyId).not.toBe(page1.body.data.list[0].replyId);
+
+    const sent = await api()
+      .get("/api/app/users/me/post-replies/sent")
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+    expect(sent.body.data.total).toBe(1);
+    expect(sent.body.data.list).toHaveLength(1);
+    expect(sent.body.data.list[0].content).toBe("我对他人的留言");
+    expect(sent.body.data.list[0].kind).toBe("comment");
+    expect(sent.body.data.list[0].postId).toBe(peerCyId);
+    expect(sent.body.data.list[0].replyId).toBe(sentCreated.body.data.id);
+
+    // 软删他人留言 → received 少一条
+    await api()
+      .delete(`/api/admin/posts/${myCyId}/comments/${peerComment.body.data.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+    const receivedAfter = await api()
+      .get("/api/app/users/me/post-replies/received")
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+    expect(receivedAfter.body.data.total).toBe(1);
+    expect(receivedAfter.body.data.list[0].kind).toBe("admin_reply");
+
+    // 软删帖 → 其下回复从 sent 消失
+    await api()
+      .delete(`/api/app/posts/${peerCyId}`)
+      .set("Authorization", `Bearer ${peer.token}`)
+      .expect(200);
+    const sentAfter = await api()
+      .get("/api/app/users/me/post-replies/sent")
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+    expect(sentAfter.body.data.total).toBe(0);
+  });
+
+  it("GET received/sent unauthenticated returns 401", async () => {
+    await api().get("/api/app/users/me/post-replies/received").expect(401);
+    await api().get("/api/app/users/me/post-replies/sent").expect(401);
+  });
+
   it("PATCH admin reply does not reset notified_author", async () => {
     const author = await registerAppUser({ studentNo: "202400023", deviceId: "d23" });
     await promoteAdmin("202400023", "AdminPass1");

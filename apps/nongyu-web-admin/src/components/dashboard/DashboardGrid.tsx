@@ -1,4 +1,4 @@
-import { Select } from "antd";
+import { Grid, Select } from "antd";
 import { Responsive, WidthProvider, type Layout, type Layouts } from "react-grid-layout";
 import type {
   DashboardOverview,
@@ -81,6 +81,9 @@ export function DashboardGrid({
   onGrowthRangeChange: (range: GrowthRange) => void;
   onCrashPageChange: (page: number) => void;
 }) {
+  const screens = Grid.useBreakpoint();
+  const canEditLayout = screens.md ?? false;
+
   return (
     <ResponsiveGridLayout
       className="dashboard-grid"
@@ -88,10 +91,10 @@ export function DashboardGrid({
       breakpoints={GRID_BREAKPOINTS}
       cols={GRID_COLS}
       rowHeight={GRID_ROW_HEIGHT}
-      margin={[16, 16]}
+      margin={canEditLayout ? [16, 16] : [10, 10]}
       compactType="vertical"
-      isDraggable
-      isResizable
+      isDraggable={canEditLayout}
+      isResizable={canEditLayout}
       draggableHandle=".dashboard-drag-handle"
       draggableCancel=".dashboard-no-drag,input,button,textarea,.ant-select,.ant-pagination"
       onLayoutChange={(_current: Layout[], all: Layouts) => onLayoutsChange(all)}

@@ -1,10 +1,11 @@
 import { useThemeTokens } from "@/theme/ThemeProvider";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
+import { takePendingAdminHandoffTicket } from "@/modules/mine/data/pendingAdminHandoff";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
 function firstParam(value: string | string[] | undefined): string {
@@ -13,7 +14,15 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 /**
+ * 将 handoff ticket 注入为 window 字段（文档加载前执行）
+ */
+function buildHandoffInjectScript(ticket: string): string {
+  return `window.__NONGYU_ADMIN_HANDOFF_TICKET__=${JSON.stringify(ticket)};true;`;
+}
+
+/**
  * 应用内网页：顶栏 + WebView（「网页跳转 · 应用内打开」）
+ * 管理台 handoff：从短时槽取 ticket，经 injectedJavaScriptBeforeContentLoaded 注入（永不进 URL）
  */
 export function InAppWebViewerScreen() {
   const styles = useStyles();
@@ -21,7 +30,10 @@ export function InAppWebViewerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ url?: string | string[]; title?: string | string[] }>();
-  const [loading, setLoading] = useState(true);
+  /** 仅首屏文档加载显示遮罩，避免 SPA 二次导航把白底盖死 */
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const handoffTicketRef = useRef<string | null>(null);
 
   const url = useMemo(() => {
     const raw = firstParam(params.url);
@@ -33,6 +45,10 @@ export function InAppWebViewerScreen() {
     }
   }, [params.url]);
 
+  if (handoffTicketRef.current === null && url) {
+    handoffTicketRef.current = takePendingAdminHandoffTicket(url);
+  }
+
   const title = useMemo(() => {
     const raw = firstParam(params.title).trim();
     if (!raw) return "网页";
@@ -42,6 +58,10 @@ export function InAppWebViewerScreen() {
       return raw;
     }
   }, [params.title]);
+
+  const injectedBeforeContentLoaded = handoffTicketRef.current
+    ? buildHandoffInjectScript(handoffTicketRef.current)
+    : undefined;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -67,19 +87,33 @@ export function InAppWebViewerScreen() {
         </View>
       ) : (
         <View style={styles.webWrap}>
-          {loading ? (
+          {initialLoading ? (
             <View style={styles.loading} pointerEvents="none">
               <ActivityIndicator color={t.color.brand} />
+            </View>
+          ) : null}
+          {loadError && !initialLoading ? (
+            <View style={styles.errorBanner} pointerEvents="none">
+              <Text style={styles.errorBannerText}>{loadError}</Text>
             </View>
           ) : null}
           <WebView
             source={{ uri: url }}
             style={styles.web}
-            onLoadStart={() => setLoading(true)}
-            onLoadEnd={() => setLoading(false)}
-            onError={() => setLoading(false)}
-            startInLoadingState
+            onLoadEnd={() => setInitialLoading(false)}
+            onError={() => {
+              setInitialLoading(false);
+              setLoadError("页面加载失败，请返回重试");
+            }}
+            onHttpError={() => {
+              setInitialLoading(false);
+              setLoadError("页面响应异常，请返回重试");
+            }}
+            startInLoadingState={false}
             allowsBackForwardNavigationGestures
+            domStorageEnabled
+            javaScriptEnabled
+            injectedJavaScriptBeforeContentLoaded={injectedBeforeContentLoaded}
           />
         </View>
       )}
@@ -140,5 +174,22 @@ const useStyles = createThemedStyles((t) => ({
   errorText: {
     fontSize: t.fontSize.sm,
     color: t.color.textSecondary,
+  },
+  errorBanner: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 2,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: t.color.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: t.color.border,
+  },
+  errorBannerText: {
+    fontSize: t.fontSize.sm,
+    color: t.color.textSecondary,
+    textAlign: "center",
   },
 }));

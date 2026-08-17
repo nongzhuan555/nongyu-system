@@ -1,30 +1,26 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { SkeletonBox } from "@/components/skeleton/SkeletonBox";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 import { useThemeTokens } from "@/theme/ThemeProvider";
 import { useSessionStore } from "@/stores/session";
+import { useChatSuggestions } from "@/agent-ui/hooks/useChatSuggestions";
 
 /** 与底栏 AI 入口按钮同一资源 */
 const NONGYU_AI_AVATAR = require("../../assets/nongyuai.jpg");
-
-const SUGGESTIONS = [
-  "查一下我的成绩",
-  "本周有哪些二课活动",
-  "看看我的课表",
-  "帮我改成深色主题",
-] as const;
 
 type ChatEmptyStateProps = {
   onSuggestion: (text: string) => void;
 };
 
 /**
- * 新对话空态：居中品牌问候 + 快捷建议（对齐主流大模型聊天首页）
+ * 新对话空态：居中品牌问候 + 快捷建议（运营可配，失败本地兜底）
  */
 export function ChatEmptyState({ onSuggestion }: ChatEmptyStateProps) {
   const styles = useStyles();
   const t = useThemeTokens();
   const userName = useSessionStore((s) => s.profile?.name?.trim()) || "同学";
+  const { loading, suggestions } = useChatSuggestions();
 
   return (
     <View style={styles.root}>
@@ -42,18 +38,27 @@ export function ChatEmptyState({ onSuggestion }: ChatEmptyStateProps) {
       <Text style={styles.subtitle}>农屿内置的智能校园助手</Text>
 
       <View style={styles.chips}>
-        {SUGGESTIONS.map((text) => (
-          <Pressable
-            key={text}
-            accessibilityRole="button"
-            accessibilityLabel={text}
-            style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
-            onPress={() => onSuggestion(text)}
-          >
-            <Text style={styles.chipText}>{text}</Text>
-            <Ionicons name="arrow-up-outline" size={14} color={t.color.textSecondary} />
-          </Pressable>
-        ))}
+        {loading
+          ? [0, 1, 2, 3].map((key) => (
+              <SkeletonBox
+                key={key}
+                height={48}
+                borderRadius={t.radius.lg}
+                style={styles.chipSkeleton}
+              />
+            ))
+          : suggestions.map((item) => (
+              <Pressable
+                key={item.key}
+                accessibilityRole="button"
+                accessibilityLabel={item.text}
+                style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+                onPress={() => onSuggestion(item.text)}
+              >
+                <Text style={styles.chipText}>{item.text}</Text>
+                <Ionicons name="arrow-up-outline" size={14} color={t.color.textSecondary} />
+              </Pressable>
+            ))}
       </View>
     </View>
   );
@@ -99,6 +104,9 @@ const useStyles = createThemedStyles((t) => ({
     gap: t.space.sm,
     maxWidth: 360,
     width: "100%",
+  },
+  chipSkeleton: {
+    alignSelf: "stretch",
   },
   chip: {
     flexDirection: "row",

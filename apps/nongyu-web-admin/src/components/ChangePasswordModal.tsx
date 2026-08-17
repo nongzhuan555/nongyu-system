@@ -2,6 +2,7 @@ import { KeyOutlined } from "@ant-design/icons";
 import { Alert, Form, Input, Modal, message } from "antd";
 import { useState } from "react";
 import { AdminApiError, changeOwnAdminPassword } from "../lib/adminApi";
+import { useModalWidth } from "../lib/responsive";
 
 type PasswordForm = {
   adminPassword: string;
@@ -19,6 +20,7 @@ type ChangePasswordModalProps = {
 export function ChangePasswordModal({ open, onClose }: ChangePasswordModalProps) {
   const [form] = Form.useForm<PasswordForm>();
   const [submitting, setSubmitting] = useState(false);
+  const modalWidth = useModalWidth(480);
 
   async function handleOk() {
     const values = await form.validateFields();
@@ -41,6 +43,8 @@ export function ChangePasswordModal({ open, onClose }: ChangePasswordModalProps)
     <Modal
       title="修改密码"
       open={open}
+      width={modalWidth}
+      centered
       onCancel={() => {
         form.resetFields();
         onClose();

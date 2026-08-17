@@ -148,16 +148,19 @@ function resolveFetchBody(init?: RequestInit): unknown {
 }
 
 /**
- * clone 响应后读取 body，避免消耗调用方的流
+ * clone 响应后读取 body，避免消耗调用方的流。
+ * 非 JSON 一律用 arrayBuffer，避免 GBK HTML 被 text() 按 UTF-8 解成乱码日志，
+ * 也降低部分 RN 实现上 clone/text 与调用方 arrayBuffer 争用 body 的风险。
  */
 async function readResponseBody(response: Response): Promise<unknown> {
   const contentType = response.headers.get("content-type") ?? "";
   try {
     const cloned = response.clone();
+    const bytes = await cloned.arrayBuffer();
     if (contentType.includes("application/json")) {
-      return await cloned.json();
+      return JSON.parse(new TextDecoder("utf-8").decode(bytes));
     }
-    return await cloned.text();
+    return `[body ${bytes.byteLength} bytes; type=${contentType || "unknown"}]`;
   } catch {
     return `[unreadable body, type=${contentType || "unknown"}]`;
   }

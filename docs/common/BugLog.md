@@ -1,7 +1,90 @@
-# BugLog
+---
 
-> 每次 Bug 修复必须在此追加简明记录（根因 + 修复方法），便于追溯与复用。  
-> 格式：日期 / 范围 / 现象 / 根因 / 修复。
+## 2026-08-17 · nongyu-rn-app / web-admin · 管理台 handoff 外链可盗用 + 内置 WebView 白屏
+
+- **现象**：应用内打开管理台先闪登录框再白屏；外置浏览器正常。且 ticket 在 URL 中时，外链理论上可被他人在 TTL 内免密进入管理台。
+- **根因**：① ticket 放在登录 URL query，可分享；② 内置 WebView 在 SPA 导航时用全屏白底 loading，`onLoadStart` 再次触发后易盖死且无错误提示。
+- **修复**：ticket 改为仅 App 内存短时槽 + WebView `injectedJavaScriptBeforeContentLoaded` 注入；管理台强制 `forceInApp`；Web 仅认注入 ticket、忽略 URL ticket；WebView 仅首屏遮罩并展示加载失败文案。
+
+---
+
+## 2026-08-17 · nongyu-agent-sdk · web_search 国内不稳定
+
+- **现象**：自有 Key 下 `web_search` 经常超时/失败，体感不稳定。
+- **根因**：工具抓取 `html.duckduckgo.com`；国内网络对 DDG 普遍不可达（连接超时），失败即 throw，无备源。
+- **修复**：主源改为 Bing 中国站 HTML，失败或 0 条时降级搜狗；双失败返回结构化空结果（含 `error`），不再依赖 DDG。
+
+---
+
+## 2026-08-17 · nongyu-agent-sdk · web_detail 教务 GBK 页乱码/失败
+
+- **现象**：抓取 `jiaowu.sicau.edu.cn` 通知详情（`charset=gb2312`）乱码或工具两次失败；HTTP 日志 title 亦为乱码。
+- **根因**：① SDK 未显式依赖/`import` `buffer`，RN 上 `iconv-lite` 解 GBK 不可靠；② Dev HTTP logger 对 HTML 用 `text()` 按 UTF-8 解码，日志误导且可能与调用方 `arrayBuffer()` 争用 body。
+- **修复**：`WebDetailTool` 对齐教务工具 `import { Buffer } from "buffer"`，meta 声明 gb* 时优先 GBK；去掉不可靠的 `encodingExists` 预检；logger 非 JSON 改为记 byteLength；SDK 增加 `buffer` 依赖。
+
+---
+
+## 2026-08-17 · nongyu-rn-app · 下雨特效天气改为前台 5 分钟刷新
+
+- **现象**：原策略进程内只拉一次天气，无法跟随天气变化；需求改为进 App、前台定时、拨开关都要拉。
+- **根因**：产品策略变更。
+- **修复**：去掉 `fetchedOnce` 阻断；`refreshFromProfile` + inFlight 去重；Bootstrap 前台立即拉并每 5 分钟定时、后台停表；设置开关切换时触发刷新。
+
+---
+
+## 2026-08-17 · nongyu-rn-app · 下雨特效改为学院校区天气驱动（启动拉一次）
+
+- **现象**：原预览版开关即下雨，缺少真实天气；用户要求不定位、按学院映射校区。
+- **根因**：产品策略调整，非缺陷。
+- **修复**：学院/校区 → 雅安|成都|都江堰坐标；Open-Meteo 进程内仅启动拉取一次；`rainEnabled && isRaining` 才显示雨效。
+
+---
+
+## 2026-08-17 · nongyu-rn-app · 下雨特效预览崩溃（undefined is not a function）
+
+- **现象**：开启雨效后 App 崩溃，报 `TypeError: undefined is not a function`（UI 线程）。
+- **根因**：`RainDrop` 在 worklet 回调里递归调用闭包 `cycle()`；Reanimated/Worklets 无法把该递归函数正确带到 UI 运行时，调用时为 `undefined`（栈：`RainOverlay.tsx:122`）。
+- **修复**：取消 UI 线程递归；着地后 `runOnJS`，用 `setTimeout` 在 JS 侧重启下落；保留雨丝数量与涟漪对象池优化。
+
+---
+
+## 2026-08-17 · nongyu-rn-app · 下雨特效开启后卡顿
+
+- **现象**：开启全局雨效后滑动/切换页面体感卡顿。
+- **根因**：32 路独立动画 + 每次着地 `runOnJS`/`setState` 增删涟漪节点，JS 线程被频繁打断并重渲染叠层。
+- **修复**：雨丝降至 16；下落循环改 UI 线程 `withDelay` 递归；涟漪改为 5 槽对象池（无 setState）；着地仅约 32% 触发涟漪。
+
+---
+
+## 2026-08-17 · nongyu-rn-app · 下雨特效 Worklets 疯狂告警（modify key `current`）
+
+- **现象**：开启全局雨效后持续刷屏 `[Worklets] Tried to modify key current of an object which has been already passed to a worklet`。
+- **根因**：`RainDrop` 的 `withTiming` 完成回调在 UI 线程捕获了 `activeRef`，随后 JS 侧写 `activeRef.current` 触发「已序列化对象不可再改 current」。
+- **修复**：完成回调仅判断 `finished` 后 `runOnJS`；着地、重启循环全部在 JS 线程用 `alive` 标志控制，不再把 React ref 传入 worklet。
+
+---
+
+## 2026-08-17 · nongyu-rn-app · 大院详情留言输入条未跟随键盘 / 多行顶布局
+
+- **现象**：帖子详情底部留言框在键盘弹出后未贴齐键盘上沿（尤其 Android）；多行输入时布局跳动。
+- **根因**：`KeyboardAvoidingView` 仅 iOS 设 `behavior`，Android 无顶起；`TextInput` 使用 `flex:1` 易把外层撑乱。
+- **修复**：`useComposerKeyboardInset` 按键盘高度垫高输入条；Android `softwareKeyboardLayoutMode: pan`；输入框 `maxHeight` + 内部滚动、去掉 flex 撑高；UI 改为 surface 底栏。
+
+---
+
+## 2026-08-17 · nongyu-rn-app · 「留言与回复」顶栏显示路由路径
+
+- **现象**：进入「我的 → 留言与回复」时，系统导航栏左上角文案为路由地址（如 `mine/replies`），与自绘顶栏叠在一起。
+- **根因**：`app/_layout.tsx` 已注册 `mine/posts` 等栈屏并设 `headerShown: false`，但漏注册 `mine/replies`；Expo Router 回退为默认 Stack header，title 取路由名。
+- **修复**：补注册 `<Stack.Screen name="mine/replies" options={{ title: "留言与回复", headerShown: false }} />`；页面改用 `SettingsPageShell` 统一顶栏与背景。
+
+---
+
+## 2026-08-17 · nongyu-rn-app · dev-client 无法预览（Require cycle + ExpoLinearGradient）
+
+- **现象**：Metro 报 `chatRunner` / `appClient→agent` Require cycle；`Unable to get the view config for default view from module &s ExpoLinearGradient`；dev-client 内 App 无法正常预览。
+- **根因**：① `AgentChatRuntimeHost` 从 `@/agent/chatRunner` barrel 自引用，启动时 `useAgentChatRunnerBridge` / `installAgentChatBackgroundKeepAlive` 可能未初始化。② `handleAuthInvalid` 静态依赖 `agent`，经 tools 回到 `appClient` 形成环。③ 当前 native 包未注册 `ExpoLinearGradient` view config（`&s` 为 expo-modules-core 日志格式串笔误）；渐变首屏易红屏。
+- **修复**：Host 改为相对路径导入并调整 barrel 导出顺序；`invalidateNongyuAgent` 改为动态 import；`AppLinearGradient` 在 `expo.getViewConfig` 缺失时纯色兜底。完整渐变需重建含 `expo-linear-gradient` 的 dev-client。
 
 ---
 

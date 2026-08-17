@@ -6,13 +6,17 @@ html,
 body,
 #root {
   min-height: 100%;
+  min-height: 100dvh;
 }
 
 body {
   margin: 0;
-  background: #f8fafc;
-  color: #1e293b;
-  font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: #fafbfa;
+  color: #1f2937;
+  font-family: "Source Sans 3", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -25,13 +29,66 @@ body {
   }
 }
 
+/* 触控设备：控件至少 44px */
+@media (pointer: coarse) {
+  .ant-btn:not(.ant-btn-sm):not(.ant-btn-link) {
+    min-height: 44px;
+  }
+
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-picker {
+    min-height: 44px !important;
+  }
+
+  .ant-menu-item {
+    min-height: 44px !important;
+    line-height: 44px !important;
+  }
+}
+
+/* 侧栏选中：浅绿底 + 左侧品牌竖条（签名元素） */
+.admin-side-menu.ant-menu-inline {
+  border-inline-end: none !important;
+  background: transparent;
+}
+
+.admin-side-menu .ant-menu-item {
+  width: calc(100% - 16px) !important;
+  margin-inline: 8px !important;
+  padding-inline: 12px !important;
+}
+
+.admin-side-menu .ant-menu-item-selected {
+  position: relative;
+  font-weight: 600;
+}
+
+.admin-side-menu .ant-menu-item-selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: #0a7c59;
+}
+
+.admin-side-menu.ant-menu-inline-collapsed .ant-menu-item {
+  width: calc(100% - 8px) !important;
+  margin-inline: 4px !important;
+  padding-inline: 0 !important;
+}
+
 .dashboard-grid .react-grid-item {
   transition: none;
 }
 
 .dashboard-grid .react-grid-item.react-grid-placeholder {
-  background: rgb(16 185 129 / 0.18);
-  border-radius: 1.5rem;
+  background: rgb(10 124 89 / 0.14);
+  border-radius: 16px;
   opacity: 1;
 }
 
@@ -48,4 +105,11 @@ body {
 .dashboard-grid .react-resizable-handle-se {
   right: 8px;
   bottom: 8px;
+}
+
+/* 窄屏大屏：隐藏缩放手柄，避免误触 */
+@media (max-width: 767px) {
+  .dashboard-grid .react-resizable-handle {
+    display: none !important;
+  }
 }

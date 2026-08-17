@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
 import { AppToastHost } from "@/components/ui/toast";
 import { AppConfirmHost } from "@/components/ui/confirm";
+import { RainOverlayHost } from "@/components/effects/RainOverlayHost";
 import { PushyUpdateProvider } from "@/modules/update";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 
@@ -24,7 +25,7 @@ const SheetProvider = BottomSheetModalProvider as ComponentType<{
 }>;
 
 /**
- * 全局 Provider 栈：Pushy 热更、手势、安全区、主题、React Query、BottomSheet、Toast、确认框
+ * 全局 Provider 栈：Pushy 热更、手势、安全区、主题、React Query、BottomSheet、雨效、Toast、确认框
  */
 export function AppProviders({ children }: AppProvidersProps) {
   const [queryClient] = useState(
@@ -47,6 +48,7 @@ export function AppProviders({ children }: AppProvidersProps) {
             <QueryClientProvider client={queryClient}>
               <SheetProvider>
                 {children}
+                <RainOverlayHost />
                 <AppToastHost />
                 <AppConfirmHost />
               </SheetProvider>

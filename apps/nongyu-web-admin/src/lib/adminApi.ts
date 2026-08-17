@@ -38,6 +38,12 @@ import type {
   CreateHomeGreetingBody,
   PatchHomeGreetingBody,
 } from "../types/homeGreetings";
+import type {
+  AdminAgentChatSuggestionItem,
+  AdminAgentChatSuggestionListQuery,
+  CreateAgentChatSuggestionBody,
+  PatchAgentChatSuggestionBody,
+} from "../types/agentChatSuggestions";
 import {
   ADMIN_HANDOFF_REDEEM_PATH,
   ADMIN_LOGIN_PATH,
@@ -58,6 +64,7 @@ import {
   ADMIN_TRACK_TREND_PATH,
   ADMIN_LLM_KEYS_PATH,
   ADMIN_HOME_GREETINGS_PATH,
+  ADMIN_AGENT_CHAT_SUGGESTIONS_PATH,
   AUTH_ERROR_CODES,
 } from "./constants";
 import { readSession } from "./storage";
@@ -436,4 +443,39 @@ export async function patchAdminHomeGreeting(
 
 export async function deleteAdminHomeGreeting(id: number): Promise<void> {
   await adminApi.delete<ApiEnvelope<null>>(`${ADMIN_HOME_GREETINGS_PATH}/${id}`);
+}
+
+export async function listAdminAgentChatSuggestions(
+  query: AdminAgentChatSuggestionListQuery,
+): Promise<PageResult<AdminAgentChatSuggestionItem>> {
+  const response = await adminApi.get<ApiEnvelope<PageResult<AdminAgentChatSuggestionItem>>>(
+    ADMIN_AGENT_CHAT_SUGGESTIONS_PATH,
+    { params: query },
+  );
+  return unwrapData(response.data);
+}
+
+export async function createAdminAgentChatSuggestion(
+  body: CreateAgentChatSuggestionBody,
+): Promise<{ id: number }> {
+  const response = await adminApi.post<ApiEnvelope<{ id: number }>>(
+    ADMIN_AGENT_CHAT_SUGGESTIONS_PATH,
+    body,
+  );
+  return unwrapData(response.data);
+}
+
+export async function patchAdminAgentChatSuggestion(
+  id: number,
+  body: PatchAgentChatSuggestionBody,
+): Promise<{ id: number }> {
+  const response = await adminApi.patch<ApiEnvelope<{ id: number }>>(
+    `${ADMIN_AGENT_CHAT_SUGGESTIONS_PATH}/${id}`,
+    body,
+  );
+  return unwrapData(response.data);
+}
+
+export async function deleteAdminAgentChatSuggestion(id: number): Promise<void> {
+  await adminApi.delete<ApiEnvelope<null>>(`${ADMIN_AGENT_CHAT_SUGGESTIONS_PATH}/${id}`);
 }

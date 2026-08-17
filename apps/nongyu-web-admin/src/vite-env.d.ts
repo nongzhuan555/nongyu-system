@@ -17,4 +17,6 @@ interface NongyuAdminPrefill {
 
 interface Window {
   __NONGYU_ADMIN_PREFILL__?: NongyuAdminPrefill;
+  /** App 应用内 WebView 注入的 handoff ticket（读后由登录页清除） */
+  __NONGYU_ADMIN_HANDOFF_TICKET__?: string;
 }

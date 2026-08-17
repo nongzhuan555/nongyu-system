@@ -2,8 +2,11 @@ import { Alert, Button, DatePicker, Modal, Select, Space, Table, Tag } from "ant
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useEffectEvent, useState } from "react";
+import { useForegroundRefresh } from "../../hooks/useForegroundRefresh";
 import { AdminApiError, fetchTrackLlmProxyFails } from "../../lib/adminApi";
+import { FOREGROUND_REFRESH_INTERVAL_MS } from "../../lib/constants";
 import { displayText, formatAdminDateTime } from "../../lib/format";
+import { useModalWidth } from "../../lib/responsive";
 import type { TrackCrashItem } from "../../types/dashboard";
 
 type ErrorCodeFilter = "all" | "50210" | "50310" | "50311" | "42910" | "42911";
@@ -30,6 +33,7 @@ function errorMessage(props: Record<string, unknown> | null): string {
 }
 
 export function LlmProxyFailsPanel() {
+  const modalWidth = useModalWidth(720);
   const [range, setRange] = useState<[Dayjs, Dayjs]>(() => {
     const today = dayjs();
     return [today.subtract(6, "day"), today];
@@ -43,9 +47,11 @@ export function LlmProxyFailsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<TrackCrashItem | null>(null);
 
-  const loadList = useEffectEvent(async () => {
-    setLoading(true);
-    setError(null);
+  const loadList = useEffectEvent(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const data = await fetchTrackLlmProxyFails({
         from: range[0].format("YYYY-MM-DD"),
@@ -56,7 +62,9 @@ export function LlmProxyFailsPanel() {
       });
       setList(data.list);
       setTotal(data.total);
+      if (silent) setError(null);
     } catch (err) {
+      if (silent) return;
       setList([]);
       setTotal(0);
       if (err instanceof AdminApiError) {
@@ -65,13 +73,18 @@ export function LlmProxyFailsPanel() {
         setError("网络异常，请稍后重试");
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   });
 
   useEffect(() => {
     void loadList();
   }, [range, errorCode, page, pageSize]);
+
+  useForegroundRefresh(() => void loadList(true), {
+    intervalMs: FOREGROUND_REFRESH_INTERVAL_MS,
+    enabled: detail == null,
+  });
 
   const columns: ColumnsType<TrackCrashItem> = [
     {
@@ -210,7 +223,8 @@ export function LlmProxyFailsPanel() {
         open={detail != null}
         onCancel={() => setDetail(null)}
         footer={null}
-        width={720}
+        width={modalWidth}
+        centered
         destroyOnClose
       >
         {detail ? (

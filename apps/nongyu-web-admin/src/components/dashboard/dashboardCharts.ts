@@ -2,14 +2,14 @@ import type { EChartsOption } from "echarts";
 import type { DistKeyCount, TrackDimItem, UserGrowth } from "../../types/dashboard";
 import { formatRnRouteLabel } from "../../lib/rnRouteLabels";
 
-export const CHART_COLORS = ["#10B981", "#FBBF24", "#34D399", "#FCD34D", "#059669", "#D97706"];
+export const CHART_COLORS = ["#0A7C59", "#2E7D6E", "#8FBF9B", "#D4E9DF", "#5A9A86", "#A8C9B8"];
 
 const TOOLTIP = {
   backgroundColor: "rgba(255,255,255,0.92)",
-  borderColor: "#E2E8F0",
+  borderColor: "#CFE3DA",
   borderRadius: 12,
   extraCssText: "backdrop-filter:blur(10px);box-shadow:0 12px 32px -20px rgb(15 23 42 / 0.25);",
-  textStyle: { color: "#1E293B" },
+  textStyle: { color: "#1F2937" },
 };
 
 const GENDER_LABEL: Record<string, string> = {
@@ -39,7 +39,7 @@ export function pieOption(rows: DistKeyCount[]): EChartsOption | null {
         radius: ["46%", "72%"],
         avoidLabelOverlap: true,
         itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 2 },
-        label: { color: "#64748B", fontSize: 11 },
+        label: { color: "#424945", fontSize: 11 },
         data: rows.map((row) => ({ name: labelDistKey(row.key), value: row.count })),
       },
     ],
@@ -57,23 +57,23 @@ export function barOption(rows: DistKeyCount[], horizontal = false): EChartsOpti
     xAxis: horizontal
       ? {
           type: "value",
-          axisLabel: { color: "#64748B" },
+          axisLabel: { color: "#424945" },
           splitLine: { lineStyle: { color: "#F1F5F9" } },
         }
       : {
           type: "category",
           data: names,
-          axisLabel: { color: "#64748B", rotate: names.length > 6 ? 30 : 0 },
+          axisLabel: { color: "#424945", rotate: names.length > 6 ? 30 : 0 },
         },
     yAxis: horizontal
       ? {
           type: "category",
           data: names,
-          axisLabel: { color: "#64748B", width: 80, overflow: "truncate" },
+          axisLabel: { color: "#424945", width: 80, overflow: "truncate" },
         }
       : {
           type: "value",
-          axisLabel: { color: "#64748B" },
+          axisLabel: { color: "#424945" },
           splitLine: { lineStyle: { color: "#F1F5F9" } },
         },
     series: [
@@ -98,13 +98,13 @@ export function dimBarOption(items: TrackDimItem[]): EChartsOption | null {
     grid: { left: 120, right: 16, top: 16, bottom: 32, containLabel: true },
     xAxis: {
       type: "value",
-      axisLabel: { color: "#64748B" },
+      axisLabel: { color: "#424945" },
       splitLine: { lineStyle: { color: "#F1F5F9" } },
     },
     yAxis: {
       type: "category",
       data: names,
-      axisLabel: { color: "#64748B", width: 110, overflow: "truncate" },
+      axisLabel: { color: "#424945", width: 110, overflow: "truncate" },
     },
     series: [
       {
@@ -128,13 +128,13 @@ export function buttonClicksBarOption(items: TrackDimItem[]): EChartsOption | nu
     grid: { left: 140, right: 16, top: 16, bottom: 32, containLabel: true },
     xAxis: {
       type: "value",
-      axisLabel: { color: "#64748B" },
+      axisLabel: { color: "#424945" },
       splitLine: { lineStyle: { color: "#F1F5F9" } },
     },
     yAxis: {
       type: "category",
       data: names,
-      axisLabel: { color: "#64748B", width: 130, overflow: "truncate" },
+      axisLabel: { color: "#424945", width: 130, overflow: "truncate" },
     },
     series: [
       {
@@ -165,13 +165,13 @@ export function dwellBarOption(items: TrackDimItem[]): EChartsOption | null {
     xAxis: {
       type: "value",
       name: "秒",
-      axisLabel: { color: "#64748B" },
+      axisLabel: { color: "#424945" },
       splitLine: { lineStyle: { color: "#F1F5F9" } },
     },
     yAxis: {
       type: "category",
       data: names,
-      axisLabel: { color: "#64748B", width: 110, overflow: "truncate" },
+      axisLabel: { color: "#424945", width: 110, overflow: "truncate" },
     },
     series: [
       {
@@ -193,13 +193,13 @@ export function growthOption(growth: UserGrowth): EChartsOption | null {
     xAxis: {
       type: "category",
       data: growth.points.map((p) => p.date.slice(5)),
-      axisLabel: { color: "#64748B" },
+      axisLabel: { color: "#424945" },
       boundaryGap: false,
     },
     yAxis: {
       type: "value",
       minInterval: 1,
-      axisLabel: { color: "#64748B" },
+      axisLabel: { color: "#424945" },
       splitLine: { lineStyle: { color: "#F1F5F9" } },
     },
     series: [
@@ -223,17 +223,17 @@ export function perfOption(p50: TrackDimItem[], p95: TrackDimItem[]): EChartsOpt
   return {
     color: CHART_COLORS,
     tooltip: { ...TOOLTIP, trigger: "axis" },
-    legend: { data: ["p50", "p95"], bottom: 0, textStyle: { color: "#64748B" } },
+    legend: { data: ["p50", "p95"], bottom: 0, textStyle: { color: "#424945" } },
     grid: { left: 16, right: 16, top: 16, bottom: 36, containLabel: true },
     xAxis: {
       type: "category",
       data: names,
-      axisLabel: { color: "#64748B", rotate: 20, width: 80, overflow: "truncate" },
+      axisLabel: { color: "#424945", rotate: 20, width: 80, overflow: "truncate" },
     },
     yAxis: {
       type: "value",
       name: "ms",
-      axisLabel: { color: "#64748B" },
+      axisLabel: { color: "#424945" },
       splitLine: { lineStyle: { color: "#F1F5F9" } },
     },
     series: [

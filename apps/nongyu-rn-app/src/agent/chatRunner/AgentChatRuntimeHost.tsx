@@ -7,11 +7,9 @@ import {
   setActiveSessionId,
   upsertSession,
 } from "@/agent/session";
-import {
-  agentChatRunner,
-  installAgentChatBackgroundKeepAlive,
-  useAgentChatRunnerBridge,
-} from "@/agent/chatRunner";
+import { agentChatRunner } from "./agentChatRunner";
+import { installAgentChatBackgroundKeepAlive } from "./backgroundKeepAlive";
+import { useAgentChatRunnerBridge } from "./useAgentChatRunner";
 
 /**
  * 根级挂载：落盘 / 压缩 Toast / 后台保活不依赖 AI 页是否打开。

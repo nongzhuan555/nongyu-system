@@ -1,6 +1,7 @@
 import { Form, Input, Modal, message } from "antd";
 import { useEffect, useState } from "react";
 import { AdminApiError, createAdminPostReply, patchAdminPostReply } from "../../lib/adminApi";
+import { useModalWidth } from "../../lib/responsive";
 
 type FormValues = { content: string };
 
@@ -25,6 +26,7 @@ export function AdminReplyEditModal({
 }: AdminReplyEditModalProps) {
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
+  const modalWidth = useModalWidth(520);
   const isEdit = existingContent !== null;
 
   useEffect(() => {
@@ -74,6 +76,8 @@ export function AdminReplyEditModal({
     <Modal
       title={isEdit ? "编辑管理员回复" : "添加管理员回复"}
       open={open}
+      width={modalWidth}
+      centered
       onCancel={onCancel}
       onOk={() => void handleSubmit()}
       okText="保存"
