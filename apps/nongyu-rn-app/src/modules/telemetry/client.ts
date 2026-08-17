@@ -29,7 +29,11 @@ export function enqueue(input: TrackEventInput): void {
     duration_ms: input.duration_ms,
     props: sanitizeProps(input.props),
   };
-  appendQueue([event]);
+  const size = appendQueue([event]);
+  // 与 Spec「队列达批即 flush」对齐；未满批仍靠 Host 10s 定时
+  if (size >= BATCH_SIZE) {
+    void flushPending();
+  }
 }
 
 /**

@@ -1,16 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Dimensions,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Gesture, GestureDetector, ScrollView } from "react-native-gesture-handler";
+import Animated, {
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { confirm } from "@/components/ui/confirm";
 import { createThemedStyles } from "@/theme/createThemedStyles";
@@ -21,6 +27,12 @@ import { formatSessionTime, groupSessionsByUpdatedAt } from "./groupSessions";
 const DRAWER_WIDTH = Math.min(Dimensions.get("window").width * 0.82, 320);
 /** 模拟远程搜索延迟（ms） */
 const SEARCH_FAKE_DELAY_MS = 450;
+/** 打开/关闭/吸附动画时长 */
+const DRAWER_ANIM_MS = 240;
+/** 松手关闭：位移超过抽屉宽度的比例 */
+const CLOSE_DISTANCE_RATIO = 0.35;
+/** 松手关闭：向左甩动速度阈值（px/s） */
+const CLOSE_VELOCITY_X = -800;
 
 type SessionDrawerProps = {
   visible: boolean;
@@ -34,7 +46,8 @@ type SessionDrawerProps = {
 };
 
 /**
- * Agent 会话左侧抽屉：新对话、标题搜索（假延迟）、列表、行内删除、清空全部
+ * Agent 会话左侧抽屉：新对话、标题搜索（假延迟）、列表、行内删除、清空全部；
+ * 打开后支持水平拖拽跟手，松手按阈值吸附开/关。
  */
 export function SessionDrawer({
   visible,
@@ -49,20 +62,49 @@ export function SessionDrawer({
   const styles = useStyles();
   const t = useThemeTokens();
   const insets = useSafeAreaInsets();
-  const slide = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
 
+  const translateX = useSharedValue(-DRAWER_WIDTH);
+  const dragStartX = useSharedValue(0);
+  /** 手势关闭动画进行中，避免 visible→false 时重复播关闭动画 */
+  const gestureClosing = useSharedValue(false);
+
+  const [rendered, setRendered] = useState(visible);
   const [searchInput, setSearchInput] = useState("");
   const [searching, setSearching] = useState(false);
   const [resultSessions, setResultSessions] = useState(sessions);
   const searchGenRef = useRef(0);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
+  const unmountAfterClose = useCallback(() => {
+    setRendered(false);
+  }, []);
+
+  const notifyClosed = useCallback(() => {
+    onCloseRef.current();
+  }, []);
+
+  // visible 驱动打开 / 非手势关闭；手势关闭后仅卸挂载
   useEffect(() => {
-    Animated.timing(slide, {
-      toValue: visible ? 0 : -DRAWER_WIDTH,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
-  }, [visible, slide]);
+    if (visible) {
+      gestureClosing.value = false;
+      setRendered(true);
+      translateX.value = withTiming(0, { duration: DRAWER_ANIM_MS });
+      return;
+    }
+
+    if (gestureClosing.value) {
+      gestureClosing.value = false;
+      setRendered(false);
+      return;
+    }
+
+    if (!rendered) return;
+
+    translateX.value = withTiming(-DRAWER_WIDTH, { duration: DRAWER_ANIM_MS }, (finished) => {
+      if (finished) runOnJS(unmountAfterClose)();
+    });
+  }, [visible, rendered, translateX, gestureClosing, unmountAfterClose]);
 
   // 关闭抽屉时清空搜索
   useEffect(() => {
@@ -98,6 +140,46 @@ export function SessionDrawer({
     return () => clearTimeout(timer);
   }, [searchInput, sessions, visible]);
 
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-12, 12])
+        .failOffsetY([-16, 16])
+        .onBegin(() => {
+          dragStartX.value = translateX.value;
+        })
+        .onUpdate((e) => {
+          const next = Math.min(0, Math.max(-DRAWER_WIDTH, dragStartX.value + e.translationX));
+          translateX.value = next;
+        })
+        .onEnd((e) => {
+          const shouldClose =
+            translateX.value <= -DRAWER_WIDTH * CLOSE_DISTANCE_RATIO ||
+            e.velocityX <= CLOSE_VELOCITY_X;
+          if (shouldClose) {
+            gestureClosing.value = true;
+            translateX.value = withTiming(
+              -DRAWER_WIDTH,
+              { duration: DRAWER_ANIM_MS },
+              (finished) => {
+                if (finished) runOnJS(notifyClosed)();
+              },
+            );
+          } else {
+            translateX.value = withTiming(0, { duration: DRAWER_ANIM_MS });
+          }
+        }),
+    [dragStartX, gestureClosing, notifyClosed, translateX],
+  );
+
+  const panelStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const maskStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.value, [-DRAWER_WIDTH, 0], [0, 1]),
+  }));
+
   const groups = groupSessionsByUpdatedAt(resultSessions);
   const hasKeyword = searchInput.trim().length > 0;
 
@@ -113,116 +195,120 @@ export function SessionDrawer({
     if (ok) onClearAll();
   };
 
-  if (!visible) return null;
+  if (!rendered && !visible) return null;
 
   return (
     <View style={styles.modalRoot} pointerEvents="box-none">
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="关闭会话列表"
-        style={styles.mask}
-        onPress={onClose}
-      />
-      <Animated.View
-        style={[
-          styles.panel,
-          {
-            width: DRAWER_WIDTH,
-            paddingTop: insets.top + t.space.sm,
-            paddingBottom: insets.bottom + t.space.md,
-            transform: [{ translateX: slide }],
-          },
-        ]}
-      >
-        <View style={styles.panelHeader}>
-          <Text style={styles.panelTitle}>会话</Text>
-          {sessions.length > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="清空全部会话"
-              hitSlop={8}
-              onPress={() => void handleClearAll()}
-            >
-              <Text style={styles.clearAllText}>清空</Text>
-            </Pressable>
-          ) : null}
-        </View>
-
+      <Animated.View style={[styles.mask, maskStyle]} pointerEvents="box-none">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="新对话"
-          style={({ pressed }) => [styles.newChatBtn, pressed && styles.pressed]}
-          onPress={onNewChat}
-        >
-          <Ionicons name="add" size={20} color={t.color.text} />
-          <Text style={styles.newChatText}>新对话</Text>
-        </Pressable>
-
-        <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={16} color={t.color.textSecondary} />
-          <TextInput
-            style={styles.searchInput}
-            value={searchInput}
-            onChangeText={setSearchInput}
-            placeholder="搜索会话标题"
-            placeholderTextColor={t.color.textSecondary}
-            returnKeyType="search"
-            autoCorrect={false}
-            autoCapitalize="none"
-            clearButtonMode="while-editing"
-          />
-          {searchInput.length > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="清除搜索"
-              hitSlop={8}
-              onPress={() => setSearchInput("")}
-            >
-              <Ionicons name="close-circle" size={16} color={t.color.textSecondary} />
-            </Pressable>
-          ) : null}
-        </View>
-
-        {searching ? (
-          <View style={styles.searchLoading}>
-            <ActivityIndicator size="small" color={t.color.brand} />
-            <Text style={styles.searchLoadingText}>搜索中…</Text>
-          </View>
-        ) : sessions.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>还没有会话</Text>
-            <Text style={styles.emptyHint}>发一条消息后会自动保存在这里</Text>
-          </View>
-        ) : groups.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>未找到会话</Text>
-            <Text style={styles.emptyHint}>
-              {hasKeyword ? `没有标题包含「${searchInput.trim()}」的会话` : "换个关键词试试"}
-            </Text>
-          </View>
-        ) : (
-          <ScrollView
-            style={styles.list}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {groups.map((group) => (
-              <View key={group.key} style={styles.group}>
-                <Text style={styles.groupTitle}>{group.title}</Text>
-                {group.sessions.map((session) => (
-                  <SessionRow
-                    key={session.id}
-                    session={session}
-                    active={session.id === activeSessionId}
-                    onSelect={() => onSelect(session.id)}
-                    onDelete={() => onDelete(session.id)}
-                  />
-                ))}
-              </View>
-            ))}
-          </ScrollView>
-        )}
+          accessibilityLabel="关闭会话列表"
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+        />
       </Animated.View>
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          style={[
+            styles.panel,
+            panelStyle,
+            {
+              width: DRAWER_WIDTH,
+              paddingTop: insets.top + t.space.sm,
+              paddingBottom: insets.bottom + t.space.md,
+            },
+          ]}
+        >
+          <View style={styles.panelHeader}>
+            <Text style={styles.panelTitle}>会话</Text>
+            {sessions.length > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="清空全部会话"
+                hitSlop={8}
+                onPress={() => void handleClearAll()}
+              >
+                <Text style={styles.clearAllText}>清空</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="新对话"
+            style={({ pressed }) => [styles.newChatBtn, pressed && styles.pressed]}
+            onPress={onNewChat}
+          >
+            <Ionicons name="add" size={20} color={t.color.text} />
+            <Text style={styles.newChatText}>新对话</Text>
+          </Pressable>
+
+          <View style={styles.searchBox}>
+            <Ionicons name="search-outline" size={16} color={t.color.textSecondary} />
+            <TextInput
+              style={styles.searchInput}
+              value={searchInput}
+              onChangeText={setSearchInput}
+              placeholder="搜索会话标题"
+              placeholderTextColor={t.color.textSecondary}
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
+              clearButtonMode="while-editing"
+            />
+            {searchInput.length > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="清除搜索"
+                hitSlop={8}
+                onPress={() => setSearchInput("")}
+              >
+                <Ionicons name="close-circle" size={16} color={t.color.textSecondary} />
+              </Pressable>
+            ) : null}
+          </View>
+
+          {searching ? (
+            <View style={styles.searchLoading}>
+              <ActivityIndicator size="small" color={t.color.brand} />
+              <Text style={styles.searchLoadingText}>搜索中…</Text>
+            </View>
+          ) : sessions.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>还没有会话</Text>
+              <Text style={styles.emptyHint}>发一条消息后会自动保存在这里</Text>
+            </View>
+          ) : groups.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>未找到会话</Text>
+              <Text style={styles.emptyHint}>
+                {hasKeyword ? `没有标题包含「${searchInput.trim()}」的会话` : "换个关键词试试"}
+              </Text>
+            </View>
+          ) : (
+            <ScrollView
+              style={styles.list}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {groups.map((group) => (
+                <View key={group.key} style={styles.group}>
+                  <Text style={styles.groupTitle}>{group.title}</Text>
+                  {group.sessions.map((session) => (
+                    <SessionRow
+                      key={session.id}
+                      session={session}
+                      active={session.id === activeSessionId}
+                      onSelect={() => onSelect(session.id)}
+                      onDelete={() => onDelete(session.id)}
+                    />
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 }

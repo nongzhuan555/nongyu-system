@@ -21,13 +21,15 @@ export function loadQueue(): TrackEvent[] {
 }
 
 /**
- * 追加事件；超出上限丢掉最旧的，避免磁盘膨胀
+ * 追加事件；超出上限丢掉最旧的，避免磁盘膨胀。
+ * @returns 持久化后的队列长度（供满批触发 flush）
  */
-export function appendQueue(events: TrackEvent[]): void {
-  if (events.length === 0) return;
+export function appendQueue(events: TrackEvent[]): number {
+  if (events.length === 0) return loadQueue().length;
   const merged = [...loadQueue(), ...events];
   const trimmed = merged.length > MAX_QUEUE ? merged.slice(merged.length - MAX_QUEUE) : merged;
   persist(trimmed);
+  return trimmed.length;
 }
 
 /**

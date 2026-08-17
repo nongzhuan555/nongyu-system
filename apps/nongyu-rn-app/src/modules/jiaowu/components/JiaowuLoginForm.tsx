@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { toast } from "@/components/ui/toast";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 import { performJiaowuLogin } from "@/modules/jiaowu/auth/performJiaowuLogin";
+import { trackClick } from "@/modules/telemetry";
 
 type JiaowuLoginFormProps = {
   /** 登录成功回调 */
@@ -40,6 +41,7 @@ export function JiaowuLoginForm({ onSuccess, compact }: JiaowuLoginFormProps) {
   };
 
   const handleSubmit = async () => {
+    trackClick("jiaowu_login");
     if (submitting) return;
     if (!STUDENT_ID_RE.test(studentId.trim())) {
       setIdError("学号需为 9 位数字");

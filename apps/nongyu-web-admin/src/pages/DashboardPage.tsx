@@ -30,6 +30,8 @@ const EMPTY_DATA: DashboardGridData = {
   settings: null,
   trackOverview: null,
   screenViews: [],
+  screenDwell: [],
+  buttonClicks: [],
   perfP50: [],
   perfP95: [],
   crashes: null,
@@ -87,9 +89,11 @@ export function DashboardPage() {
     setTrackLoading(true);
     setTrackError(null);
     try {
-      const [trackOverview, screens, p50, p95, crashes] = await Promise.all([
+      const [trackOverview, screens, dwell, buttons, p50, p95, crashes] = await Promise.all([
         fetchTrackOverview(),
         fetchTrackDims("screen_views"),
+        fetchTrackDims("screen_dwell_avg"),
+        fetchTrackDims("button_clicks"),
         fetchTrackDims("perf_p50"),
         fetchTrackDims("perf_p95"),
         fetchTrackCrashes(page, 10),
@@ -98,6 +102,8 @@ export function DashboardPage() {
         ...prev,
         trackOverview,
         screenViews: screens.items,
+        screenDwell: dwell.items,
+        buttonClicks: buttons.items,
         perfP50: p50.items,
         perfP95: p95.items,
         crashes,

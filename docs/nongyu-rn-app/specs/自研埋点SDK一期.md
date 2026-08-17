@@ -5,7 +5,7 @@
 | 应用     | `apps/nongyu-rn-app`                                                                                                                                            |
 | 需求类型 | **基建**                                                                                                                                                        |
 | PRD      | `docs/forhuman/rawprds/nongyu-rn-app/User/埋点及用户交互PRD.md`（仅埋点采集；不含建议反馈）                                                                     |
-| 状态     | **已实现**（2026-08-15）；**错误采集扩边已实现**（2026-08-16）                                                                                                  |
+| 状态     | **已实现**（2026-08-15）；错误采集扩边（2026-08-16）；**点击扩边已实现**（2026-08-17）                                                                          |
 | 契约     | [`../nongyu-go-track-server/接口文档.md`](../nongyu-go-track-server/接口文档.md)、[`技术选型.md`](../技术选型.md) §6、[`联调指南-埋点.md`](../联调指南-埋点.md) |
 | 技术方案 | [`../tech/自研埋点SDK一期.md`](../tech/自研埋点SDK一期.md)（as-built，供对照实现学习）                                                                          |
 
@@ -61,7 +61,7 @@ Error Boundary UI 组件可放在同模块（如 `AppErrorBoundary.tsx`），由
 | `app_open`     | 进程内首次 `cold_start`；再次拿到 Token 为 `session_start` | Token 从空变为有                    |
 | `screen_view`  | Expo Router `pathname`（无 query）                         | 见 §4.2.1 进入 / 停留               |
 | `heartbeat`    | `heartbeat`                                                | 已登录后每 60s；前后台都发          |
-| `button_click` | 稳定英文/路由名，如 `tab_home`、`nongyu_ai`、`logout`      | 显式 `trackClick`                   |
+| `button_click` | 稳定英文名；完整清单见 §4.7                                | 显式 `trackClick`（本版不接 HOC）   |
 | `perf`         | 调用方传入                                                 | `measure` / `measureAsync`          |
 | `crash`        | 见 §4.6                                                    | JS / React / Promise / 农屿请求失败 |
 
@@ -134,6 +134,63 @@ Error Boundary UI 组件可放在同模块（如 `AppErrorBoundary.tsx`），由
 4. **降噪**：`network` / `api` 按 key=`${method}|${path}|${code|network}` **60s 内最多入队 1 条**；`fatal` / `js` / `react` / `unhandled_rejection` **不**做该限流。
 5. `path` 只保留 pathname（去掉 query）；禁止把 Authorization / body / Token 写入 `props`。
 
+### 4.7 点击事件扩边（全部手动 `trackClick`）
+
+**不做**可追踪 HOC。在 Pressable / 业务 handler 入口调用；埋点失败不得影响主流程。
+
+#### 4.7.1 已有（保持）
+
+`tab_home` / `tab_course` / `tab_center` / `tab_mine` / `nongyu_ai` / `entry_jiaowu` / `entry_second` / `share_open` / `share_wechat` / `share_moments` / `share_copy_link` / `logout`
+
+#### 4.7.2 课表
+
+| event_name                                                 | 触发                            |
+| ---------------------------------------------------------- | ------------------------------- |
+| `course_refresh`                                           | 更多菜单刷新、错误态重试        |
+| `course_open_peer_lookup`                                  | 打开查看他人课表                |
+| `course_peer_lookup_submit`                                | 提交同学学号查询                |
+| `course_enter_diff` / `course_exit_diff`                   | 进入 / 退出 Diff                |
+| `course_exit_peer`                                         | 返回我的课表                    |
+| `course_diff_mode_conflict` / `course_diff_mode_free`      | Diff 图例模式                   |
+| `course_set_semester_open` / `course_set_semester_confirm` | 打开 / 确认学期开始             |
+| `course_attendance_set`                                    | 考勤状态（可带 `props.status`） |
+| `course_attendance_clear`                                  | 清除考勤                        |
+| `course_schedule_save`                                     | 保存自定义日程                  |
+
+#### 4.7.3 Agent
+
+| event_name             | 触发     |
+| ---------------------- | -------- |
+| `agent_send`           | 发送     |
+| `agent_stop`           | 停止生成 |
+| `agent_session_new`    | 新建会话 |
+| `agent_session_switch` | 切换会话 |
+
+#### 4.7.4 我的 / 设置
+
+| event_name                                                                                                                              | 触发       |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `mine_settings` / `mine_profile` / `mine_posts` / `mine_about` / `mine_admin`                                                           | 我的页入口 |
+| `settings_course` / `settings_web` / `settings_theme` / `settings_launch` / `settings_agent` / `settings_version` / `settings_feedback` | 设置子项   |
+
+#### 4.7.5 广场
+
+| event_name            | 触发     |
+| --------------------- | -------- |
+| `center_compose_open` | 打开发帖 |
+| `center_post_submit`  | 发布     |
+| `center_post_delete`  | 删除帖子 |
+
+#### 4.7.6 教务 / 二课
+
+| event_name            | 触发                                         |
+| --------------------- | -------------------------------------------- |
+| `jiaowu_entry_${key}` | 教务功能入口（`notice` / `competition` / …） |
+| `jiaowu_login`        | 教务登录提交                                 |
+| `second_entry_${key}` | 二课功能入口                                 |
+| `second_login_nav`    | 二课首页去登录                               |
+| `second_login`        | 二课登录提交                                 |
+
 ## 5. 业务流程
 
 ```text
@@ -168,6 +225,7 @@ Error Boundary UI 组件可放在同模块（如 `AppErrorBoundary.tsx`），由
    - 断网后触发 `appFetch`：批次含 `crash`/`network`（有 Token 时）；业务错误态仍出现。
    - 故意打一个会返回非 0 `code` 的接口：批次含 `crash`/`api` 且 props 含 `code`；60s 内同 path+code 重复触发只多 1 条。
    - Track 服务关掉时：业务 `appFetch` 仍可报 `network`/`api`；Track transport 失败不产生额外 crash 环。
+9. **点击扩边**：抽查 `course_refresh`、`agent_send`、`settings_theme`、`jiaowu_entry_*`、`center_post_submit` 等，批次中可见对应 `button_click`。
 
 ---
 
@@ -181,3 +239,4 @@ Error Boundary UI 组件可放在同模块（如 `AppErrorBoundary.tsx`），由
 | 2026-08-16 | 页面可见停留：enter + leave（`duration_ms`）；后台停表；&lt;300ms 过滤；Admin 聚合后置                                                                            |
 | 2026-08-16 | 错误采集扩边：根 ErrorBoundary、`unhandled_rejection`、`appFetch`/`appAuth` 的 `network`/`api`；仍用 `crash` + event_name；60s 降噪；不采第三方与 Track transport |
 | 2026-08-16 | 错误采集扩边编码落地                                                                                                                                              |
+| 2026-08-17 | 点击扩边：课表 / Agent / 我的设置 / 广场 / 教务二课全部手动 `trackClick`；不做 HOC（§4.7）                                                                        |

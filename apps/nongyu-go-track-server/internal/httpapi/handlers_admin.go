@@ -20,7 +20,7 @@ var allowedTrend = map[string]struct{}{
 }
 
 var allowedDims = map[string]struct{}{
-	"screen_views": {}, "button_clicks": {}, "perf_p50": {}, "perf_p95": {},
+	"screen_views": {}, "screen_dwell_avg": {}, "button_clicks": {}, "perf_p50": {}, "perf_p95": {},
 }
 
 func (a *API) handleOverview(w http.ResponseWriter, r *http.Request) {

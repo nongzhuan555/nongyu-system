@@ -10,6 +10,7 @@ import { confirm } from "@/components/ui/confirm";
 import { hexToRgba } from "@/components/navigation/TabLiquidIndicator";
 import { performJiaowuLogout } from "@/modules/jiaowu/auth/performJiaowuLogin";
 import { formatLogoutConfirmMessage } from "@/modules/jiaowu/auth/logoutClearSummary";
+import { trackClick } from "@/modules/telemetry";
 import { useSessionStore } from "@/stores/session";
 import { SettingsPageShell } from "../components/SettingsPageShell";
 import { SettingsSectionList, type SettingsNavItem } from "../components/SettingsSectionList";
@@ -33,49 +34,70 @@ export function SettingsHomeScreen() {
       title: "课表设置",
       description: "背景图、卡片大小、字体大小",
       available: true,
-      onPress: () => router.push("/mine/settings/course" as Href),
+      onPress: () => {
+        trackClick("settings_course");
+        router.push("/mine/settings/course" as Href);
+      },
     },
     {
       key: "web",
       title: "网页跳转",
       description: "内置浏览器或系统浏览器打开",
       available: true,
-      onPress: () => router.push("/mine/settings/web" as Href),
+      onPress: () => {
+        trackClick("settings_web");
+        router.push("/mine/settings/web" as Href);
+      },
     },
     {
       key: "theme",
       title: "主题与外观",
       description: "川农新绿、樱花、暗黑、跟随系统",
       available: true,
-      onPress: () => router.push("/mine/settings/theme" as Href),
+      onPress: () => {
+        trackClick("settings_theme");
+        router.push("/mine/settings/theme" as Href);
+      },
     },
     {
       key: "launch",
       title: "启动页",
       description: "打开 App 后进入首页或课表",
       available: true,
-      onPress: () => router.push("/mine/settings/launch" as Href),
+      onPress: () => {
+        trackClick("settings_launch");
+        router.push("/mine/settings/launch" as Href);
+      },
     },
     {
       key: "agent",
       title: "农屿 Agent",
       description: "服务商预设、API Key 与模型",
       available: true,
-      onPress: () => router.push("/mine/settings/agent" as Href),
+      onPress: () => {
+        trackClick("settings_agent");
+        router.push("/mine/settings/agent" as Href);
+      },
     },
     {
       key: "version",
       title: "版本",
       description: "查看版本并检查更新",
       available: true,
-      onPress: () => router.push("/mine/settings/version" as Href),
+      onPress: () => {
+        trackClick("settings_version");
+        router.push("/mine/settings/version" as Href);
+      },
     },
     {
       key: "feedback",
       title: "反馈与建议",
       description: "去农屿广场反馈墙",
       available: true,
-      onPress: () => router.replace("/(tabs)/center?postType=feedback" as Href),
+      onPress: () => {
+        trackClick("settings_feedback");
+        router.replace("/(tabs)/center?postType=feedback" as Href);
+      },
     },
   ];
 

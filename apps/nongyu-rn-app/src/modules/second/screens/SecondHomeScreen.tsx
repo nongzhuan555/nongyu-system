@@ -7,6 +7,7 @@ import { AppLinearGradient } from "@/components/ui/AppLinearGradient";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 import { SecondServiceList } from "@/modules/second/components/SecondServiceList";
 import { useSecondAuth } from "@/modules/second/hooks/useSecondAuth";
+import { trackClick } from "@/modules/telemetry";
 
 /**
  * 二课首页：主题渐变头图 + 简约入口
@@ -52,7 +53,10 @@ export function SecondHomeScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="登录二课"
-              onPress={() => router.push("/home/second/login" as Href)}
+              onPress={() => {
+                trackClick("second_login_nav");
+                router.push("/home/second/login" as Href);
+              }}
               style={styles.loginLink}
             >
               <Text style={styles.loginLinkText}>登录</Text>

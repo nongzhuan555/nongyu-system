@@ -116,16 +116,20 @@
 
 ### 4.2 一期已接线的业务点
 
-| 场景     | event_name                                                          |
-| -------- | ------------------------------------------------------------------- |
-| 底栏 Tab | `tab_home` / `tab_course` / `tab_center` / `tab_mine`               |
-| 农屿 AI  | `nongyu_ai`                                                         |
-| 首页入口 | `entry_jiaowu` / `entry_second`                                     |
-| 登出     | `logout`                                                            |
-| 分享     | `share_open` / `share_wechat` / `share_moments` / `share_copy_link` |
-| 课表首屏 | `perf` + `course_week_first_paint`（仅本人模式）                    |
+| 场景     | event_name                                                             |
+| -------- | ---------------------------------------------------------------------- |
+| 底栏 Tab | `tab_home` / `tab_course` / `tab_center` / `tab_mine`                  |
+| 农屿 AI  | `nongyu_ai`；会话 `agent_send` / `agent_stop` / `agent_session_*`      |
+| 首页入口 | `entry_jiaowu` / `entry_second`                                        |
+| 登出     | `logout`                                                               |
+| 分享     | `share_open` / `share_wechat` / `share_moments` / `share_copy_link`    |
+| 课表     | 刷新 / 同学课表 / Diff / 学期 / 考勤 / 日程保存等 `course_*`           |
+| 我的设置 | `mine_*` / `settings_*`                                                |
+| 广场     | `center_compose_open` / `center_post_submit` / `center_post_delete`    |
+| 教务二课 | `jiaowu_entry_*` / `jiaowu_login` / `second_entry_*` / `second_login*` |
+| 课表首屏 | `perf` + `course_week_first_paint`（仅本人模式）                       |
 
-`measure` / `measureAsync` 已实现，业务侧除课表直接 `track({ event_type: "perf", ... })` 外，**尚无其它调用点**。
+完整点击清单以 Spec §4.7 为准。`measure` / `measureAsync` 基建仍在，业务除课表 `perf` 外尚无其它调用点。
 
 ---
 
@@ -159,6 +163,7 @@ loop:
 
 触发源：
 
+- `enqueue`：队列长度 ≥ 40（满批）立刻 flush
 - Host：登录后立刻、每 10s、每次心跳、AppState 变化
 - crash：异常后尽力 flush
 - 登出：`shutdownForLogout` 先结算页停留，再 flush，再 offline

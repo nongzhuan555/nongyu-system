@@ -10,6 +10,7 @@ import { deletePost, fetchPostDetail } from "@/modules/center/api/posts";
 import { PostDetailSkeleton } from "@/modules/center/components/PostDetailSkeleton";
 import { subtypeLabel } from "@/modules/center/constants/subtypes";
 import { formatPublishedAt, stripHtml } from "@/modules/center/utils/format";
+import { trackClick } from "@/modules/telemetry";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
@@ -49,7 +50,9 @@ export function PostDetailScreen() {
       confirmText: "删除",
       destructive: true,
     });
-    if (ok) remove.mutate();
+    if (!ok) return;
+    trackClick("center_post_delete");
+    remove.mutate();
   };
 
   const post = query.data;

@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { toast } from "@/components/ui/toast";
 import { createPost } from "@/modules/center/api/posts";
 import { subtypeOptionsFor } from "@/modules/center/constants/subtypes";
+import { trackClick } from "@/modules/telemetry";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
 function paramString(value: string | string[] | undefined): string {
@@ -103,7 +104,10 @@ export function ComposeScreen() {
         <Pressable
           accessibilityRole="button"
           disabled={!canSubmit}
-          onPress={() => submit.mutate()}
+          onPress={() => {
+            trackClick("center_post_submit");
+            submit.mutate();
+          }}
           style={[styles.submitBtn, !canSubmit && styles.submitDisabled]}
         >
           {submit.isPending ? (

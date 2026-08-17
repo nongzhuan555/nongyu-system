@@ -93,11 +93,11 @@
 
 ### 4.5 `GET /api/admin/track/dims`
 
-| Query    | 必填 | 说明                                                          |
-| -------- | ---- | ------------------------------------------------------------- |
-| `metric` | 是   | `screen_views` \| `button_clicks` \| `perf_p50` \| `perf_p95` |
-| `date`   | 否   | 缺省当天                                                      |
-| `limit`  | 否   | 默认 50，最大 100（与 Track 一致）                            |
+| Query    | 必填 | 说明                                                                                |
+| -------- | ---- | ----------------------------------------------------------------------------------- |
+| `metric` | 是   | `screen_views` \| `screen_dwell_avg` \| `button_clicks` \| `perf_p50` \| `perf_p95` |
+| `date`   | 否   | 缺省当天                                                                            |
+| `limit`  | 否   | 默认 50，最大 100（与 Track 一致）                                                  |
 
 上游：`GET /v1/admin/metrics/dims`
 

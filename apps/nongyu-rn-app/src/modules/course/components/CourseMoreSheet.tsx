@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { trackClick } from "@/modules/telemetry";
 import { useThemeTokens } from "@/theme/ThemeProvider";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
@@ -35,6 +36,7 @@ export function CourseMoreSheet({
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
             onPress={() => {
               if (refreshing) return;
+              trackClick("course_refresh");
               onClose();
               onRefresh();
             }}
@@ -51,6 +53,7 @@ export function CourseMoreSheet({
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
             onPress={() => {
+              trackClick("course_open_peer_lookup");
               onClose();
               onShare();
             }}

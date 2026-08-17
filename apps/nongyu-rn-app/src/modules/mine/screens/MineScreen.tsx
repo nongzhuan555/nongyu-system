@@ -40,15 +40,18 @@ export function MineScreen() {
   const tabBarPad = t.tabBar.heightMax + t.tabBar.bottomGapMax + t.space.xl;
 
   const openSettings = () => {
+    trackClick("mine_settings");
     router.push("/mine/settings" as Href);
   };
 
   const openAbout = () => {
+    trackClick("mine_about");
     void openAppUrl(ABOUT_URL, { label: "农屿官网" });
   };
 
   const openAdminConsole = async () => {
     if (adminOpening) return;
+    trackClick("mine_admin");
     setAdminOpening(true);
     try {
       const { ticket } = await requestAdminHandoff();
@@ -64,6 +67,7 @@ export function MineScreen() {
   const handleServicePress = async (item: ServiceItem) => {
     const { action } = item;
     if (action.kind === "navigate") {
+      if (item.key === "posts") trackClick("mine_posts");
       router.push(action.href);
       return;
     }
@@ -96,7 +100,13 @@ export function MineScreen() {
 
         {isAuthenticated && profile ? (
           <>
-            <InfoGrid profile={profile} onPress={() => router.push("/mine/profile" as Href)} />
+            <InfoGrid
+              profile={profile}
+              onPress={() => {
+                trackClick("mine_profile");
+                router.push("/mine/profile" as Href);
+              }}
+            />
             <ServiceList
               items={serviceItems}
               onPressItem={(item) => void handleServicePress(item)}

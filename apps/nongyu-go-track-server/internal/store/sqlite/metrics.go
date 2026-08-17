@@ -148,7 +148,10 @@ func (s *Store) LiveDims(ctx context.Context, metric, date string, limit int) ([
 	var err error
 	switch metric {
 	case "screen_views":
-		rows, err = s.CountByName(ctx, q, date, "screen_view")
+		// 进入次数：enter 无 duration_ms，避免与 leave 双计
+		rows, err = s.CountScreenEnters(ctx, q, date)
+	case "screen_dwell_avg":
+		rows, err = s.AvgScreenDwell(ctx, q, date)
 	case "button_clicks":
 		rows, err = s.CountByName(ctx, q, date, "button_click")
 	case "perf_p50", "perf_p95":
@@ -273,6 +276,50 @@ func (s *Store) CountByName(ctx context.Context, q dbQuerier, date, eventType st
 SELECT event_name, COUNT(*) FROM events
 WHERE stat_date=? AND event_type=?
 GROUP BY event_name`, date, eventType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]DimRow, 0)
+	for rows.Next() {
+		var d DimRow
+		d.DimKey = "name"
+		if err := rows.Scan(&d.DimValue, &d.MetricValue); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// CountScreenEnters 按 pathname 统计页面进入次数（无 duration_ms 的 screen_view）。
+func (s *Store) CountScreenEnters(ctx context.Context, q dbQuerier, date string) ([]DimRow, error) {
+	rows, err := q.QueryContext(ctx, `
+SELECT event_name, COUNT(*) FROM events
+WHERE stat_date=? AND event_type='screen_view' AND duration_ms IS NULL
+GROUP BY event_name`, date)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]DimRow, 0)
+	for rows.Next() {
+		var d DimRow
+		d.DimKey = "name"
+		if err := rows.Scan(&d.DimValue, &d.MetricValue); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// AvgScreenDwell 按 pathname 对 leave 的 duration_ms 求平均（整数毫秒）。
+func (s *Store) AvgScreenDwell(ctx context.Context, q dbQuerier, date string) ([]DimRow, error) {
+	rows, err := q.QueryContext(ctx, `
+SELECT event_name, CAST(ROUND(AVG(duration_ms)) AS INTEGER) FROM events
+WHERE stat_date=? AND event_type='screen_view' AND duration_ms IS NOT NULL
+GROUP BY event_name`, date)
 	if err != nil {
 		return nil, err
 	}

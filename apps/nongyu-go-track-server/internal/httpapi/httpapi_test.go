@@ -477,6 +477,151 @@ func TestHTTP_DimsTodayLiveFromEvents(t *testing.T) {
 	}
 }
 
+func TestHTTP_DimsScreenEnterAndDwellAvg(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "track-dwell.db")
+	ctx := context.Background()
+	store, err := sqlite.Open(ctx, dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	cfg := &config.Config{
+		HTTPAddr:             "127.0.0.1:0",
+		DBPath:               dbPath,
+		JWTSecret:            "test-secret-key-16",
+		InternalToken:        "internal-token-16x",
+		PresenceOfflineAfter: 10 * time.Minute,
+		WriteQueueSize:       128,
+		BodyLimitBytes:       1 << 20,
+		UserRatePerMin:       1200,
+		IPRatePerMin:         3000,
+	}
+	writer := ingest.NewWriter(store, nil, cfg.WriteQueueSize)
+	t.Cleanup(writer.Stop)
+	jobs := aggregate.New(store, log)
+	srv := httptest.NewServer(New(cfg, store, writer, nil, jobs, log))
+	t.Cleanup(srv.Close)
+
+	token := signApp(t, cfg.JWTSecret, 9)
+	payload := map[string]any{
+		"events": []map[string]any{
+			{
+				"event_id":   "55555555-5555-4555-8555-555555555551",
+				"event_type": "screen_view",
+				"event_name": "/home",
+				"platform":   "android",
+				"props":      map[string]any{"phase": "enter"},
+			},
+			{
+				"event_id":    "55555555-5555-4555-8555-555555555552",
+				"event_type":  "screen_view",
+				"event_name":  "/home",
+				"duration_ms": 1000,
+				"platform":    "android",
+				"props":       map[string]any{"phase": "leave", "reason": "route"},
+			},
+			{
+				"event_id":    "55555555-5555-4555-8555-555555555553",
+				"event_type":  "screen_view",
+				"event_name":  "/home",
+				"duration_ms": 3000,
+				"platform":    "android",
+				"props":       map[string]any{"phase": "leave", "reason": "route"},
+			},
+			{
+				"event_id":   "55555555-5555-4555-8555-555555555554",
+				"event_type": "screen_view",
+				"event_name": "/course",
+				"platform":   "android",
+				"props":      map[string]any{"phase": "enter"},
+			},
+		},
+	}
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/track/events", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("ingest %d %s", resp.StatusCode, raw)
+	}
+
+	date := bizday.StatDate(time.Now())
+	type dimResp struct {
+		Data struct {
+			Items []struct {
+				DimValue    string `json:"dim_value"`
+				MetricValue int64  `json:"metric_value"`
+			} `json:"items"`
+		} `json:"data"`
+	}
+	getDims := func(metric string) dimResp {
+		t.Helper()
+		r, _ := http.NewRequest(
+			http.MethodGet,
+			srv.URL+"/v1/admin/metrics/dims?metric="+metric+"&date="+date+"&limit=20",
+			nil,
+		)
+		r.Header.Set("X-Internal-Token", cfg.InternalToken)
+		res, err := http.DefaultClient.Do(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, _ := io.ReadAll(res.Body)
+		_ = res.Body.Close()
+		if res.StatusCode != 200 {
+			t.Fatalf("dims %s %d %s", metric, res.StatusCode, b)
+		}
+		var out dimResp
+		if err := json.Unmarshal(b, &out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+
+	screens := getDims("screen_views")
+	byName := map[string]int64{}
+	for _, it := range screens.Data.Items {
+		byName[it.DimValue] = it.MetricValue
+	}
+	if byName["/home"] != 1 || byName["/course"] != 1 {
+		t.Fatalf("screen_views want enter-only counts, got %s", mustJSON(screens))
+	}
+
+	dwell := getDims("screen_dwell_avg")
+	if len(dwell.Data.Items) != 1 || dwell.Data.Items[0].DimValue != "/home" || dwell.Data.Items[0].MetricValue != 2000 {
+		t.Fatalf("screen_dwell_avg unexpected: %s", mustJSON(dwell))
+	}
+
+	req, _ = http.NewRequest(
+		http.MethodGet,
+		srv.URL+"/v1/admin/metrics/dims?metric=not_a_metric&date="+date+"&limit=20",
+		nil,
+	)
+	req.Header.Set("X-Internal-Token", cfg.InternalToken)
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != 400 {
+		t.Fatalf("invalid metric want 400 got %d", resp.StatusCode)
+	}
+}
+
+func mustJSON(v any) string {
+	b, _ := json.Marshal(v)
+	return string(b)
+}
+
 func TestHTTP_TrendTodayLiveFromEvents(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "track-trend.db")

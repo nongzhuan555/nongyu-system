@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { trackClick } from "@/modules/telemetry";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type PeerLookupSheetProps = {
@@ -39,6 +40,7 @@ export function PeerLookupSheet({ visible, onClose, onSubmit }: PeerLookupSheetP
   };
 
   const handleSubmit = async () => {
+    trackClick("course_peer_lookup_submit");
     const trimmed = studentNo.trim();
     if (!/^\d{9}$/.test(trimmed)) {
       setLocalError("请输入 9 位数字学号");

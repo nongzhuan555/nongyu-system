@@ -9,6 +9,7 @@ import type { PostType } from "@/modules/center/api/posts";
 import { PostFeedList } from "@/modules/center/components/PostFeedList";
 import { SegmentGlassTabs } from "@/modules/center/components/SegmentGlassTabs";
 import { HOME_FIELD_CHROME } from "@/modules/home/constants/fieldChrome";
+import { trackClick } from "@/modules/telemetry";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
 const SEGMENTS = [
@@ -66,7 +67,10 @@ export function CenterScreen() {
               accessibilityRole="button"
               accessibilityLabel="发帖"
               hitSlop={10}
-              onPress={() => router.push(`/center/compose?postType=${postType}` as Href)}
+              onPress={() => {
+                trackClick("center_compose_open");
+                router.push(`/center/compose?postType=${postType}` as Href);
+              }}
               style={styles.composeBtn}
             >
               <Ionicons name="create-outline" size={22} color={t.color.brand} />

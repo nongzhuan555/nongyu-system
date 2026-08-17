@@ -147,11 +147,18 @@ func (j *Jobs) RunAggregate(ctx context.Context, date string) (string, error) {
 			return err
 		}
 
-		screenDims, err := j.store.CountByName(ctx, tx, date, "screen_view")
+		screenDims, err := j.store.CountScreenEnters(ctx, tx, date)
 		if err != nil {
 			return err
 		}
 		if err := j.store.ReplaceDims(ctx, tx, date, "screen_views", nowMs, screenDims); err != nil {
+			return err
+		}
+		dwellDims, err := j.store.AvgScreenDwell(ctx, tx, date)
+		if err != nil {
+			return err
+		}
+		if err := j.store.ReplaceDims(ctx, tx, date, "screen_dwell_avg", nowMs, dwellDims); err != nil {
 			return err
 		}
 		clickDims, err := j.store.CountByName(ctx, tx, date, "button_click")

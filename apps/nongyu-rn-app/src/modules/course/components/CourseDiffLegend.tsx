@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from "react-native";
+import { trackClick } from "@/modules/telemetry";
 import type { CourseDiffMode } from "../store/courseUiStore";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
@@ -18,7 +19,10 @@ export function CourseDiffLegend({ mode, onModeChange }: CourseDiffLegendProps) 
       <View style={styles.modes}>
         <Pressable
           style={[styles.chip, mode === "conflict" && styles.chipActive]}
-          onPress={() => onModeChange("conflict")}
+          onPress={() => {
+            trackClick("course_diff_mode_conflict");
+            onModeChange("conflict");
+          }}
         >
           <Text style={[styles.chipText, mode === "conflict" && styles.chipTextActive]}>
             冲突叠色
@@ -26,7 +30,10 @@ export function CourseDiffLegend({ mode, onModeChange }: CourseDiffLegendProps) 
         </Pressable>
         <Pressable
           style={[styles.chip, mode === "free" && styles.chipActive]}
-          onPress={() => onModeChange("free")}
+          onPress={() => {
+            trackClick("course_diff_mode_free");
+            onModeChange("free");
+          }}
         >
           <Text style={[styles.chipText, mode === "free" && styles.chipTextActive]}>空闲交集</Text>
         </Pressable>

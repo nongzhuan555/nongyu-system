@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { toast } from "@/components/ui/toast";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 import { JIAOWU_SERVICES, type JiaowuServiceItem } from "@/modules/jiaowu/constants/services";
+import { trackClick } from "@/modules/telemetry";
 
 type JiaowuServiceListProps = {
   isAuthenticated: boolean;
@@ -19,6 +20,7 @@ export function JiaowuServiceList({ isAuthenticated }: JiaowuServiceListProps) {
   const router = useRouter();
 
   const onPress = (item: JiaowuServiceItem) => {
+    trackClick(`jiaowu_entry_${item.key}`);
     if (item.requireAuth && !isAuthenticated) {
       toast.info("需要登录", { description: "请先使用教务学号密码登录" });
       return;

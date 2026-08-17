@@ -57,9 +57,10 @@ export const adminTrackTrendTool = tool({
 
 export const adminTrackDimsTool = tool({
   name: "admin_track_dims",
-  description: "埋点维度分布。metric: screen_views / button_clicks / perf_p50 / perf_p95。",
+  description:
+    "埋点维度分布。metric: screen_views / screen_dwell_avg / button_clicks / perf_p50 / perf_p95。",
   inputSchema: z.object({
-    metric: z.enum(["screen_views", "button_clicks", "perf_p50", "perf_p95"]),
+    metric: z.enum(["screen_views", "screen_dwell_avg", "button_clicks", "perf_p50", "perf_p95"]),
     date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)

@@ -32,6 +32,7 @@ import {
 } from "@/agent/session";
 import { confirm } from "@/components/ui/confirm";
 import { toast } from "@/components/ui/toast";
+import { trackClick } from "@/modules/telemetry";
 import { useSessionStore } from "@/stores/session";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 import { useThemeTokens } from "@/theme/ThemeProvider";
@@ -181,6 +182,7 @@ export default function AiScreen() {
   };
 
   const startNewChat = () => {
+    trackClick("agent_session_new");
     if (studentId) setActiveSessionId(studentId, null);
     setActiveId(null);
     setChatKey(`draft-${Date.now()}`);
@@ -191,6 +193,7 @@ export default function AiScreen() {
   };
 
   const selectSession = (sessionId: string) => {
+    trackClick("agent_session_switch");
     if (!studentId) return;
     if (sessionId === activeSessionId) {
       setDrawerOpen(false);
@@ -440,6 +443,7 @@ function AiChatPanel({
     if (isLoading) return;
     const text = input.trim();
     if (!text) return;
+    trackClick("agent_send");
     setInput("");
     const history = agentChatRunner.matchesView(viewKey, sessionId)
       ? agentChatRunner.getSnapshot().messages
@@ -448,6 +452,7 @@ function AiChatPanel({
   };
 
   const onStop = () => {
+    trackClick("agent_stop");
     void (async () => {
       const ok = await confirm({
         title: "停止生成",

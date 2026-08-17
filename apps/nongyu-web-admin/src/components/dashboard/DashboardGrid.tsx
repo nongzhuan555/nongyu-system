@@ -19,7 +19,15 @@ import {
 } from "../../lib/dashboardLayout";
 import { ChartCard } from "./ChartCard";
 import { CrashesTable } from "./CrashesTable";
-import { barOption, dimBarOption, growthOption, perfOption, pieOption } from "./dashboardCharts";
+import {
+  barOption,
+  buttonClicksBarOption,
+  dimBarOption,
+  dwellBarOption,
+  growthOption,
+  perfOption,
+  pieOption,
+} from "./dashboardCharts";
 import { EchartsBlock } from "./EchartsBlock";
 import { KpiCard } from "./KpiCard";
 import { SettingsPies } from "./SettingsPies";
@@ -41,6 +49,8 @@ export type DashboardGridData = {
   settings: SettingsDistribution | null;
   trackOverview: TrackOverview | null;
   screenViews: TrackDimItem[];
+  screenDwell: TrackDimItem[];
+  buttonClicks: TrackDimItem[];
   perfP50: TrackDimItem[];
   perfP95: TrackDimItem[];
   crashes: TrackCrashPage | null;
@@ -126,6 +136,8 @@ function renderWidgets(args: {
     "chart-grade",
     "chart-device",
     "chart-screen-views",
+    "chart-screen-dwell",
+    "chart-button-clicks",
     "chart-settings",
     "chart-perf",
     "table-crashes",
@@ -264,6 +276,32 @@ function widgetBody(
     return (
       <ChartCard
         title="页面使用次数"
+        loading={args.trackLoading}
+        error={args.trackError}
+        empty={!option}
+      >
+        {option ? <EchartsBlock option={option} /> : null}
+      </ChartCard>
+    );
+  }
+  if (id === "chart-screen-dwell") {
+    const option = dwellBarOption(data.screenDwell);
+    return (
+      <ChartCard
+        title="页均停留时长"
+        loading={args.trackLoading}
+        error={args.trackError}
+        empty={!option}
+      >
+        {option ? <EchartsBlock option={option} /> : null}
+      </ChartCard>
+    );
+  }
+  if (id === "chart-button-clicks") {
+    const option = buttonClicksBarOption(data.buttonClicks);
+    return (
+      <ChartCard
+        title="按钮点击分布"
         loading={args.trackLoading}
         error={args.trackError}
         empty={!option}

@@ -10,6 +10,7 @@ import {
 } from "@gorhom/bottom-sheet";
 import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { trackClick } from "@/modules/telemetry";
 import { WEEKDAY_LABELS } from "../model/courseTimes";
 import { COURSE_COLOR_PALETTE } from "../model/colors";
 import type { ScheduleEntry } from "../model/types";
@@ -102,6 +103,7 @@ export const ScheduleFormSheet = forwardRef<BottomSheetModal, ScheduleFormSheetP
 
     const handleSave = useCallback(async () => {
       if (!canSave) return;
+      trackClick("course_schedule_save");
       setSaving(true);
       try {
         const now = new Date().toISOString();

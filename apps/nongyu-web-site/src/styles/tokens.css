@@ -1,0 +1,89 @@
+:root {
+  --ny-brand: #0a7c59;
+  --ny-brand-muted: #d4e9df;
+  --ny-on-brand: #ffffff;
+  --ny-bg: #fafbfa;
+  --ny-surface: #ffffff;
+  --ny-text: #111827;
+  --ny-text-2: #424945;
+  --ny-outline: #cfe3da;
+  --ny-secondary: #2e7d6e;
+  --ny-glow: rgba(10, 124, 89, 0.18);
+  --ny-radius-media: 24px;
+  --ny-radius-sm: 14px;
+  --ny-max: 1120px;
+  --ny-font-display: "Fraunces", "Noto Serif SC", "Songti SC", serif;
+  --ny-font-sans: "DM Sans", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  --ny-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--ny-font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ny-text);
+  background: var(--ny-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ny-brand);
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

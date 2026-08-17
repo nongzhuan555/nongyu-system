@@ -1,5 +1,6 @@
 import type { EChartsOption } from "echarts";
 import type { DistKeyCount, TrackDimItem, UserGrowth } from "../../types/dashboard";
+import { formatRnRouteLabel } from "../../lib/rnRouteLabels";
 
 export const CHART_COLORS = ["#10B981", "#FBBF24", "#34D399", "#FCD34D", "#059669", "#D97706"];
 
@@ -86,11 +87,101 @@ export function barOption(rows: DistKeyCount[], horizontal = false): EChartsOpti
   };
 }
 
+/** 页面使用次数：类目为 RN 路由展示名 */
 export function dimBarOption(items: TrackDimItem[]): EChartsOption | null {
-  return barOption(
-    items.map((item) => ({ key: item.dimValue, count: item.metricValue })),
-    true,
-  );
+  if (items.length === 0) return null;
+  const names = items.map((item) => formatRnRouteLabel(item.dimValue));
+  const values = items.map((item) => item.metricValue);
+  return {
+    color: CHART_COLORS,
+    tooltip: { ...TOOLTIP, trigger: "axis" },
+    grid: { left: 120, right: 16, top: 16, bottom: 32, containLabel: true },
+    xAxis: {
+      type: "value",
+      axisLabel: { color: "#64748B" },
+      splitLine: { lineStyle: { color: "#F1F5F9" } },
+    },
+    yAxis: {
+      type: "category",
+      data: names,
+      axisLabel: { color: "#64748B", width: 110, overflow: "truncate" },
+    },
+    series: [
+      {
+        type: "bar",
+        data: values,
+        barMaxWidth: 28,
+        itemStyle: { borderRadius: [0, 8, 8, 0] },
+      },
+    ],
+  };
+}
+
+/** 按钮点击分布：类目为稳定 event_name，不做路由映射 */
+export function buttonClicksBarOption(items: TrackDimItem[]): EChartsOption | null {
+  if (items.length === 0) return null;
+  const names = items.map((item) => item.dimValue);
+  const values = items.map((item) => item.metricValue);
+  return {
+    color: CHART_COLORS,
+    tooltip: { ...TOOLTIP, trigger: "axis" },
+    grid: { left: 140, right: 16, top: 16, bottom: 32, containLabel: true },
+    xAxis: {
+      type: "value",
+      axisLabel: { color: "#64748B" },
+      splitLine: { lineStyle: { color: "#F1F5F9" } },
+    },
+    yAxis: {
+      type: "category",
+      data: names,
+      axisLabel: { color: "#64748B", width: 130, overflow: "truncate" },
+    },
+    series: [
+      {
+        type: "bar",
+        data: values,
+        barMaxWidth: 28,
+        itemStyle: { borderRadius: [0, 8, 8, 0] },
+      },
+    ],
+  };
+}
+
+/**
+ * 页均停留：metric_value 为 ms，展示为秒（1 位小数）
+ */
+export function dwellBarOption(items: TrackDimItem[]): EChartsOption | null {
+  if (items.length === 0) return null;
+  const names = items.map((item) => formatRnRouteLabel(item.dimValue));
+  const values = items.map((item) => Math.round((item.metricValue / 1000) * 10) / 10);
+  return {
+    color: CHART_COLORS,
+    tooltip: {
+      ...TOOLTIP,
+      trigger: "axis",
+      valueFormatter: (value) => `平均停留 ${String(value)}s`,
+    },
+    grid: { left: 120, right: 16, top: 16, bottom: 32, containLabel: true },
+    xAxis: {
+      type: "value",
+      name: "秒",
+      axisLabel: { color: "#64748B" },
+      splitLine: { lineStyle: { color: "#F1F5F9" } },
+    },
+    yAxis: {
+      type: "category",
+      data: names,
+      axisLabel: { color: "#64748B", width: 110, overflow: "truncate" },
+    },
+    series: [
+      {
+        type: "bar",
+        data: values,
+        barMaxWidth: 28,
+        itemStyle: { borderRadius: [0, 8, 8, 0] },
+      },
+    ],
+  };
 }
 
 export function growthOption(growth: UserGrowth): EChartsOption | null {

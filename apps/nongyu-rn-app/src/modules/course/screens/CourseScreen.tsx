@@ -48,6 +48,7 @@ import { indexAttendanceBySlot, listAttendancesForCourse } from "../model/attend
 import { scheduleOverlapsAnyCourse } from "../model/scheduleOverlap";
 import { TabScreenBackground } from "@/components/navigation/TabScreenBackground";
 import { toast } from "@/components/ui/toast";
+import { trackClick } from "@/modules/telemetry";
 import { confirm } from "@/components/ui/confirm";
 import { track } from "@/modules/telemetry";
 import { useSessionStore } from "@/stores/session";
@@ -629,6 +630,7 @@ export function CourseScreen() {
               {isDiffMode ? (
                 <Pressable
                   onPress={() => {
+                    trackClick("course_exit_diff");
                     if (peer) enterPeerView(peer);
                   }}
                   style={({ pressed }) => [styles.exitDiffBtn, pressed && styles.iconBtnPressed]}
@@ -638,7 +640,10 @@ export function CourseScreen() {
                 </Pressable>
               ) : (
                 <Pressable
-                  onPress={() => enterDiffView()}
+                  onPress={() => {
+                    trackClick("course_enter_diff");
+                    enterDiffView();
+                  }}
                   style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
                   accessibilityLabel="对比课表"
                 >
@@ -646,7 +651,10 @@ export function CourseScreen() {
                 </Pressable>
               )}
               <Pressable
-                onPress={() => exitPeerView()}
+                onPress={() => {
+                  trackClick("course_exit_peer");
+                  exitPeerView();
+                }}
                 style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
                 accessibilityLabel="返回我的课表"
               >
@@ -689,7 +697,10 @@ export function CourseScreen() {
               </Pressable>
               {!showExamPane ? (
                 <Pressable
-                  onPress={() => setPickerVisible(true)}
+                  onPress={() => {
+                    trackClick("course_set_semester_open");
+                    setPickerVisible(true);
+                  }}
                   style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
                   accessibilityLabel="设置开学日期"
                 >
@@ -717,7 +728,10 @@ export function CourseScreen() {
           </Text>
           <Pressable
             style={({ pressed }) => [styles.retryBtn, pressed && { opacity: 0.9 }]}
-            onPress={() => void forceRefresh()}
+            onPress={() => {
+              trackClick("course_refresh");
+              void forceRefresh();
+            }}
           >
             <Text style={styles.retryText}>重试</Text>
           </Pressable>
@@ -820,6 +834,7 @@ export function CourseScreen() {
         initialDate={pickerInitial}
         onDismiss={() => setPickerVisible(false)}
         onConfirm={(date) => {
+          trackClick("course_set_semester_confirm");
           try {
             setSemesterStart(date);
             setPickerVisible(false);

@@ -18,7 +18,13 @@ import {
 export const adminTrackRouter = Router();
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日期须为 YYYY-MM-DD");
-const dimMetricSchema = z.enum(["screen_views", "button_clicks", "perf_p50", "perf_p95"]);
+const dimMetricSchema = z.enum([
+  "screen_views",
+  "screen_dwell_avg",
+  "button_clicks",
+  "perf_p50",
+  "perf_p95",
+]);
 const trendMetricSchema = z.enum([
   "dau",
   "crash_count",

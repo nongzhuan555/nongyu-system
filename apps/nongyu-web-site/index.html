@@ -1,12 +1,155 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>农屿官网 - Nongyu Official Site</title>
+    <meta
+      name="description"
+      content="农屿 — 专属川农er的校园助手。无广告课表、教务与二课聚合、农屿 AI。"
+    />
+    <title>农屿 — 专属川农er的校园助手</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,650&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
-    <h1>欢迎来到农屿</h1>
-    <p>智慧农业与校园服务的一站式平台</p>
+    <div class="shell">
+      <div class="atmosphere" aria-hidden="true"></div>
+
+      <header class="nav" data-nav>
+        <div class="wrap nav__inner">
+          <a class="nav__brand" href="#hero">农屿</a>
+          <button
+            class="nav__menu-btn"
+            type="button"
+            data-menu-btn
+            aria-expanded="false"
+            aria-controls="site-nav-links"
+            aria-label="打开菜单"
+          >
+            菜单
+          </button>
+          <nav id="site-nav-links" class="nav__links" data-nav-links aria-label="站点">
+            <a href="#features">功能</a>
+            <a href="#download">下载</a>
+            <a href="#contact">联系</a>
+            <a class="nav__cta" href="#download">立即下载</a>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <section id="hero" class="hero">
+          <div class="wrap hero__inner reveal is-in" data-reveal>
+            <h1 class="hero__brand">农屿</h1>
+            <p class="hero__tagline">专属川农er的校园助手</p>
+            <p class="hero__lead">无广告课表、教务与二课聚合、农屿 AI，你想要的，农屿都能做到</p>
+            <div class="hero__actions">
+              <a class="btn btn--primary" href="#download">立即下载</a>
+              <a class="btn btn--ghost" href="#features">了解功能</a>
+            </div>
+          </div>
+        </section>
+
+        <section id="features" class="section section--tint">
+          <div class="wrap">
+            <header class="section__head reveal" data-reveal>
+              <p class="section__eyebrow">Features</p>
+              <h2 class="section__title">核心能力</h2>
+              <p class="section__desc">对齐当前客户端：课表、教务、二课、农屿 AI、广场与个性化。</p>
+            </header>
+            <div class="feature-list" data-features></div>
+          </div>
+        </section>
+
+        <section id="download" class="section">
+          <div class="wrap">
+            <header class="section__head reveal" data-reveal>
+              <p class="section__eyebrow">Download</p>
+              <h2 class="section__title">获取农屿</h2>
+              <p class="section__desc">
+                Android 侧载安装；iOS 渠道筹备中。链接就绪后在配置中填入即可。
+              </p>
+            </header>
+            <div class="panel-grid reveal" data-reveal>
+              <article class="panel">
+                <h3 class="panel__title">Android</h3>
+                <p class="panel__meta">下载 APK 后按系统提示安装（可能需允许未知来源）。</p>
+                <div class="panel__actions">
+                  <a
+                    class="btn btn--primary btn--disabled"
+                    data-android-download
+                    aria-disabled="true"
+                    >Android · 即将开放</a
+                  >
+                </div>
+              </article>
+              <article class="panel">
+                <h3 class="panel__title">iOS</h3>
+                <p class="panel__meta">正式分发渠道尚未开放，敬请期待。</p>
+                <div class="panel__actions">
+                  <span class="btn btn--ghost btn--disabled" aria-disabled="true"
+                    >iOS · 即将开放</span
+                  >
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section id="contact" class="section section--tint">
+          <div class="wrap">
+            <header class="section__head reveal" data-reveal>
+              <p class="section__eyebrow">Contact</p>
+              <h2 class="section__title">联系团队</h2>
+              <p class="section__desc">关注公众号或加入 QQ 群，获取通知与反馈通道。</p>
+            </header>
+            <div class="panel reveal" data-reveal style="max-width: 36rem">
+              <div class="contact-row">
+                <div>
+                  <p class="contact-row__label">微信公众号</p>
+                  <p class="contact-row__value">农屿校园助手</p>
+                </div>
+                <button
+                  type="button"
+                  class="copy-btn"
+                  data-copy="农屿校园助手"
+                  aria-label="复制公众号名称"
+                >
+                  复制
+                </button>
+              </div>
+              <div class="contact-row">
+                <div>
+                  <p class="contact-row__label">QQ 群</p>
+                  <p class="contact-row__value">327303003</p>
+                </div>
+                <button
+                  type="button"
+                  class="copy-btn"
+                  data-copy="327303003"
+                  aria-label="复制 QQ 群号"
+                >
+                  复制
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="wrap footer__inner">
+          <span class="footer__brand">农屿工作室</span>
+          <span>© <span data-year>2026</span> 农屿 · 川农校园助手</span>
+        </div>
+      </footer>
+    </div>
+
+    <div class="toast" data-toast role="status" aria-live="polite"></div>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

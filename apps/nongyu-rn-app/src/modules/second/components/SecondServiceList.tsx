@@ -6,6 +6,7 @@ import { toast } from "@/components/ui/toast";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 import { SECOND_SERVICES, type SecondServiceItem } from "@/modules/second/constants/services";
 import { SecondSurface } from "@/modules/second/components/SecondSurface";
+import { trackClick } from "@/modules/telemetry";
 
 type Props = {
   isAuthenticated: boolean;
@@ -20,6 +21,7 @@ export function SecondServiceList({ isAuthenticated }: Props) {
   const router = useRouter();
 
   const onPress = (item: SecondServiceItem) => {
+    trackClick(`second_entry_${item.key}`);
     if (!isAuthenticated) {
       toast.info("需要登录", { description: "请先登录二课（i川农）账号" });
       router.push("/home/second/login" as Href);

@@ -6,6 +6,7 @@ import {
 } from "../model/attendanceSummary";
 import { WEEKDAY_LABELS } from "../model/courseTimes";
 import type { AttendanceStatus, CourseAttendance } from "../model/types";
+import { trackClick } from "@/modules/telemetry";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
 const STATUS_OPTIONS: { status: AttendanceStatus; label: string }[] = [
@@ -61,7 +62,10 @@ export function CourseAttendanceSection({
             <Pressable
               key={opt.status}
               disabled={busy}
-              onPress={() => onSelect(opt.status)}
+              onPress={() => {
+                trackClick("course_attendance_set", { status: opt.status });
+                onSelect(opt.status);
+              }}
               style={({ pressed }) => [
                 styles.chip,
                 active && styles.chipActive,
@@ -76,7 +80,10 @@ export function CourseAttendanceSection({
       {attendance ? (
         <Pressable
           disabled={busy}
-          onPress={onClear}
+          onPress={() => {
+            trackClick("course_attendance_clear");
+            onClear();
+          }}
           style={({ pressed }) => [styles.clearBtn, pressed && { opacity: 0.8 }]}
         >
           <Text style={styles.clearText}>重置</Text>

@@ -23,6 +23,7 @@ import { createThemedStyles } from "@/theme/createThemedStyles";
 import { performSecondLogin } from "@/modules/second/auth/performSecondLogin";
 import { refreshSecondAuthFlag } from "@/modules/second/hooks/useSecondAuth";
 import { useSessionStore } from "@/stores/session";
+import { trackClick } from "@/modules/telemetry";
 
 const STUDENT_ID_RE = /^\d{9}$/;
 
@@ -81,6 +82,7 @@ export function SecondLoginScreen() {
     STUDENT_ID_RE.test(studentId.trim()) && password.trim().length > 0 && !submitting;
 
   const handleSubmit = async () => {
+    trackClick("second_login");
     if (submitting) return;
     setSubmitting(true);
     try {
