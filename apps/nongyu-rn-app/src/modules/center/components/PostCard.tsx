@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useThemeTokens } from "@/theme/ThemeProvider";
 import type { PostListItem } from "@/modules/center/api/posts";
 import { subtypeLabel } from "@/modules/center/constants/subtypes";
 import { formatPublishedAt } from "@/modules/center/utils/format";
@@ -16,12 +17,26 @@ type PostCardProps = {
  */
 export function PostCard({ item, onPress, showViewCount }: PostCardProps) {
   const styles = useStyles();
+  const t = useThemeTokens();
   const typeText = subtypeLabel(item.postType, item.subtype);
   // 反馈墙 / 大院对用户匿名，不展示作者名
   const metaParts = [formatPublishedAt(item.publishedAt), typeText];
   if (showViewCount && typeof item.viewCount === "number") {
     metaParts.push(`阅读 ${item.viewCount}`);
   }
+
+  // 「我的帖子」回复角标：feedback 显示已回复/未回复；courtyard 显示 N 条留言
+  const replyBadge = showViewCount
+    ? item.postType === "feedback"
+      ? item.hasReply
+        ? { text: "已回复", color: t.color.brand }
+        : { text: "未回复", color: t.color.textSecondary }
+      : item.postType === "courtyard"
+        ? typeof item.replyCount === "number" && item.replyCount > 0
+          ? { text: `${item.replyCount} 条留言`, color: t.color.brand }
+          : { text: "暂无留言", color: t.color.textSecondary }
+        : null
+    : null;
 
   return (
     <Pressable
@@ -36,9 +51,16 @@ export function PostCard({ item, onPress, showViewCount }: PostCardProps) {
       <Text style={styles.preview} numberOfLines={2}>
         {item.contentPreview}
       </Text>
-      <Text style={styles.meta} numberOfLines={1}>
-        {metaParts.join("  ·  ")}
-      </Text>
+      <View style={styles.metaRow}>
+        <Text style={styles.meta} numberOfLines={1}>
+          {metaParts.join("  ·  ")}
+        </Text>
+        {replyBadge ? (
+          <Text style={[styles.replyBadge, { color: replyBadge.color }]} numberOfLines={1}>
+            {replyBadge.text}
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -74,5 +96,19 @@ const useStyles = createThemedStyles((t) => ({
     color: t.color.textSecondary,
     letterSpacing: 0.2,
     opacity: 0.85,
+    flexShrink: 1,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: t.space.sm,
+    marginTop: 2,
+  },
+  replyBadge: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+    marginLeft: "auto",
+    flexShrink: 0,
   },
 }));

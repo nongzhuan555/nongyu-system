@@ -12,6 +12,24 @@ export type PostListItem = {
   /** App 端恒为 null（反馈墙/大院匿名）；保留字段兼容接口 */
   authorDisplayName?: string | null;
   viewCount?: number;
+  /** 「我的帖子」列表返回：未软删回复总数（含 admin_reply 与 comment） */
+  replyCount?: number;
+  /** 「我的帖子」列表返回：replyCount > 0 */
+  hasReply?: boolean;
+};
+
+/** 反馈墙管理员回复（App 侧统一「管理员回复」，无作者信息） */
+export type PostAdminReply = {
+  content: string;
+  publishedAt: string;
+};
+
+/** 大院用户留言（完全匿名，仅 isMine 自识） */
+export type PostComment = {
+  id: number;
+  content: string;
+  publishedAt: string;
+  isMine: boolean;
 };
 
 export type PostDetail = {
@@ -25,6 +43,10 @@ export type PostDetail = {
   authorDisplayName?: string | null;
   /** 仅供本人删帖，不向他人暴露作者身份 */
   isMine: boolean;
+  /** 反馈墙：管理员单条回复（无则 null） */
+  adminReply?: PostAdminReply | null;
+  /** 大院：顶层留言列表（按 publishedAt ASC，软删剔除） */
+  comments?: PostComment[];
 };
 
 export type PageResult<T> = {

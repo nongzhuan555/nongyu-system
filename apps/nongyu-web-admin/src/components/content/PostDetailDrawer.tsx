@@ -1,14 +1,20 @@
-import { Button, Descriptions, Drawer, Grid, Modal, Space, Tag, message } from "antd";
-import { AdminApiError, deleteAdminPost } from "../../lib/adminApi";
+import { Button, Descriptions, Drawer, Grid, Modal, Skeleton, Space, Tag, message } from "antd";
+import { useEffect, useState } from "react";
+import { AdminApiError, deleteAdminPost, fetchAdminPost } from "../../lib/adminApi";
 import { displayText, formatAdminDateTime, formatCoverageRate } from "../../lib/format";
 import type { AdminPostItem } from "../../types/posts";
+import { AdminCommentList } from "./AdminCommentList";
+import { AdminReplyPanel } from "./AdminReplyPanel";
 
 type PostDetailDrawerProps = {
   open: boolean;
+  /** 列表行数据（用于即时展示与取 id）；详情字段以拉取的 detail 为准 */
   post: AdminPostItem | null;
   onClose: () => void;
   onDeleted: () => void;
   onEdit: (post: AdminPostItem) => void;
+  /** 回复/留言变更后刷新列表（可选，用于同步 replyCount 列） */
+  onReplyChanged?: () => void;
 };
 
 export function PostDetailDrawer({
@@ -17,14 +23,51 @@ export function PostDetailDrawer({
   onClose,
   onDeleted,
   onEdit,
+  onReplyChanged,
 }: PostDetailDrawerProps) {
   const screens = Grid.useBreakpoint();
   const isLg = screens.lg ?? true;
-  const isAnnouncement = post?.postType === "announcement";
-  const isDeleted = Boolean(post?.deletedAt);
+  const [detail, setDetail] = useState<AdminPostItem | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const current = detail ?? post;
+  const isAnnouncement = current?.postType === "announcement";
+  const isDeleted = Boolean(current?.deletedAt);
+
+  useEffect(() => {
+    if (!open || !post) {
+      setDetail(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    fetchAdminPost(post.id)
+      .then((data) => {
+        if (!cancelled) setDetail(data);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const text = err instanceof AdminApiError ? err.serverMessage : "加载详情失败";
+        message.error(text);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, post]);
+
+  function refreshDetail() {
+    if (!post) return;
+    void fetchAdminPost(post.id)
+      .then(setDetail)
+      .catch(() => {});
+    onReplyChanged?.();
+  }
 
   function handleDelete() {
-    if (!post || isDeleted) return;
+    if (!current || isDeleted) return;
     Modal.confirm({
       title: "删除内容",
       content: "删除后用户端不可见，确定继续？",
@@ -33,7 +76,7 @@ export function PostDetailDrawer({
       cancelText: "取消",
       onOk: async () => {
         try {
-          await deleteAdminPost(post.id);
+          await deleteAdminPost(current.id);
           onDeleted();
           onClose();
         } catch (err) {
@@ -53,28 +96,28 @@ export function PostDetailDrawer({
       width={isLg ? 480 : "100%"}
       destroyOnClose
     >
-      {post ? (
+      {current ? (
         <div className="space-y-6">
           <Descriptions column={1} size="small">
-            <Descriptions.Item label="标题">{post.title}</Descriptions.Item>
+            <Descriptions.Item label="标题">{current.title}</Descriptions.Item>
             <Descriptions.Item label="类型">
-              {post.postType === "announcement"
+              {current.postType === "announcement"
                 ? "公告"
-                : post.postType === "feedback"
+                : current.postType === "feedback"
                   ? "反馈"
                   : "建议"}
             </Descriptions.Item>
-            <Descriptions.Item label="子类型">{displayText(post.subtype)}</Descriptions.Item>
+            <Descriptions.Item label="子类型">{displayText(current.subtype)}</Descriptions.Item>
             <Descriptions.Item label="作者">
-              {post.authorName}（{post.authorStudentNo}）
+              {current.authorName}（{current.authorStudentNo}）
             </Descriptions.Item>
             <Descriptions.Item label="发布时间">
-              {formatAdminDateTime(post.publishedAt)}
+              {formatAdminDateTime(current.publishedAt)}
             </Descriptions.Item>
-            <Descriptions.Item label="阅读量">{post.viewCount}</Descriptions.Item>
-            <Descriptions.Item label="独立读者">{post.uniqueReaderCount}</Descriptions.Item>
+            <Descriptions.Item label="阅读量">{current.viewCount}</Descriptions.Item>
+            <Descriptions.Item label="独立读者">{current.uniqueReaderCount}</Descriptions.Item>
             <Descriptions.Item label="覆盖率">
-              {formatCoverageRate(post.coverageRate)}
+              {formatCoverageRate(current.coverageRate)}
             </Descriptions.Item>
             <Descriptions.Item label="状态">
               {isDeleted ? <Tag color="warning">已删除</Tag> : <Tag color="success">正常</Tag>}
@@ -84,13 +127,31 @@ export function PostDetailDrawer({
           <div>
             <p className="mb-2 text-sm font-medium text-ink">正文</p>
             <div className="whitespace-pre-wrap rounded-2xl bg-canvas p-4 text-sm text-ink">
-              {post.content}
+              {current.content}
             </div>
           </div>
 
+          {loading ? (
+            <Skeleton active paragraph={{ rows: 3 }} />
+          ) : current.postType === "feedback" ? (
+            <AdminReplyPanel
+              postId={current.id}
+              reply={current.adminReply ?? null}
+              postDeleted={isDeleted}
+              onChanged={refreshDetail}
+            />
+          ) : current.postType === "courtyard" ? (
+            <AdminCommentList
+              postId={current.id}
+              comments={current.comments}
+              postDeleted={isDeleted}
+              onChanged={refreshDetail}
+            />
+          ) : null}
+
           <Space wrap>
             {isAnnouncement && !isDeleted ? (
-              <Button className="min-h-11" type="primary" onClick={() => onEdit(post)}>
+              <Button className="min-h-11" type="primary" onClick={() => onEdit(current)}>
                 编辑
               </Button>
             ) : null}

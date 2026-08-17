@@ -16,13 +16,30 @@ import {
   softDeletePost,
   updateAnnouncement,
 } from "./repo.js";
+import {
+  consumeNewRepliesForUser,
+  createAdminReply,
+  createComment,
+  countRepliesForPosts,
+  getAdminReplyForPost,
+  listCommentsForPost,
+  softDeleteAdminReply,
+  softDeleteCommentByAdmin,
+  softDeleteCommentByOwner,
+  updateAdminReply,
+  PostGoneError,
+  PostTypeNotAllowedError,
+  ReplyAlreadyExistsError,
+  ReplyNotFoundError,
+} from "./postReplies.repo.js";
+import { withTransaction } from "../../lib/db.js";
 
 export const appPostsRouter = Router();
 export const adminPostsRouter = Router();
 
 function appListItem(
   row: Awaited<ReturnType<typeof findPostById>>,
-  opts?: { withViews?: boolean },
+  opts?: { withViews?: boolean; replyCount?: number },
 ) {
   if (!row) return null;
   const base = {
@@ -35,10 +52,15 @@ function appListItem(
     // 反馈墙 / 大院对用户彼此匿名；署名仅 Admin 接口返回
     authorDisplayName: null,
   };
+  const result: Record<string, unknown> = { ...base };
   if (opts?.withViews) {
-    return { ...base, viewCount: row.view_count };
+    result.viewCount = row.view_count;
   }
-  return base;
+  if (opts?.replyCount !== undefined) {
+    result.replyCount = opts.replyCount;
+    result.hasReply = opts.replyCount > 0;
+  }
+  return result;
 }
 
 appPostsRouter.get(
@@ -101,7 +123,7 @@ appPostsRouter.get(
     }
     await recordPostRead(id, req.appAuth!.uid);
     const refreshed = await findPostById(id);
-    ok(res, {
+    const base = {
       id: Number(refreshed!.id),
       postType: refreshed!.post_type,
       subtype: refreshed!.subtype,
@@ -110,7 +132,80 @@ appPostsRouter.get(
       publishedAt: toIsoUtcRequired(refreshed!.published_at),
       authorDisplayName: null,
       isMine: Number(refreshed!.author_user_id) === req.appAuth!.uid,
-    });
+    };
+    // 反馈墙：附带管理员单条回复（用户侧统一「管理员回复」，不暴露管理员身份）
+    if (refreshed!.post_type === "feedback") {
+      const reply = await getAdminReplyForPost(id);
+      ok(res, {
+        ...base,
+        adminReply: reply
+          ? { content: reply.content, publishedAt: toIsoUtcRequired(reply.created_at) }
+          : null,
+      });
+      return;
+    }
+    // 大院：附带顶层留言列表（完全匿名，仅 isMine 自识）
+    if (refreshed!.post_type === "courtyard") {
+      const comments = await listCommentsForPost(id);
+      ok(res, {
+        ...base,
+        comments: comments.map((c) => ({
+          id: Number(c.id),
+          content: c.content,
+          publishedAt: toIsoUtcRequired(c.created_at),
+          isMine: Number(c.author_user_id) === req.appAuth!.uid,
+        })),
+      });
+      return;
+    }
+    // 公告：不附带回复 / 留言
+    ok(res, { ...base, adminReply: null, comments: [] });
+  }),
+);
+
+appPostsRouter.post(
+  "/:id/comments",
+  requireAppAuth,
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const body = z
+      .object({
+        content: z.string().trim().min(1, "留言内容不能为空").max(1000, "留言不超过1000字"),
+      })
+      .parse(req.body);
+    try {
+      const created = await withTransaction((conn) =>
+        createComment(conn, id, req.appAuth!.uid, body.content),
+      );
+      ok(res, { id: created.id, publishedAt: toIsoUtcRequired(created.publishedAt) });
+    } catch (err) {
+      if (err instanceof PostGoneError) {
+        throw new AppError(ErrorCodes.POST_NOT_FOUND, "帖子不存在", 404);
+      }
+      if (err instanceof PostTypeNotAllowedError) {
+        throw new AppError(ErrorCodes.POST_TYPE_NOT_ALLOWED, "仅大院帖可留言", 400);
+      }
+      throw err;
+    }
+  }),
+);
+
+appPostsRouter.delete(
+  "/:id/comments/:commentId",
+  requireAppAuth,
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const commentId = Number(req.params.commentId);
+    const post = await findPostById(id);
+    if (!post || post.deleted_at) {
+      throw new AppError(ErrorCodes.POST_NOT_FOUND, "帖子不存在", 404);
+    }
+    const removed = await softDeleteCommentByOwner(id, commentId, req.appAuth!.uid);
+    if (!removed) {
+      // 非本人或留言不存在：统一 403 避免泄露存在性
+      throw new AppError(ErrorCodes.COMMENT_NOT_OWNED, "无权删除该留言", 403);
+    }
+    ok(res, { id: commentId });
   }),
 );
 
@@ -175,12 +270,41 @@ appMyPostsRouter.get(
       offset,
       pageSize,
     });
+    const replyCountMap = await countRepliesForPosts(rows.map((r) => Number(r.id)));
     ok(res, {
-      list: rows.map((r) => appListItem(r, { withViews: true })),
+      list: rows.map((r) =>
+        appListItem(r, {
+          withViews: true,
+          replyCount: replyCountMap.get(Number(r.id)) ?? 0,
+        }),
+      ),
       total,
       page,
       pageSize,
     });
+  }),
+);
+
+/** 轮询「我的帖子新回复」：返回未通知回复并同事务置位，供客户端 toast */
+export const appMyPostRepliesRouter = Router();
+
+appMyPostRepliesRouter.get(
+  "/new",
+  requireAppAuth,
+  asyncHandler(async (req, res) => {
+    const rows = await withTransaction((conn) => consumeNewRepliesForUser(conn, req.appAuth!.uid));
+    ok(
+      res,
+      rows.map((r) => ({
+        replyId: Number(r.replyId),
+        postId: Number(r.postId),
+        postType: r.postType,
+        postTitle: r.postTitle,
+        kind: r.kind,
+        content: r.content,
+        createdAt: toIsoUtcRequired(r.createdAt),
+      })),
+    );
   }),
 );
 
@@ -212,6 +336,7 @@ adminPostsRouter.get(
       offset,
       pageSize,
     });
+    const replyCountMap = await countRepliesForPosts(rows.map((r) => Number(r.id)));
     ok(res, {
       list: rows.map((r) => ({
         id: Number(r.id),
@@ -227,6 +352,7 @@ adminPostsRouter.get(
         coverageRate: totalUsers > 0 ? r.unique_reader_count / totalUsers : 0,
         publishedAt: toIsoUtcRequired(r.published_at),
         deletedAt: toIsoUtc(r.deleted_at),
+        replyCount: replyCountMap.get(Number(r.id)) ?? 0,
       })),
       total,
       page,
@@ -243,7 +369,7 @@ adminPostsRouter.get(
     const post = await findPostById(id);
     if (!post) throw new AppError(ErrorCodes.POST_NOT_FOUND, "帖子不存在", 404);
     const totalUsers = await countUsers();
-    ok(res, {
+    const base = {
       id: Number(post.id),
       postType: post.post_type,
       subtype: post.subtype,
@@ -257,7 +383,142 @@ adminPostsRouter.get(
       coverageRate: totalUsers > 0 ? post.unique_reader_count / totalUsers : 0,
       publishedAt: toIsoUtcRequired(post.published_at),
       deletedAt: toIsoUtc(post.deleted_at),
+    };
+    // 已删除帖：回复 / 留言随级联软删，不返回（避免脏数据）
+    if (post.deleted_at) {
+      ok(res, { ...base, adminReply: null, comments: [] });
+      return;
+    }
+    const adminReply = await getAdminReplyForPost(id);
+    const comments = await listCommentsForPost(id);
+    ok(res, {
+      ...base,
+      adminReply: adminReply
+        ? {
+            id: Number(adminReply.id),
+            content: adminReply.content,
+            publishedAt: toIsoUtcRequired(adminReply.created_at),
+            updatedAt: toIsoUtcRequired(adminReply.updated_at),
+            authorUserId: Number(adminReply.author_user_id),
+            authorStudentNo: adminReply.author_student_no ?? "",
+            authorName: adminReply.author_name ?? "",
+          }
+        : null,
+      comments: comments.map((c) => ({
+        id: Number(c.id),
+        content: c.content,
+        publishedAt: toIsoUtcRequired(c.created_at),
+        authorUserId: Number(c.author_user_id),
+        authorStudentNo: c.author_student_no ?? "",
+        authorName: c.author_name ?? "",
+      })),
     });
+  }),
+);
+
+adminPostsRouter.post(
+  "/:id/reply",
+  requireProvisionedAdminAuth,
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const body = z
+      .object({
+        content: z.string().trim().min(1, "回复内容不能为空").max(2000, "回复不超过2000字"),
+      })
+      .parse(req.body);
+    try {
+      const created = await withTransaction((conn) =>
+        createAdminReply(conn, id, req.adminAuth!.uid, body.content),
+      );
+      ok(res, {
+        id: created.id,
+        content: body.content,
+        publishedAt: toIsoUtcRequired(created.publishedAt),
+      });
+    } catch (err) {
+      if (err instanceof PostGoneError) {
+        throw new AppError(ErrorCodes.POST_NOT_FOUND, "帖子不存在", 404);
+      }
+      if (err instanceof PostTypeNotAllowedError) {
+        throw new AppError(ErrorCodes.POST_TYPE_NOT_ALLOWED, "仅反馈墙帖可回复", 400);
+      }
+      if (err instanceof ReplyAlreadyExistsError) {
+        throw new AppError(ErrorCodes.POST_REPLY_EXISTS, "该帖已有回复，请改用更新", 409);
+      }
+      throw err;
+    }
+  }),
+);
+
+adminPostsRouter.patch(
+  "/:id/reply",
+  requireProvisionedAdminAuth,
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const body = z
+      .object({
+        content: z.string().trim().min(1, "回复内容不能为空").max(2000, "回复不超过2000字"),
+      })
+      .parse(req.body);
+    const post = await findPostById(id);
+    if (!post || post.deleted_at) {
+      throw new AppError(ErrorCodes.POST_NOT_FOUND, "帖子不存在", 404);
+    }
+    if (post.post_type !== "feedback") {
+      throw new AppError(ErrorCodes.POST_TYPE_NOT_ALLOWED, "仅反馈墙帖可回复", 400);
+    }
+    try {
+      const updated = await withTransaction((conn) => updateAdminReply(conn, id, body.content));
+      ok(res, {
+        id: updated.id,
+        content: body.content,
+        publishedAt: toIsoUtcRequired(updated.publishedAt),
+      });
+    } catch (err) {
+      if (err instanceof ReplyNotFoundError) {
+        throw new AppError(ErrorCodes.POST_REPLY_NOT_FOUND, "管理员回复不存在", 404);
+      }
+      throw err;
+    }
+  }),
+);
+
+adminPostsRouter.delete(
+  "/:id/reply",
+  requireProvisionedAdminAuth,
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const post = await findPostById(id);
+    if (!post || post.deleted_at) {
+      throw new AppError(ErrorCodes.POST_NOT_FOUND, "帖子不存在", 404);
+    }
+    try {
+      await withTransaction((conn) => softDeleteAdminReply(conn, id));
+    } catch (err) {
+      if (err instanceof ReplyNotFoundError) {
+        throw new AppError(ErrorCodes.POST_REPLY_NOT_FOUND, "管理员回复不存在", 404);
+      }
+      throw err;
+    }
+    ok(res, { id });
+  }),
+);
+
+adminPostsRouter.delete(
+  "/:id/comments/:commentId",
+  requireProvisionedAdminAuth,
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const commentId = Number(req.params.commentId);
+    const post = await findPostById(id);
+    if (!post || post.deleted_at) {
+      throw new AppError(ErrorCodes.POST_NOT_FOUND, "帖子不存在", 404);
+    }
+    const removed = await softDeleteCommentByAdmin(id, commentId);
+    if (!removed) {
+      throw new AppError(ErrorCodes.COMMENT_NOT_FOUND, "留言不存在", 404);
+    }
+    ok(res, { id: commentId });
   }),
 );
 

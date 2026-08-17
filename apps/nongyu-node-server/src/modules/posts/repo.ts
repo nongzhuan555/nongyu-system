@@ -1,6 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { getPool, withTransaction, type PoolConnection } from "../../lib/db.js";
 import { escapeLikePattern } from "../../lib/util.js";
+import { softDeleteRepliesOfPost } from "./postReplies.repo.js";
 
 export type PostRow = {
   id: number;
@@ -122,10 +123,16 @@ export async function insertPost(
 }
 
 export async function softDeletePost(id: number): Promise<void> {
-  await getPool().query(
-    `UPDATE posts SET deleted_at = UTC_TIMESTAMP(3) WHERE id = ? AND deleted_at IS NULL`,
-    [id],
-  );
+  // 软删帖子同时级联软删其下所有回复 / 留言（业务级联）
+  await withTransaction(async (conn) => {
+    const [result] = await conn.query<ResultSetHeader>(
+      `UPDATE posts SET deleted_at = UTC_TIMESTAMP(3) WHERE id = ? AND deleted_at IS NULL`,
+      [id],
+    );
+    if (result.affectedRows > 0) {
+      await softDeleteRepliesOfPost(conn, id);
+    }
+  });
 }
 
 export async function updateAnnouncement(

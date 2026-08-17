@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-08-17 · nongyu-node-server · 广场回复上线前 CR：admin_reply 并发与删留言未绑 post_id
+
+- **现象**：CR 发现 `createAdminReply` 仅锁 `post_replies`，首次无行时并发可双插；删留言未校验 URL `post_id`；轮询置位无行锁可重复 toast；迁移与 `002_course_ext` 撞号。
+- **根因**：空结果集行锁不可靠；WHERE 缺 `post_id`；SELECT 未 `FOR UPDATE`；迁移序号未对齐。
+- **修复**：事务内先 `posts FOR UPDATE` 再插；删留言绑定 `post_id`；轮询 `FOR UPDATE`；迁移改名 `009_post_replies.sql`。
+
+---
+
 ## 2026-08-17 · nongyu-node-server / nongyu-go-track-server · 大屏「当前在线」虚高、日活/趋势易误解
 
 - **现象**：无人使用时「当前在线」仍为 1；今日有登录体感但「今日日活」为 0；趋势今日点常缺/为 0。
@@ -501,3 +509,21 @@
 - **现象**：打开管理端（尤其 LLM Key 池页）崩溃白屏；Vite 对 `LlmProxyFailsPanel.tsx` 返回 500。
 - **根因**：`src/components/llm/LlmProxyFailsPanel.tsx` 用 `../lib/*`、`../types/*`，实际应向上两级到 `src/lib`、`src/types`，模块解析失败拖垮页面。
 - **修复**：改为 `../../lib/adminApi`、`../../lib/format`、`../../types/dashboard`。
+
+---
+
+## 2026-08-17 · nongyu-node-server · `postReplies` 集成测试块破坏既有 `settings.users` 块
+
+- **现象**：在 `tests/api.test.ts` 用 `StrReplace` 内联插入大段 `postReplies` 测试时，替换文本意外截断了 `describe("settings.users", ...)` 的 `beforeAll/beforeEach/afterAll` 与首个 `it(` 包裹，导致该块语法结构损坏。
+- **根因**：`StrReplace` 的 `old_string` 锚点选在 `describe("settings.users", () => {` 后第一行，新内容未补回被覆盖的 `beforeAll`/`it(` 等结构，且大段 JSON 字符串触发「Unterminated string in JSON」工具错误。
+- **修复**：① 先用小锚点 `StrReplace` 把 `settings.users` 块的 `beforeAll`/`beforeEach`/`afterAll` 与首个 `it(` 恢复；② 将 `postReplies` 14 个测试场景拆到独立文件 `tests/postReplies.test.ts`，分多次 `Write`/`StrReplace` 写入，避免单次超长；③ 移除 `api.test.ts` 中遗留的未用 `getPool` import。`pnpm type-check`、`pnpm lint` 均通过。
+
+---
+
+## 2026-08-17 · nongyu-node-server · 广场回复上线前 CR：admin_reply 并发 1:1 与删留言未绑 post_id
+
+- **现象**：Code Review 发现 `createAdminReply` 仅对 `post_replies` 做 `FOR UPDATE`，首次无行时并发可双插；`DELETE comments` 未校验 URL 中的 `post_id`；轮询置位无行锁可重复 toast；迁移文件名与 `002_course_ext` 撞号。
+- **根因**：空结果集行锁不可靠；删留言 WHERE 缺 `post_id`；`consumeNewReplies` SELECT 未 `FOR UPDATE`；迁移序号未对齐已有系列。
+- **修复**：事务内先 `posts ... FOR UPDATE` 再插回复/留言；删留言 WHERE 绑定 `post_id`；轮询 SELECT `FOR UPDATE`；迁移改名为 `009_post_replies.sql`。
+
+---

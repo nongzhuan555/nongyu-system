@@ -259,6 +259,38 @@ export async function deleteAdminPost(id: number): Promise<void> {
   await adminApi.delete<ApiEnvelope<null>>(`${ADMIN_POSTS_PATH}/${id}`);
 }
 
+/** POST /api/admin/posts/:id/reply —— 创建反馈墙管理员回复（一对一） */
+export async function createAdminPostReply(
+  postId: number,
+  body: { content: string },
+): Promise<{ id: number; content: string; publishedAt: string }> {
+  const response = await adminApi.post<
+    ApiEnvelope<{ id: number; content: string; publishedAt: string }>
+  >(`${ADMIN_POSTS_PATH}/${postId}/reply`, body);
+  return unwrapData(response.data);
+}
+
+/** PATCH /api/admin/posts/:id/reply —— 更新管理员回复（不留痕，不重置 notified_author） */
+export async function patchAdminPostReply(
+  postId: number,
+  body: { content: string },
+): Promise<{ id: number; content: string; updatedAt: string }> {
+  const response = await adminApi.patch<
+    ApiEnvelope<{ id: number; content: string; updatedAt: string }>
+  >(`${ADMIN_POSTS_PATH}/${postId}/reply`, body);
+  return unwrapData(response.data);
+}
+
+/** DELETE /api/admin/posts/:id/reply —— 软删管理员回复 */
+export async function deleteAdminPostReply(postId: number): Promise<void> {
+  await adminApi.delete<ApiEnvelope<null>>(`${ADMIN_POSTS_PATH}/${postId}/reply`);
+}
+
+/** DELETE /api/admin/posts/:id/comments/:commentId —— 管理员删除任意用户留言 */
+export async function deleteAdminPostComment(postId: number, commentId: number): Promise<void> {
+  await adminApi.delete<ApiEnvelope<null>>(`${ADMIN_POSTS_PATH}/${postId}/comments/${commentId}`);
+}
+
 export async function fetchDashboardOverview(): Promise<DashboardOverview> {
   const response = await adminApi.get<ApiEnvelope<DashboardOverview>>(
     ADMIN_DASHBOARD_OVERVIEW_PATH,

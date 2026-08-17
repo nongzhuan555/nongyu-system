@@ -24,10 +24,12 @@ import { ensureAppAccessToken } from "@/api/ensureAppAuth";
 import { FadeScrollItem } from "@/modules/center/components/FadeScrollItem";
 import { PostCard } from "@/modules/center/components/PostCard";
 import { PostListSkeleton } from "@/modules/center/components/PostListSkeleton";
+import { useForegroundState } from "@/modules/center/hooks/useForegroundState";
 import { tabBarContentPadding } from "@/modules/center/utils/format";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
 const MISSING_TOKEN_HINT = "农屿服务未接通或登录凭证缺失";
+const POLL_INTERVAL_MS = 30_000;
 
 type PostFeedListProps = {
   mode: "plaza" | "mine";
@@ -59,11 +61,16 @@ export function PostFeedList({
   const isScrolling = useSharedValue(0);
   const { visible: showScrollTop, onScroll: onScrollTopVisibility } = useScrollToTopVisibility();
   const trimmedKeyword = keyword?.trim() || undefined;
+  const isForeground = useForegroundState();
 
   const queryKey =
     mode === "mine"
       ? (["posts", "me"] as const)
       : (["posts", "list", postType ?? "announcement", trimmedKeyword ?? ""] as const);
+
+  // 广场列表轮询：仅 plaza 模式 + feedback/courtyard + 前台时启用；announcement 与 mine 不轮询
+  const pollable = mode === "plaza" && (postType === "feedback" || postType === "courtyard");
+  const refetchInterval = pollable && isForeground ? POLL_INTERVAL_MS : false;
 
   const query = useInfiniteQuery({
     queryKey,
@@ -84,6 +91,8 @@ export function PostFeedList({
       const loaded = last.page * last.pageSize;
       return loaded < last.total ? last.page + 1 : undefined;
     },
+    refetchInterval,
+    refetchIntervalInBackground: false,
   });
 
   const items = useMemo(() => query.data?.pages.flatMap((p) => p.list) ?? [], [query.data?.pages]);

@@ -9,4 +9,9 @@ export type AppToastOptions = {
   description?: string;
   /** 展示时长 ms；不传则按类型默认 */
   duration?: number;
+  /**
+   * 点击 toast 回调；不传则点击仅关闭。
+   * 用于新回复通知点击跳转帖子详情等场景。
+   */
+  onPress?: () => void;
 };

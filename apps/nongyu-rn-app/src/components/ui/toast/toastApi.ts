@@ -16,13 +16,18 @@ function show(type: AppToastType, title: string, options?: AppToastOptions) {
   if (!text1) return;
 
   const description = options?.description?.trim();
+  const userOnPress = options?.onPress;
   Toast.show({
     type,
     text1,
     text2: description || undefined,
     position: "top",
     visibilityTime: options?.duration ?? DEFAULT_DURATION_MS[type],
-    onPress: () => Toast.hide(),
+    onPress: () => {
+      // 优先触发业务回调；无论是否提供 onPress，点击后都关闭浮层
+      userOnPress?.();
+      Toast.hide();
+    },
   });
 }
 

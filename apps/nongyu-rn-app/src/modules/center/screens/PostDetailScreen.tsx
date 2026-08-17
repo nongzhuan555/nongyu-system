@@ -1,12 +1,24 @@
 import { useThemeTokens } from "@/theme/ThemeProvider";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { toast } from "@/components/ui/toast";
 import { confirm } from "@/components/ui/confirm";
-import { deletePost, fetchPostDetail } from "@/modules/center/api/posts";
+import { deletePost, fetchPostDetail, type PostComment } from "@/modules/center/api/posts";
+import { createComment, deleteComment } from "@/modules/center/api/postReplies";
+import { AdminReplyBlock } from "@/modules/center/components/AdminReplyBlock";
+import { CommentComposer } from "@/modules/center/components/CommentComposer";
+import { CommentList } from "@/modules/center/components/CommentList";
 import { PostDetailSkeleton } from "@/modules/center/components/PostDetailSkeleton";
 import { subtypeLabel } from "@/modules/center/constants/subtypes";
 import { formatPublishedAt, stripHtml } from "@/modules/center/utils/format";
@@ -14,7 +26,7 @@ import { trackClick } from "@/modules/telemetry";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
- * 帖子详情：打开即计阅读；本人可删
+ * 帖子详情：打开即计阅读；本人可删；反馈墙展示管理员回复；大院支持留言。
  */
 export function PostDetailScreen() {
   const styles = useStyles();
@@ -25,10 +37,18 @@ export function PostDetailScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
 
+  const detailKey = ["posts", "detail", id] as const;
+
   const query = useQuery({
-    queryKey: ["posts", "detail", id],
+    queryKey: detailKey,
     enabled: Number.isFinite(id) && id > 0,
     queryFn: () => fetchPostDetail(id),
+    // 进入即拉新（轮询会置位 notified_author，但详情本身要最新）
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+    retry: 1,
   });
 
   const remove = useMutation({
@@ -43,6 +63,61 @@ export function PostDetailScreen() {
     },
   });
 
+  // 留言创建：乐观追加临时项，失败回滚
+  const addComment = useMutation({
+    mutationFn: (content: string) => createComment(id, { content }),
+    onMutate: async (content: string) => {
+      await queryClient.cancelQueries({ queryKey: detailKey });
+      const previous = queryClient.getQueryData<PostComment[] | undefined>(detailKey);
+      const post = queryClient.getQueryData<{ id: number; comments?: PostComment[] }>(detailKey);
+      if (post) {
+        const temp: PostComment = {
+          id: -Date.now(),
+          content,
+          publishedAt: new Date().toISOString(),
+          isMine: true,
+        };
+        queryClient.setQueryData(detailKey, {
+          ...post,
+          comments: [...(post.comments ?? []), temp],
+        });
+      }
+      return { previous };
+    },
+    onError: (err: Error, _content, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(detailKey, ctx.previous);
+      toast.error("留言失败", { description: err.message });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: detailKey });
+      toast.success("留言成功");
+    },
+  });
+
+  // 留言删除：乐观移除，失败回滚
+  const removeComment = useMutation({
+    mutationFn: (commentId: number) => deleteComment(id, commentId),
+    onMutate: async (commentId: number) => {
+      await queryClient.cancelQueries({ queryKey: detailKey });
+      const previous = queryClient.getQueryData<PostComment[] | undefined>(detailKey);
+      const post = queryClient.getQueryData<{ id: number; comments?: PostComment[] }>(detailKey);
+      if (post?.comments) {
+        queryClient.setQueryData(detailKey, {
+          ...post,
+          comments: post.comments.filter((c) => c.id !== commentId),
+        });
+      }
+      return { previous };
+    },
+    onError: (err: Error, _commentId, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(detailKey, ctx.previous);
+      toast.error("删除失败", { description: err.message });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: detailKey });
+    },
+  });
+
   const onDelete = async () => {
     const ok = await confirm({
       title: "删除帖子",
@@ -53,6 +128,18 @@ export function PostDetailScreen() {
     if (!ok) return;
     trackClick("center_post_delete");
     remove.mutate();
+  };
+
+  const onDeleteComment = async (commentId: number) => {
+    const ok = await confirm({
+      title: "删除留言",
+      message: "确定删除这条留言？",
+      confirmText: "删除",
+      destructive: true,
+    });
+    if (!ok) return;
+    trackClick("center_comment_delete");
+    removeComment.mutate(commentId);
   };
 
   const post = query.data;
@@ -86,35 +173,57 @@ export function PostDetailScreen() {
         )}
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + t.space.xl }]}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.flex1}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={insets.top}
       >
-        {query.isPending ? (
-          <PostDetailSkeleton />
-        ) : query.isError ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>
-              {query.error instanceof Error ? query.error.message : "加载失败"}
-            </Text>
-            <Pressable onPress={() => void query.refetch()} style={styles.retryBtn}>
-              <Text style={styles.retryText}>重试</Text>
-            </Pressable>
-          </View>
-        ) : post ? (
-          <>
-            <Text style={styles.title}>{post.title}</Text>
-            <Text style={styles.meta}>
-              {[
-                formatPublishedAt(post.publishedAt),
-                subtypeLabel(post.postType, post.subtype),
-              ].join("  ·  ")}
-            </Text>
-            <View style={styles.rule} />
-            <Text style={styles.body}>{stripHtml(post.content)}</Text>
-          </>
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + t.space.xl }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {query.isPending ? (
+            <PostDetailSkeleton />
+          ) : query.isError ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>
+                {query.error instanceof Error ? query.error.message : "加载失败"}
+              </Text>
+              <Pressable onPress={() => void query.refetch()} style={styles.retryBtn}>
+                <Text style={styles.retryText}>重试</Text>
+              </Pressable>
+            </View>
+          ) : post ? (
+            <>
+              <Text style={styles.title}>{post.title}</Text>
+              <Text style={styles.meta}>
+                {[
+                  formatPublishedAt(post.publishedAt),
+                  subtypeLabel(post.postType, post.subtype),
+                ].join("  ·  ")}
+              </Text>
+              <View style={styles.rule} />
+              <Text style={styles.body}>{stripHtml(post.content)}</Text>
+
+              {post.postType === "feedback" ? (
+                <AdminReplyBlock reply={post.adminReply} />
+              ) : post.postType === "courtyard" ? (
+                <View style={styles.commentsSection}>
+                  <Text style={styles.sectionTitle}>
+                    留言 {post.comments?.length ? `(${post.comments.length})` : ""}
+                  </Text>
+                  <CommentList comments={post.comments} onDelete={onDeleteComment} />
+                </View>
+              ) : null}
+            </>
+          ) : null}
+        </ScrollView>
+
+        {post?.postType === "courtyard" ? (
+          <CommentComposer pending={addComment.isPending} onPost={(c) => addComment.mutate(c)} />
         ) : null}
-      </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -123,6 +232,9 @@ const useStyles = createThemedStyles((t) => ({
   root: {
     flex: 1,
     backgroundColor: t.color.background,
+  },
+  flex1: {
+    flex: 1,
   },
   header: {
     flexDirection: "row",
@@ -201,5 +313,16 @@ const useStyles = createThemedStyles((t) => ({
   retryText: {
     color: t.color.onBrand,
     fontWeight: "600",
+  },
+  commentsSection: {
+    marginTop: t.space.xl,
+    gap: t.space.sm,
+  },
+  sectionTitle: {
+    fontSize: t.fontSize.sm,
+    fontWeight: "700",
+    color: t.color.textSecondary,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
 }));

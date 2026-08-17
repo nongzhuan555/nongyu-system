@@ -10,7 +10,12 @@ import { adminUsersRouter, appUsersRouter } from "./modules/users/routes.js";
 import { appSettingsRouter } from "./modules/settings/routes.js";
 import { appCourseExtRouter } from "./modules/course-ext/routes.js";
 import { appCourseShareRouter } from "./modules/course-share/routes.js";
-import { adminPostsRouter, appMyPostsRouter, appPostsRouter } from "./modules/posts/routes.js";
+import {
+  adminPostsRouter,
+  appMyPostsRouter,
+  appMyPostRepliesRouter,
+  appPostsRouter,
+} from "./modules/posts/routes.js";
 import { adminVersionsRouter, appVersionsRouter } from "./modules/versions/routes.js";
 import { adminDashboardRouter } from "./modules/dashboard/routes.js";
 import { adminTrackRouter } from "./modules/track/routes.js";
@@ -49,6 +54,7 @@ export function createApp() {
 
   app.use("/api/app/auth", appAuthRouter);
   app.use("/api/app/users/me/posts", appMyPostsRouter);
+  app.use("/api/app/users/me/post-replies", appMyPostRepliesRouter);
   app.use("/api/app/users", appUsersRouter);
   app.use("/api/app/settings", appSettingsRouter);
   app.use("/api/app/course-ext", appCourseExtRouter);

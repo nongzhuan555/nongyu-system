@@ -129,6 +129,19 @@ export function PostListPanel({ postType, title, allowCreate }: PostListPanelPro
       render: (value: number) => formatCoverageRate(value),
     },
     {
+      title: "回复",
+      width: 100,
+      responsive: ["md"],
+      render: (_, row) => {
+        if (row.postType === "announcement") return <span className="text-muted">—</span>;
+        const count = row.replyCount ?? 0;
+        if (row.postType === "feedback") {
+          return count > 0 ? <Tag color="success">已回复</Tag> : <Tag>未回复</Tag>;
+        }
+        return <span className="text-sm text-ink">{count} 条留言</span>;
+      },
+    },
+    {
       title: "状态",
       width: 90,
       render: (_, row) =>
@@ -239,6 +252,9 @@ export function PostListPanel({ postType, title, allowCreate }: PostListPanelPro
         }}
         onDeleted={() => {
           message.success("已删除");
+          void loadList();
+        }}
+        onReplyChanged={() => {
           void loadList();
         }}
         onEdit={(post) => {

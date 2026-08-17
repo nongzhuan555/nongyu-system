@@ -32,6 +32,7 @@ export async function truncateAll() {
   const pool = getPool();
   await pool.query("SET FOREIGN_KEY_CHECKS = 0");
   for (const table of [
+    "post_replies",
     "post_reads",
     "posts",
     "user_settings",

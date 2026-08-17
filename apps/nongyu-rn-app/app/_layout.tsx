@@ -10,6 +10,7 @@ import { AuthRoot } from "@/modules/auth/components/AuthRoot";
 import { AppErrorBoundary, TelemetryHost, installCrashTracking } from "@/modules/telemetry";
 import { AgentChatRuntimeHost } from "@/agent/chatRunner";
 import { CourseWidgetSyncHost } from "@/modules/course/widget/CourseWidgetSyncHost";
+import { PostRepliesPollerHost } from "@/modules/center/PostRepliesPollerHost";
 import { WechatBootstrapHost } from "@/lib/wechat/WechatBootstrapHost";
 
 // 启动时注册 Agent 工具的内联渲染组件（Generative UI）
@@ -54,6 +55,7 @@ export default function RootLayout() {
             <WechatBootstrapHost />
             <AgentChatRuntimeHost />
             <CourseWidgetSyncHost />
+            <PostRepliesPollerHost />
             <Stack
               screenOptions={{
                 headerStyle: { backgroundColor: lightTokens.color.brandMuted },
