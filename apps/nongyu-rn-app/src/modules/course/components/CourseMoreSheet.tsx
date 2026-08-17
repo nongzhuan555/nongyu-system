@@ -9,10 +9,12 @@ type CourseMoreSheetProps = {
   onClose: () => void;
   onRefresh: () => void;
   onShare: () => void;
+  /** 查看我的自定义日程列表 */
+  onMySchedules: () => void;
 };
 
 /**
- * 课表页头「更多」：刷新课表 / 共享课表（icon + label）
+ * 课表页头「更多」：刷新课表 / 共享课表 / 我的自定义日程
  */
 export function CourseMoreSheet({
   visible,
@@ -20,6 +22,7 @@ export function CourseMoreSheet({
   onClose,
   onRefresh,
   onShare,
+  onMySchedules,
 }: CourseMoreSheetProps) {
   const styles = useStyles();
   const t = useThemeTokens();
@@ -55,6 +58,17 @@ export function CourseMoreSheet({
           >
             <Ionicons name="people-outline" size={20} color={t.color.brand} />
             <Text style={styles.rowText}>查看他人课表（可看课程差异）</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            onPress={() => {
+              onClose();
+              onMySchedules();
+            }}
+            accessibilityLabel="查看我的自定义日程"
+          >
+            <Ionicons name="calendar-outline" size={20} color={t.color.brand} />
+            <Text style={styles.rowText}>查看我的自定义日程</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.row, styles.cancel, pressed && styles.rowPressed]}

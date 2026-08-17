@@ -33,15 +33,29 @@ export function CourseWidgetSyncHost() {
   });
 
   useEffect(() => {
-    return queryClient.getQueryCache().subscribe((event) => {
+    let disposed = false;
+    let scheduled = false;
+    const unsub = queryClient.getQueryCache().subscribe((event) => {
       // 仅数据增删改时刷新；observer 通知会随本组件 setState 再触发，否则会无限重渲染
       if (event.type !== "added" && event.type !== "updated" && event.type !== "removed") {
         return;
       }
-      if (event.query && isWidgetSourceQuery(event.query.queryKey)) {
-        setCacheTick((n) => n + 1);
+      if (!event.query || !isWidgetSourceQuery(event.query.queryKey)) {
+        return;
       }
+      // QueryCache 可能在其它组件 render 中同步 notify；禁止同步 setState
+      if (scheduled) return;
+      scheduled = true;
+      queueMicrotask(() => {
+        scheduled = false;
+        if (disposed) return;
+        setCacheTick((n) => n + 1);
+      });
     });
+    return () => {
+      disposed = true;
+      unsub();
+    };
   }, [queryClient]);
 
   useEffect(() => {

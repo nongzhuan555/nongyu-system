@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
+	"sort"
 )
 
 type Metric struct {
@@ -134,6 +136,67 @@ LIMIT ?`, date, metric, limit)
 		out = append(out, d)
 	}
 	return out, rows.Err()
+}
+
+// LiveDims 从当日 events 实时汇总维度（今日 overview/大屏用；不依赖 daily_dims）。
+func (s *Store) LiveDims(ctx context.Context, metric, date string, limit int) ([]DimRow, error) {
+	if limit < 1 {
+		limit = 50
+	}
+	q := s.ReadDB()
+	var rows []DimRow
+	var err error
+	switch metric {
+	case "screen_views":
+		rows, err = s.CountByName(ctx, q, date, "screen_view")
+	case "button_clicks":
+		rows, err = s.CountByName(ctx, q, date, "button_click")
+	case "perf_p50", "perf_p95":
+		perf, perr := s.PerfDurations(ctx, q, date)
+		if perr != nil {
+			return nil, perr
+		}
+		p := 50.0
+		if metric == "perf_p95" {
+			p = 95.0
+		}
+		rows = make([]DimRow, 0, len(perf))
+		for name, vals := range perf {
+			sorted := append([]int64(nil), vals...)
+			sort.Slice(sorted, func(i, k int) bool { return sorted[i] < sorted[k] })
+			rows = append(rows, DimRow{DimKey: "name", DimValue: name, MetricValue: Percentile(sorted, p)})
+		}
+	default:
+		return nil, fmt.Errorf("unsupported live dim metric %s", metric)
+	}
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(rows, func(i, k int) bool {
+		if rows[i].MetricValue == rows[k].MetricValue {
+			return rows[i].DimValue < rows[k].DimValue
+		}
+		return rows[i].MetricValue > rows[k].MetricValue
+	})
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+	return rows, nil
+}
+
+// Percentile 对已排序样本取分位（与日聚合口径一致）。
+func Percentile(sorted []int64, p float64) int64 {
+	if len(sorted) == 0 {
+		return 0
+	}
+	idx := int(math.Ceil(p/100*float64(len(sorted)))) - 1
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= len(sorted) {
+		idx = len(sorted) - 1
+	}
+	return sorted[idx]
 }
 
 func (s *Store) ListCrashes(ctx context.Context, from, to string, offset, limit int) ([]CrashRow, int, error) {

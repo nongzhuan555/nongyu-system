@@ -32,3 +32,26 @@ export function getLoginErrorMessage(error: unknown): string {
 
   return "网络异常，请稍后重试";
 }
+
+/** App handoff 自动登录失败文案 */
+export function getHandoffErrorMessage(error: unknown): string {
+  if (error instanceof AdminApiError) {
+    if (
+      error.code === AUTH_ERROR_CODES.TOKEN_INVALID ||
+      error.code === AUTH_ERROR_CODES.TOKEN_REVOKED ||
+      error.code === AUTH_ERROR_CODES.UNAUTHORIZED
+    ) {
+      return "登录链接已失效，请从 App 重新打开";
+    }
+    if (error.code === AUTH_ERROR_CODES.VALIDATION && error.serverMessage.includes("过于频繁")) {
+      return "登录尝试过于频繁，请稍后再试";
+    }
+    return "自动登录失败，请手动登录";
+  }
+
+  if (axios.isAxiosError(error) && error.response === undefined) {
+    return "网络异常，请稍后重试";
+  }
+
+  return "网络异常，请稍后重试";
+}

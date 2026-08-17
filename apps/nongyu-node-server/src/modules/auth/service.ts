@@ -17,22 +17,63 @@ import {
   updateUserOnAppLogin,
 } from "../users/repo.js";
 import { toAppUserProfile } from "../users/mapper.js";
+import { consumeHandoffTicket, createHandoffTicket } from "./handoffStore.js";
 
 export const appLoginSchema = z.object({
   studentNo: studentNoSchema,
   name: z.string().min(1).max(64),
-  major: z.string().max(128).optional().nullable(),
-  college: z.string().max(128).optional().nullable(),
-  className: z.string().max(128).optional().nullable(),
-  grade: z.string().max(32).optional().nullable(),
+  major: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 128 ? v.slice(0, 128) : v)),
+  college: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 128 ? v.slice(0, 128) : v)),
+  className: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 128 ? v.slice(0, 128) : v)),
+  grade: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 32 ? v.slice(0, 32) : v)),
   gender: z.union([z.number(), z.string()]).optional(),
-  hometown: z.string().max(64).optional().nullable(),
-  campus: z.string().max(64).optional().nullable(),
-  qq: z.string().max(20).optional().nullable(),
+  hometown: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 64 ? v.slice(0, 64) : v)),
+  campus: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 64 ? v.slice(0, 64) : v)),
+  qq: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 20 ? v.slice(0, 20) : v)),
   deviceId: z.string().min(1).max(128),
-  deviceBrand: z.string().max(64).optional().nullable(),
-  deviceModel: z.string().max(128).optional().nullable(),
-  deviceOs: z.string().max(64).optional().nullable(),
+  deviceBrand: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 64 ? v.slice(0, 64) : v)),
+  deviceModel: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 128 ? v.slice(0, 128) : v)),
+  deviceOs: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length > 64 ? v.slice(0, 64) : v)),
 });
 
 function safeEqualText(a: string, b: string): boolean {
@@ -249,6 +290,63 @@ export async function changeOwnAdminPassword(userId: number, plain: string) {
   }
   const hash = await hashAdminPassword(plain);
   await setAdminPasswordHash(userId, hash);
+}
+
+/**
+ * App JWT 用户换取短时 handoff ticket（仅已建档管理员）
+ */
+export async function createAppHandoff(appUserId: number) {
+  const user = await findUserById(appUserId);
+  if (!user) {
+    throw new AppError(ErrorCodes.TOKEN_REVOKED, "登录状态已失效，请重新登录", 401);
+  }
+  if (user.role !== 1) {
+    throw new AppError(ErrorCodes.ADMIN_REQUIRED, "需要管理员权限", 403);
+  }
+  if (user.status !== 1) {
+    throw new AppError(ErrorCodes.ACCOUNT_DISABLED, "账号已禁用", 403);
+  }
+  return createHandoffTicket(Number(user.id), user.student_no);
+}
+
+export const handoffRedeemSchema = z.object({
+  ticket: z.string().min(1),
+});
+
+/**
+ * 兑换 handoff ticket → Admin 会话（loginType 固定 in_app）
+ */
+export async function redeemHandoff(ticket: string) {
+  const consumed = consumeHandoffTicket(ticket);
+  if (!consumed) {
+    throw new AppError(ErrorCodes.TOKEN_INVALID, "Ticket 无效或已失效", 401);
+  }
+
+  const user = await findUserById(consumed.userId);
+  if (!user) {
+    throw new AppError(ErrorCodes.TOKEN_INVALID, "Ticket 无效或已失效", 401);
+  }
+  if (user.role !== 1) {
+    throw new AppError(ErrorCodes.ADMIN_REQUIRED, "需要管理员权限", 403);
+  }
+  if (user.status !== 1) {
+    throw new AppError(ErrorCodes.ACCOUNT_DISABLED, "账号已禁用", 403);
+  }
+
+  const token = await signAdminToken({
+    uid: user.id,
+    studentNo: user.student_no,
+  });
+  return {
+    token,
+    loginType: "in_app" as const,
+    user: {
+      id: Number(user.id),
+      studentNo: user.student_no,
+      name: user.name,
+      role: 1 as const,
+    },
+  };
 }
 
 export async function hashAdminPassword(plain: string) {

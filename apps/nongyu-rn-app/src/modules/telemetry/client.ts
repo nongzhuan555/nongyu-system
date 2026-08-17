@@ -1,5 +1,5 @@
 import NetInfo from "@react-native-community/netinfo";
-import { getAppAccessToken } from "@/api/appClient";
+import { getAppAccessToken } from "@/api/appToken";
 import { getTrackContext } from "./context";
 import { newEventId } from "./ids";
 import { appendQueue, prependQueue, takeBatch } from "./queue";

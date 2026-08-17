@@ -32,6 +32,13 @@ export function WorkspacePage() {
           <p className="text-lg font-semibold text-ink">内容管理</p>
           <p className="mt-2 text-sm text-muted">公告、反馈与建议</p>
         </Link>
+        <Link
+          to={ROUTES.homeGreetings}
+          className="rounded-3xl bg-white p-6 shadow-card transition-opacity hover:opacity-90"
+        >
+          <p className="text-lg font-semibold text-ink">首页问候</p>
+          <p className="mt-2 text-sm text-muted">配置 App 首页打招呼第二句</p>
+        </Link>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useRouter, useSegments } from "expo-router";
 import * as Linking from "expo-linking";
-import * as SplashScreen from "expo-splash-screen";
+import { BootSplashOverlay } from "@/modules/auth/components/BootSplashOverlay";
 import { resolveLaunchHref } from "@/modules/settings/utils/resolveLaunchHref";
 import {
   consumePendingCourseTab,
@@ -14,6 +14,7 @@ import { useSessionStore } from "@/stores/session";
 /**
  * 会话门禁：hydrate 前挡住界面；未登录只允许停在登录页，已登录离开登录页。
  * 桌面小组件来源优先落到课表 Tab。
+ * 全屏闪屏由 BootSplashOverlay 承担（Android 系统启动屏无法铺满全屏图）。
  */
 export function AuthRoot({ children }: { children: ReactNode }) {
   const hydrated = useSessionStore((state) => state.hydrated);
@@ -51,18 +52,20 @@ export function AuthRoot({ children }: { children: ReactNode }) {
     if (isAuthenticated && onLogin) {
       const href = consumePendingCourseTab() ? "/(tabs)/course" : resolveLaunchHref();
       router.replace(href);
-      void SplashScreen.hideAsync();
       return;
     }
     if (isAuthenticated && peekPendingCourseTab()) {
       consumePendingCourseTab();
       router.replace("/(tabs)/course");
-      void SplashScreen.hideAsync();
-      return;
     }
-    void SplashScreen.hideAsync();
   }, [hydrated, initialUrlReady, isAuthenticated, segments, router]);
 
-  if (!hydrated || !initialUrlReady) return null;
-  return children;
+  const gateReady = hydrated && initialUrlReady;
+
+  return (
+    <>
+      <BootSplashOverlay ready={gateReady} />
+      {gateReady ? children : null}
+    </>
+  );
 }

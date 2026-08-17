@@ -2,6 +2,9 @@ import { create } from "zustand";
 
 export type ThemeMode = "sicauGreen" | "sakura" | "dark" | "system";
 
+/** 农屿用户角色：0 普通 / 1 管理员 */
+export type AppUserRole = 0 | 1;
+
 /** 本地会话中的学生档案摘要（对齐教务 PersonalInfo 可持久化字段） */
 export type SessionProfile = {
   studentId: string;
@@ -32,11 +35,18 @@ type SessionState = {
   token: string | null;
   /** 学生档案摘要 */
   profile: SessionProfile | null;
+  /** Node 侧角色；无票或未返回时为 null */
+  role: AppUserRole | null;
   themeMode: ThemeMode;
   setAuthenticated: (value: boolean) => void;
   setThemeMode: (mode: ThemeMode) => void;
   setHydrated: (value: boolean) => void;
-  setSession: (payload: { profile: SessionProfile; token?: string | null }) => void;
+  setSession: (payload: {
+    profile: SessionProfile;
+    token?: string | null;
+    role?: AppUserRole | null;
+  }) => void;
+  setRole: (role: AppUserRole | null) => void;
   clearSession: () => void;
 };
 
@@ -48,20 +58,24 @@ export const useSessionStore = create<SessionState>((set) => ({
   hydrated: false,
   token: null,
   profile: null,
+  role: null,
   themeMode: "sicauGreen",
   setAuthenticated: (value) => set({ isAuthenticated: value }),
   setThemeMode: (mode) => set({ themeMode: mode }),
   setHydrated: (value) => set({ hydrated: value }),
-  setSession: ({ profile, token = null }) =>
-    set({
+  setSession: ({ profile, token = null, role }) =>
+    set((state) => ({
       isAuthenticated: true,
       profile,
       token: token ?? null,
-    }),
+      role: role === undefined ? state.role : role,
+    })),
+  setRole: (role) => set({ role }),
   clearSession: () =>
     set({
       isAuthenticated: false,
       token: null,
       profile: null,
+      role: null,
     }),
 }));

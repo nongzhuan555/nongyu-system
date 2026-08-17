@@ -2,6 +2,7 @@ import { enqueue } from "./client";
 import type { TrackEventInput } from "./types";
 
 export { installCrashTracking } from "./crash";
+export { AppErrorBoundary } from "./AppErrorBoundary";
 export { TelemetryHost } from "./TelemetryHost";
 export { flushPending, shutdownForLogout } from "./client";
 export type { TrackEventInput, TrackEventType } from "./types";

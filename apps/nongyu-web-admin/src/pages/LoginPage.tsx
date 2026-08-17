@@ -1,8 +1,8 @@
-import { Alert, Button, Checkbox, Form, Input } from "antd";
-import { useEffect, useState } from "react";
+import { Alert, Button, Checkbox, Form, Input, Spin } from "antd";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { STUDENT_NO_PATTERN } from "../lib/constants";
-import { getLoginErrorMessage } from "../lib/loginErrorMessage";
+import { getHandoffErrorMessage, getLoginErrorMessage } from "../lib/loginErrorMessage";
 import { resolveLoginType, safeInternalPath } from "../lib/navigation";
 import {
   clearRememberedStudentNo,
@@ -21,14 +21,29 @@ type LoginLocationState = {
   from?: string;
 };
 
+/**
+ * 从 search 去掉 ticket，保留其它查询参数
+ */
+function searchWithoutTicket(search: string): string {
+  const params = new URLSearchParams(search);
+  params.delete("ticket");
+  const next = params.toString();
+  return next ? `?${next}` : "";
+}
+
 export function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>();
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [handoffLoading, setHandoffLoading] = useState(false);
+  const handoffTriedRef = useRef(false);
   const login = useAuthStore((state) => state.login);
+  const loginWithHandoff = useAuthStore((state) => state.loginWithHandoff);
   const navigate = useNavigate();
   const location = useLocation();
   const loginType = resolveLoginType(location.search);
+  const ticket = new URLSearchParams(location.search).get("ticket")?.trim() ?? "";
+  const shouldAutoHandoff = loginType === "in_app" && ticket.length > 0;
 
   useEffect(() => {
     // 未来 WebView 注入口：只回填，不自动提交
@@ -41,6 +56,62 @@ export function LoginPage() {
       form.setFieldsValue(patch);
     }
   }, [form]);
+
+  useEffect(() => {
+    if (!shouldAutoHandoff || handoffTriedRef.current) return;
+    handoffTriedRef.current = true;
+
+    let cancelled = false;
+    setHandoffLoading(true);
+    setFormError(null);
+
+    void (async () => {
+      try {
+        await loginWithHandoff(ticket);
+        if (cancelled) return;
+        const from = (location.state as LoginLocationState | null)?.from;
+        navigate(
+          {
+            pathname: safeInternalPath(from),
+            search: searchWithoutTicket(location.search),
+          },
+          { replace: true },
+        );
+      } catch (error) {
+        if (cancelled) return;
+        // 已有会话时 redeem 失败：保留原会话进工作台并去掉 ticket
+        if (useAuthStore.getState().isAuthenticated) {
+          navigate(
+            {
+              pathname: safeInternalPath((location.state as LoginLocationState | null)?.from),
+              search: searchWithoutTicket(location.search),
+            },
+            { replace: true },
+          );
+          return;
+        }
+        setFormError(getHandoffErrorMessage(error));
+        navigate(
+          { pathname: location.pathname, search: searchWithoutTicket(location.search) },
+          { replace: true },
+        );
+      } finally {
+        if (!cancelled) setHandoffLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    shouldAutoHandoff,
+    ticket,
+    loginWithHandoff,
+    navigate,
+    location.state,
+    location.pathname,
+    location.search,
+  ]);
 
   async function handleFinish(values: LoginFormValues) {
     setFormError(null);
@@ -63,6 +134,15 @@ export function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (handoffLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-canvas px-4">
+        <Spin size="large" />
+        <p className="text-sm text-muted">正在从 App 进入管理台…</p>
+      </div>
+    );
   }
 
   return (

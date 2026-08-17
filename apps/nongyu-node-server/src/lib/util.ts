@@ -10,7 +10,8 @@ export function parseGender(input: unknown): 0 | 1 | 2 {
   if (input === 0 || input === "0" || input === "未知") return 0;
   const n = Number(input);
   if (n === 0 || n === 1 || n === 2) return n;
-  throw new AppError(ErrorCodes.VALIDATION, "gender 无效", 400);
+  // 教务偶发非标准文案：按未知处理，避免整次登录 400
+  return 0;
 }
 
 export function previewText(content: string, max = 120): string {

@@ -59,10 +59,15 @@ func (s *Syncer) Stop() {
 }
 
 // Notify 入队回写；失败由后台重试。请求取消不得打断回写。
+// 离线通知立即 flush，降低「进程重启丢队列 → 业务库长期 is_online=1」的窗口。
 func (s *Syncer) Notify(userID int64, online bool, lastActiveMs int64) {
 	s.mu.Lock()
 	s.pending = append(s.pending, task{UserID: userID, Online: online, LastActiveMs: lastActiveMs})
 	s.mu.Unlock()
+	if !online {
+		s.flushOnce()
+		return
+	}
 	select {
 	case s.wake <- struct{}{}:
 	default:

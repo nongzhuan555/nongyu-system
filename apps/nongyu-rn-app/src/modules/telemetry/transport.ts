@@ -1,5 +1,5 @@
 import { TRACK_BASE_URL } from "@/config/env";
-import { getAppAccessToken } from "@/api/appClient";
+import { getAppAccessToken } from "@/api/appToken";
 import type { TrackEvent, TrackIngestResult } from "./types";
 
 type TrackSuccess<T> = { ok: true; data: T };

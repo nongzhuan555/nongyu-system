@@ -7,7 +7,8 @@
 > 服务端 tech：[`../../nongyu-go-track-server/tech/埋点服务技术方案.md`](../../nongyu-go-track-server/tech/埋点服务技术方案.md)  
 > 契约：[`../../nongyu-go-track-server/接口文档.md`](../../nongyu-go-track-server/接口文档.md)  
 > 联调：[`../联调指南-埋点.md`](../联调指南-埋点.md)  
-> 选型：[`../技术选型.md`](../技术选型.md) §6
+> 选型：[`../技术选型.md`](../技术选型.md) §6  
+> 概念与业界对照（学习向）：[`埋点知识与农屿实战.md`](./埋点知识与农屿实战.md)
 
 一期实现时 Spec 写明「跳过独立 tech」；本文按 **2026-08 落地代码** 补写，侧重 **HOW**（模块职责、数据流、关键决策），不替代 Spec 的 WHAT/验收。
 
@@ -58,10 +59,12 @@
 ┌────────────────┐           ┌─────────────────┐           ┌────────────────┐
 │ TelemetryHost  │           │ crash.ts        │           │ 登出路径        │
 │ app_open       │           │ ErrorUtils      │           │ trackClick     │
-│ screen_view    │           │ → crash 入队    │           │ + shutdown     │
-│ heartbeat 60s  │           └─────────────────┘           └────────────────┘
-│ flush 10s      │
-└────────────────┘
+│ screen_view    │           │ + Promise       │           │ + shutdown     │
+│ heartbeat 60s  │           │ → crash 入队    │           └────────────────┘
+│ flush 10s      │           └────────┬────────┘
+└────────────────┘                    │
+                     AppErrorBoundary │ reportAppRequestError
+                     (react)          │ (appFetch / appAuth → network|api)
 ```
 
 **与业务后端的关系**：Telemetry **不**经 `nongyu-node-server` 转发事件正文；心跳落到 Track 后，由 Track **回写** Node 的在线态（见服务端方案）。App 只负责发事件 / 显式 offline。
@@ -81,12 +84,16 @@
 | `transport.ts`      | 直连 Track 的 HTTP；解析 `{ ok: true, data }`                                                  |
 | `TelemetryHost.tsx` | 已登录驱动：`app_open`、`screen_view` enter/leave、心跳、定时 flush、AppState                  |
 | `screenDwell.ts`    | 可见停留状态机：开表 / 结算 leave / 后台续计                                                   |
-| `crash.ts`          | 全局 JS 异常 → `crash`；保留原 handler（红屏不丢）                                             |
+| `crash.ts`          | 全局 JS + Hermes 未处理 Promise → `crash`；保留原 ErrorUtils handler（红屏不丢）               |
+| `AppErrorBoundary`  | 根 Boundary：`react` 上报 + 降级 UI「重试」                                                    |
+| `reportRequest.ts`  | 农屿 `network`/`api` 入队 + 60s 降噪；供 `appFetch` / `appAuth` / `parseApiResponse`           |
+| `reportCrash.ts`    | 统一 `reportCrash` / `crashPropsFromUnknown`                                                   |
 
 挂载点（`app/_layout.tsx`）：
 
-1. 模块加载时 `installCrashTracking()`（尽早包住后续 JS）
+1. 模块加载时 `installCrashTracking()`（尽早包住后续 JS + Promise）
 2. `AuthRoot` 内挂 `<TelemetryHost />`（能读到 session hydration + Token）
+3. 根树挂 `<AppErrorBoundary>`（仅一层）
 
 ---
 
@@ -94,14 +101,14 @@
 
 ### 4.1 类型与命名
 
-| event_type     | event_name 约定                                          | 谁触发                             |
-| -------------- | -------------------------------------------------------- | ---------------------------------- |
-| `app_open`     | 进程内首次 `cold_start`；再次有 Token 为 `session_start` | Host：`canTrack` 变真              |
-| `screen_view`  | Expo Router `pathname`（无 query）                       | Host：enter + leave（见下）        |
-| `heartbeat`    | 固定 `heartbeat`；可带 `props.app_state`                 | Host：60s 定时 + active/background |
-| `button_click` | 稳定英文名，如 `tab_home`、`logout`                      | 业务 `trackClick`                  |
-| `perf`         | 调用方传入，如 `course_week_first_paint`                 | `track` / `measure*`               |
-| `crash`        | `fatal` / `js`                                           | `ErrorUtils`                       |
+| event_type     | event_name 约定                                                      | 谁触发                             |
+| -------------- | -------------------------------------------------------------------- | ---------------------------------- |
+| `app_open`     | 进程内首次 `cold_start`；再次有 Token 为 `session_start`             | Host：`canTrack` 变真              |
+| `screen_view`  | Expo Router `pathname`（无 query）                                   | Host：enter + leave（见下）        |
+| `heartbeat`    | 固定 `heartbeat`；可带 `props.app_state`                             | Host：60s 定时 + active/background |
+| `button_click` | 稳定英文名，如 `tab_home`、`logout`                                  | 业务 `trackClick`                  |
+| `perf`         | 调用方传入，如 `course_week_first_paint`                             | `track` / `measure*`               |
+| `crash`        | `fatal` / `js` / `react` / `unhandled_rejection` / `network` / `api` | 见 §5.5                            |
 
 `screen_view`：进入无 `duration_ms`（`props.phase=enter`）；离开带 `duration_ms`（`phase=leave`，`reason`：`route` / `background` / `logout` / `teardown`）；`duration_ms < 300` 不上报。后台结算后回前台同 path 只续开计时、不重复 enter。
 
@@ -189,13 +196,25 @@ performJiaowuLogout
 
 顺序约束：**停留结算 / offline / 最后一批事件必须在清 Token 之前**，否则 transport 拿不到 Bearer。
 
-### 5.5 JS 崩溃
+### 5.5 错误采集（JS / React / Promise / 农屿请求）
 
 ```text
 ErrorUtils.setGlobalHandler
-  → enqueue crash（message + stack 截断 2048）
+  → enqueue crash（fatal | js；message + stack 截断 2048）
   → void flushPending()
-  → 调用 previous handler（保留红屏 / 原逻辑）
+  → previous handler（保留红屏）
+
+Hermes enablePromiseRejectionTracker
+  → onUnhandled → enqueue crash（unhandled_rejection）
+
+AppErrorBoundary.componentDidCatch
+  → enqueue crash（react；+ component_stack）
+  → 降级 UI「重试」reset
+
+appFetch / appAuth / parseApiResponse
+  → reportAppRequestError（network | api；60s 同 key 降噪）
+  → 仍 throw（业务语义不变）
+  → Track transport 失败不报
 ```
 
 采集自身再抛会导致死循环，故整段 try/catch 吞掉。
@@ -248,12 +267,14 @@ ErrorUtils.setGlobalHandler
 
 ## 9. 与选型文档的差异（实现落点）
 
-| 选型 §6 表述           | 一期实际                                                                       |
-| ---------------------- | ------------------------------------------------------------------------------ |
-| 可追踪封装组件 / HOC   | **未做**；显式 `trackClick`                                                    |
-| Error Boundary → crash | **未接** Boundary；仅全局 `ErrorUtils`                                         |
-| 列表页渲染耗时         | **未接**；仅课表首屏 `perf`                                                    |
-| 内存队列 + MMKV 重试   | 实现为 **以 MMKV 为权威队列**（每次 append/take 读写），非「先内存再落盘」双层 |
+| 选型 §6 表述           | 一期实际                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| 可追踪封装组件 / HOC   | **未做**；显式 `trackClick`                                                     |
+| Error Boundary → crash | 根 `AppErrorBoundary` → `react`                                                 |
+| Promise 未处理         | Hermes tracker → `unhandled_rejection`                                          |
+| 农屿网络 / API 失败    | `appFetch`/`appAuth` → `network`/`api` + 60s 降噪；不采第三方与 Track transport |
+| 列表页渲染耗时         | **未接**；仅课表首屏 `perf`                                                     |
+| 内存队列 + MMKV 重试   | 实现为 **以 MMKV 为权威队列**（每次 append/take 读写），非「先内存再落盘」双层  |
 
 阅读代码时以本表 + Spec 边界为准，避免按选型字面找不存在的 HOC。
 
@@ -264,9 +285,10 @@ ErrorUtils.setGlobalHandler
 1. `types` / `ids` / `context` → 事件形状与公共字段
 2. `queue` + `client` + `transport` → 入队 / flush / HTTP
 3. `TelemetryHost` + 根布局挂载 → 自动生命周期事件
-4. `crash` 安装 → JS 故障
-5. 业务点：Tab、AI、入口、登出、分享、课表首屏
-6. 联调：见联调指南（Track 8082、同 `JWT_SECRET`）
+4. `crash` 安装 → JS / Promise；根 `AppErrorBoundary` → `react`
+5. `reportAppRequestError` → `appFetch` / `appAuth` 的 `network` / `api`
+6. 业务点：Tab、AI、入口、登出、分享、课表首屏
+7. 联调：见联调指南（Track 8082、同 `JWT_SECRET`）
 
 后续若扩事件：优先 `trackClick` / `track({ event_type: "perf", ... })`；新 `event_type` 须先改 Track 契约再改 `TRACK_EVENT_TYPES`。
 

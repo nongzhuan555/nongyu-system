@@ -183,6 +183,29 @@ export async function updateUserPresence(
   return true;
 }
 
+/** 与 Track `PRESENCE_OFFLINE_AFTER_MS` 默认 10 分钟对齐 */
+export const ONLINE_FRESH_WINDOW_SEC = 600;
+
+/**
+ * 将「标在线但已超过心跳窗口」的用户清为离线。
+ * Track→Node 回写失败时，仅靠 is_online 位会永久卡住。
+ */
+export async function clearStaleOnlineUsers(
+  freshWindowSec: number = ONLINE_FRESH_WINDOW_SEC,
+): Promise<number> {
+  const [result] = await getPool().query<ResultSetHeader>(
+    `UPDATE users
+     SET is_online = 0
+     WHERE is_online = 1
+       AND (
+         last_active_at IS NULL
+         OR last_active_at < (UTC_TIMESTAMP(3) - INTERVAL ? SECOND)
+       )`,
+    [freshWindowSec],
+  );
+  return Number(result.affectedRows ?? 0);
+}
+
 export async function listUsersAdmin(params: {
   offset: number;
   pageSize: number;

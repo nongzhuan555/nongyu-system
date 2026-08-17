@@ -4,6 +4,7 @@ export const ROUTES = {
   dashboard: "/dashboard",
   users: "/users",
   content: "/content",
+  homeGreetings: "/home-greetings",
   llmKeys: "/llm-keys",
   versions: "/versions",
 } as const;
@@ -24,6 +25,7 @@ export const ADMIN_LOGIN_PATH = "/api/admin/auth/login";
 export const ADMIN_ME_PATH = "/api/admin/auth/me";
 export const ADMIN_LOGOUT_PATH = "/api/admin/auth/logout";
 export const ADMIN_PASSWORD_PATH = "/api/admin/auth/password";
+export const ADMIN_HANDOFF_REDEEM_PATH = "/api/admin/auth/handoff-redeem";
 export const ADMIN_USERS_PATH = "/api/admin/users";
 export const ADMIN_POSTS_PATH = "/api/admin/posts";
 export const ADMIN_DASHBOARD_OVERVIEW_PATH = "/api/admin/dashboard/overview";
@@ -38,12 +40,14 @@ export const ADMIN_TRACK_TREND_PATH = "/api/admin/track/trend";
 export const ADMIN_TRACK_QUERY_PATH = "/api/admin/track/query";
 export const ADMIN_LLM_KEYS_PATH = "/api/admin/llm/keys";
 export const ADMIN_LLM_CHAT_PREFIX = "/api/admin/llm/v1";
+export const ADMIN_HOME_GREETINGS_PATH = "/api/admin/home-greetings";
 export const PLATFORM_LLM_MODEL = "glm-4.7-flash";
 
 export const STUDENT_NO_PATTERN = /^\d{9}$/;
 export const DEFAULT_USER_PAGE_SIZE = 20;
 export const DEFAULT_POST_PAGE_SIZE = 20;
 export const DEFAULT_LLM_KEY_PAGE_SIZE = 20;
+export const DEFAULT_HOME_GREETING_PAGE_SIZE = 20;
 
 export const AUTH_ERROR_CODES = {
   VALIDATION: 40001,

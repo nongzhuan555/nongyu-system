@@ -3,6 +3,7 @@ import * as Application from "expo-application";
 import * as Device from "expo-device";
 import { API_BASE_URL } from "@/config/env";
 import { parseApiResponse } from "@/api/appClient";
+import { reportAppRequestError } from "@/modules/telemetry/reportRequest";
 import { appStorage } from "@/storage/mmkv";
 
 /** 教务档案摘要（提交给 Node，不含教务密码） */
@@ -25,6 +26,40 @@ export type AppAuthLoginResult = {
 };
 
 const DEVICE_ID_KEY = "session:device_id";
+
+/** 与 Node appLoginSchema 对齐的可选字符串上限 */
+const FIELD_MAX = {
+  name: 64,
+  major: 128,
+  college: 128,
+  className: 128,
+  grade: 32,
+  hometown: 64,
+  campus: 64,
+  deviceBrand: 64,
+  deviceModel: 128,
+  deviceOs: 64,
+} as const;
+
+/**
+ * 截断可选字符串，避免教务长地址等触发 Node 400 导致「已登录无 Token」
+ */
+function clipOptional(value: string | undefined | null, max: number): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > max ? trimmed.slice(0, max) : trimmed;
+}
+
+/**
+ * 仅保留 Node parseGender 可识别的性别；其它省略，由服务端按未知处理
+ */
+function sanitizeGender(gender: string | undefined): string | undefined {
+  if (gender == null) return undefined;
+  const g = gender.trim();
+  if (!g) return undefined;
+  if (g === "男" || g === "女" || g === "未知" || g === "0" || g === "1" || g === "2") return g;
+  return undefined;
+}
 
 /**
  * 解析并持久化设备稳定标识（优先 Android ID / iOS IDFV）
@@ -56,28 +91,39 @@ async function resolveDeviceId(): Promise<string> {
 export async function appAuthLogin(profile: JiaowuProfilePayload): Promise<AppAuthLoginResult> {
   const deviceId = await resolveDeviceId();
   const body = {
-    studentNo: profile.studentNo,
-    name: profile.name,
-    major: profile.major,
-    college: profile.college,
-    className: profile.className,
-    grade: profile.grade,
-    gender: profile.gender,
-    hometown: profile.hometown,
-    campus: profile.campus,
+    studentNo: profile.studentNo.trim(),
+    name: clipOptional(profile.name, FIELD_MAX.name) || profile.name.trim(),
+    major: clipOptional(profile.major, FIELD_MAX.major),
+    college: clipOptional(profile.college, FIELD_MAX.college),
+    className: clipOptional(profile.className, FIELD_MAX.className),
+    grade: clipOptional(profile.grade, FIELD_MAX.grade),
+    gender: sanitizeGender(profile.gender),
+    hometown: clipOptional(profile.hometown, FIELD_MAX.hometown),
+    campus: clipOptional(profile.campus, FIELD_MAX.campus),
     deviceId,
-    deviceBrand: Device.brand ?? undefined,
-    deviceModel: Device.modelName ?? undefined,
-    deviceOs: Device.osName ? `${Device.osName} ${Device.osVersion ?? ""}`.trim() : undefined,
+    deviceBrand: clipOptional(Device.brand, FIELD_MAX.deviceBrand),
+    deviceModel: clipOptional(Device.modelName, FIELD_MAX.deviceModel),
+    deviceOs: clipOptional(
+      Device.osName ? `${Device.osName} ${Device.osVersion ?? ""}`.trim() : undefined,
+      FIELD_MAX.deviceOs,
+    ),
   };
 
-  const response = await fetch(`${API_BASE_URL}/api/app/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const path = "/api/app/auth/login";
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "网络请求失败";
+    reportAppRequestError({ kind: "network", message, method: "POST", path });
+    throw error;
+  }
 
-  return parseApiResponse<AppAuthLoginResult>(response);
+  return parseApiResponse<AppAuthLoginResult>(response, { method: "POST", path });
 }
 
 /**
@@ -88,15 +134,25 @@ export async function appAuthMe(
   token: string,
   options?: { skipAuthInvalidHandler?: boolean },
 ): Promise<Record<string, unknown>> {
-  const response = await fetch(`${API_BASE_URL}/api/app/auth/me`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
+  const path = "/api/app/auth/me";
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "网络请求失败";
+    reportAppRequestError({ kind: "network", message, method: "GET", path });
+    throw error;
+  }
   return parseApiResponse<Record<string, unknown>>(response, {
     skipAuthInvalidHandler: options?.skipAuthInvalidHandler,
+    method: "GET",
+    path,
   });
 }
 
@@ -104,12 +160,20 @@ export async function appAuthMe(
  * POST /api/app/auth/logout
  */
 export async function appAuthLogout(token: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/app/auth/logout`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-  await parseApiResponse<null>(response, { allowNullData: true });
+  const path = "/api/app/auth/logout";
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "网络请求失败";
+    reportAppRequestError({ kind: "network", message, method: "POST", path });
+    throw error;
+  }
+  await parseApiResponse<null>(response, { allowNullData: true, method: "POST", path });
 }

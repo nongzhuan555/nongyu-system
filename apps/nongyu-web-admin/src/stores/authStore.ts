@@ -1,7 +1,13 @@
 import { message } from "antd";
 import { create } from "zustand";
 import { clearAssistantOnLogout } from "../assistant/logoutCleanup";
-import { AdminApiError, fetchAdminMe, loginAdmin, logoutAdmin } from "../lib/adminApi";
+import {
+  AdminApiError,
+  fetchAdminMe,
+  loginAdmin,
+  logoutAdmin,
+  redeemAdminHandoff,
+} from "../lib/adminApi";
 import { AUTH_ERROR_CODES } from "../lib/constants";
 import { clearSession, readSession, writeSession } from "../lib/storage";
 import type { AdminUser, LoginType } from "../types/auth";
@@ -17,6 +23,8 @@ type AuthState = {
     adminPassword: string;
     loginType: LoginType;
   }) => Promise<void>;
+  /** App handoff ticket 兑换会话 */
+  loginWithHandoff: (ticket: string) => Promise<void>;
   logout: () => Promise<void>;
   clearAuth: () => void;
 };
@@ -51,6 +59,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (input) => {
     const result = await loginAdmin(input);
+    if (result.user.role !== 1) {
+      throw new AdminApiError(AUTH_ERROR_CODES.ADMIN_REQUIRED, "需要管理员权限", 403);
+    }
+    writeSession({ token: result.token, user: result.user });
+    set({
+      token: result.token,
+      user: result.user,
+      isAuthenticated: true,
+      isHydrated: true,
+    });
+  },
+
+  loginWithHandoff: async (ticket) => {
+    const result = await redeemAdminHandoff(ticket);
     if (result.user.role !== 1) {
       throw new AdminApiError(AUTH_ERROR_CODES.ADMIN_REQUIRED, "需要管理员权限", 403);
     }

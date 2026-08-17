@@ -14,6 +14,9 @@ import {
   appLoginSchema,
   appLogout,
   changeOwnAdminPassword,
+  createAppHandoff,
+  handoffRedeemSchema,
+  redeemHandoff,
 } from "./service.js";
 
 export const appAuthRouter = Router();
@@ -99,5 +102,27 @@ adminAuthRouter.put(
     const body = z.object({ adminPassword: z.string().min(1) }).parse(req.body);
     await changeOwnAdminPassword(req.adminAuth!.uid, body.adminPassword);
     ok(res, null);
+  }),
+);
+
+/** App → 管理台：签发短时单次 ticket（需 App JWT） */
+adminAuthRouter.post(
+  "/app-handoff",
+  loginRateLimit,
+  requireAppAuth,
+  asyncHandler(async (req, res) => {
+    const data = await createAppHandoff(req.appAuth!.uid);
+    ok(res, data);
+  }),
+);
+
+/** Web 用 ticket 兑换 Admin 会话（无 Bearer） */
+adminAuthRouter.post(
+  "/handoff-redeem",
+  loginRateLimit,
+  asyncHandler(async (req, res) => {
+    const body = handoffRedeemSchema.parse(req.body);
+    const data = await redeemHandoff(body.ticket);
+    ok(res, data);
   }),
 );

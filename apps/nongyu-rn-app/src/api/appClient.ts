@@ -1,12 +1,22 @@
 import { API_BASE_URL } from "@/config/env";
-import { useSessionStore } from "@/stores/session";
 import { AppApiError, isAuthInvalidCode } from "@/api/appApiError";
 import { handleAuthInvalid } from "@/api/handleAuthInvalid";
+import { getAppAccessToken } from "@/api/appToken";
+import { reportAppRequestError } from "@/modules/telemetry/reportRequest";
 
 type ApiEnvelope<T> = {
   code: number;
   message: string;
   data: T | null;
+};
+
+type ParseApiResponseOptions = {
+  allowNullData?: boolean;
+  skipAuthInvalidHandler?: boolean;
+  /** 上报用：HTTP method */
+  method?: string;
+  /** 上报用：pathname（可含 query，上报前会剥掉） */
+  path?: string;
 };
 
 /**
@@ -16,18 +26,37 @@ type ApiEnvelope<T> = {
  */
 export async function parseApiResponse<T>(
   response: Response,
-  options?: { allowNullData?: boolean; skipAuthInvalidHandler?: boolean },
+  options?: ParseApiResponseOptions,
 ): Promise<T> {
+  const method = (options?.method || "GET").toUpperCase();
+  const path = options?.path || "/";
+
   let json: ApiEnvelope<T> | null = null;
   try {
     json = (await response.json()) as ApiEnvelope<T>;
   } catch {
-    throw new Error(`农屿接口响应非 JSON (HTTP ${response.status})`);
+    const message = `农屿接口响应非 JSON (HTTP ${response.status})`;
+    reportAppRequestError({
+      kind: "network",
+      message,
+      method,
+      path,
+      httpStatus: response.status,
+    });
+    throw new Error(message);
   }
 
   if (!response.ok || json.code !== 0) {
     const code = json.code;
     const message = json.message || `农屿接口失败 (HTTP ${response.status}, code=${code})`;
+    reportAppRequestError({
+      kind: "api",
+      message,
+      method,
+      path,
+      httpStatus: response.status,
+      code,
+    });
     if (!options?.skipAuthInvalidHandler && isAuthInvalidCode(code)) {
       void handleAuthInvalid(code);
     }
@@ -35,27 +64,21 @@ export async function parseApiResponse<T>(
   }
 
   if (json.data == null && !options?.allowNullData) {
-    throw new Error(json.message || "农屿接口响应缺少 data");
+    const message = json.message || "农屿接口响应缺少 data";
+    reportAppRequestError({
+      kind: "network",
+      message,
+      method,
+      path,
+      httpStatus: response.status,
+    });
+    throw new Error(message);
   }
 
   return json.data as T;
 }
 
-/**
- * 解析当前可用的 App JWT
- * 优先 session；仅开发环境可回落到 EXPO_PUBLIC_DEV_APP_TOKEN
- */
-export function getAppAccessToken(): string | null {
-  const sessionToken = useSessionStore.getState().token;
-  if (sessionToken) return sessionToken;
-
-  if (__DEV__) {
-    const devToken = process.env.EXPO_PUBLIC_DEV_APP_TOKEN?.trim();
-    if (devToken) return devToken;
-  }
-
-  return null;
-}
+export { getAppAccessToken } from "@/api/appToken";
 
 type AppFetchOptions = RequestInit & {
   /** 成功时允许 data 为 null */
@@ -69,6 +92,7 @@ type AppFetchOptions = RequestInit & {
  */
 export async function appFetch<T>(path: string, options: AppFetchOptions = {}): Promise<T> {
   const { allowNullData, auth = true, headers, ...init } = options;
+  const method = (init.method || "GET").toUpperCase();
   const mergedHeaders = new Headers(headers);
 
   if (!mergedHeaders.has("Content-Type") && init.body) {
@@ -78,15 +102,27 @@ export async function appFetch<T>(path: string, options: AppFetchOptions = {}): 
   if (auth) {
     const token = getAppAccessToken();
     if (!token) {
-      throw new Error("未登录或缺少联调 Token，无法请求农屿接口");
+      throw new Error("农屿服务未接通或登录凭证缺失，请下拉重试或重新登录");
     }
     mergedHeaders.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: mergedHeaders,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: mergedHeaders,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "网络请求失败";
+    reportAppRequestError({
+      kind: "network",
+      message,
+      method,
+      path,
+    });
+    throw error;
+  }
 
-  return parseApiResponse<T>(response, { allowNullData });
+  return parseApiResponse<T>(response, { allowNullData, method, path });
 }

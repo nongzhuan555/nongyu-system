@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"math"
 	"sort"
 	"time"
 
@@ -171,8 +170,8 @@ func (j *Jobs) RunAggregate(ctx context.Context, date string) (string, error) {
 		p95 := make([]sqlite.DimRow, 0)
 		for name, vals := range perf {
 			sort.Slice(vals, func(i, k int) bool { return vals[i] < vals[k] })
-			p50 = append(p50, sqlite.DimRow{DimKey: "name", DimValue: name, MetricValue: percentile(vals, 50)})
-			p95 = append(p95, sqlite.DimRow{DimKey: "name", DimValue: name, MetricValue: percentile(vals, 95)})
+			p50 = append(p50, sqlite.DimRow{DimKey: "name", DimValue: name, MetricValue: sqlite.Percentile(vals, 50)})
+			p95 = append(p95, sqlite.DimRow{DimKey: "name", DimValue: name, MetricValue: sqlite.Percentile(vals, 95)})
 		}
 		if err := j.store.ReplaceDims(ctx, tx, date, "perf_p50", nowMs, p50); err != nil {
 			return err
@@ -214,18 +213,4 @@ func (j *Jobs) RunPurge(ctx context.Context) (int64, error) {
 		return n, recErr
 	}
 	return n, nil
-}
-
-func percentile(sorted []int64, p float64) int64 {
-	if len(sorted) == 0 {
-		return 0
-	}
-	idx := int(math.Ceil(p/100*float64(len(sorted)))) - 1
-	if idx < 0 {
-		idx = 0
-	}
-	if idx >= len(sorted) {
-		idx = len(sorted) - 1
-	}
-	return sorted[idx]
 }

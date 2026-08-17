@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
-  StyleSheet,
   Text,
   View,
   type NativeScrollEvent,
@@ -21,11 +20,14 @@ import {
   type PostListItem,
   type PostType,
 } from "@/modules/center/api/posts";
+import { ensureAppAccessToken } from "@/api/ensureAppAuth";
 import { FadeScrollItem } from "@/modules/center/components/FadeScrollItem";
 import { PostCard } from "@/modules/center/components/PostCard";
 import { PostListSkeleton } from "@/modules/center/components/PostListSkeleton";
 import { tabBarContentPadding } from "@/modules/center/utils/format";
 import { createThemedStyles } from "@/theme/createThemedStyles";
+
+const MISSING_TOKEN_HINT = "农屿服务未接通或登录凭证缺失";
 
 type PostFeedListProps = {
   mode: "plaza" | "mine";
@@ -104,6 +106,12 @@ export function PostFeedList({
     void query.refetch();
   }, [query.refetch]);
 
+  /** 无票时先补签发再拉列表 */
+  const onRetry = useCallback(async () => {
+    await ensureAppAccessToken();
+    await query.refetch();
+  }, [query.refetch]);
+
   const onScrollBegin = () => {
     isScrolling.value = 1;
   };
@@ -129,14 +137,15 @@ export function PostFeedList({
   }
 
   if (query.isError && items.length === 0) {
+    const raw = query.error instanceof Error ? query.error.message : "加载失败";
+    const message =
+      raw.includes("登录凭证") || raw.includes("联调 Token") ? MISSING_TOKEN_HINT : raw;
     return (
       <View style={[styles.stateWrap, styles.centered, { paddingBottom: bottomPad }]}>
-        <Text style={styles.errorText}>
-          {query.error instanceof Error ? query.error.message : "加载失败"}
-        </Text>
+        <Text style={styles.errorText}>{message}</Text>
         <Pressable
           accessibilityRole="button"
-          onPress={() => void query.refetch()}
+          onPress={() => void onRetry()}
           style={styles.retryBtn}
         >
           <Text style={styles.retryText}>重试</Text>
@@ -175,7 +184,7 @@ export function PostFeedList({
         refreshControl={
           <RefreshControl
             refreshing={query.isRefetching && !query.isFetchingNextPage}
-            onRefresh={() => void query.refetch()}
+            onRefresh={() => void onRetry()}
             tintColor={t.color.brand}
           />
         }

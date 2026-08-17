@@ -32,7 +32,14 @@ import type {
   CreateLlmKeyBody,
   PatchLlmKeyBody,
 } from "../types/llmKeys";
+import type {
+  AdminHomeGreetingItem,
+  AdminHomeGreetingListQuery,
+  CreateHomeGreetingBody,
+  PatchHomeGreetingBody,
+} from "../types/homeGreetings";
 import {
+  ADMIN_HANDOFF_REDEEM_PATH,
   ADMIN_LOGIN_PATH,
   ADMIN_LOGOUT_PATH,
   ADMIN_ME_PATH,
@@ -50,6 +57,7 @@ import {
   ADMIN_TRACK_QUERY_PATH,
   ADMIN_TRACK_TREND_PATH,
   ADMIN_LLM_KEYS_PATH,
+  ADMIN_HOME_GREETINGS_PATH,
   AUTH_ERROR_CODES,
 } from "./constants";
 import { readSession } from "./storage";
@@ -95,7 +103,10 @@ function toAdminApiError(body: unknown, httpStatus: number): AdminApiError {
 }
 
 function isLoginRequest(url: string | undefined): boolean {
-  return typeof url === "string" && url.includes(ADMIN_LOGIN_PATH);
+  return (
+    typeof url === "string" &&
+    (url.includes(ADMIN_LOGIN_PATH) || url.includes(ADMIN_HANDOFF_REDEEM_PATH))
+  );
 }
 
 function isUnauthorizedCode(code: number): boolean {
@@ -157,6 +168,14 @@ export async function loginAdmin(body: {
   loginType: LoginType;
 }): Promise<AdminLoginResult> {
   const response = await adminApi.post<ApiEnvelope<AdminLoginResult>>(ADMIN_LOGIN_PATH, body);
+  return unwrapData<AdminLoginResult>(response.data);
+}
+
+/** App handoff ticket → Admin 会话 */
+export async function redeemAdminHandoff(ticket: string): Promise<AdminLoginResult> {
+  const response = await adminApi.post<ApiEnvelope<AdminLoginResult>>(ADMIN_HANDOFF_REDEEM_PATH, {
+    ticket,
+  });
   return unwrapData<AdminLoginResult>(response.data);
 }
 
@@ -350,4 +369,39 @@ export async function patchAdminLlmKey(
 
 export async function deleteAdminLlmKey(id: number): Promise<void> {
   await adminApi.delete<ApiEnvelope<null>>(`${ADMIN_LLM_KEYS_PATH}/${id}`);
+}
+
+export async function listAdminHomeGreetings(
+  query: AdminHomeGreetingListQuery,
+): Promise<PageResult<AdminHomeGreetingItem>> {
+  const response = await adminApi.get<ApiEnvelope<PageResult<AdminHomeGreetingItem>>>(
+    ADMIN_HOME_GREETINGS_PATH,
+    { params: query },
+  );
+  return unwrapData(response.data);
+}
+
+export async function createAdminHomeGreeting(
+  body: CreateHomeGreetingBody,
+): Promise<{ id: number }> {
+  const response = await adminApi.post<ApiEnvelope<{ id: number }>>(
+    ADMIN_HOME_GREETINGS_PATH,
+    body,
+  );
+  return unwrapData(response.data);
+}
+
+export async function patchAdminHomeGreeting(
+  id: number,
+  body: PatchHomeGreetingBody,
+): Promise<{ id: number }> {
+  const response = await adminApi.patch<ApiEnvelope<{ id: number }>>(
+    `${ADMIN_HOME_GREETINGS_PATH}/${id}`,
+    body,
+  );
+  return unwrapData(response.data);
+}
+
+export async function deleteAdminHomeGreeting(id: number): Promise<void> {
+  await adminApi.delete<ApiEnvelope<null>>(`${ADMIN_HOME_GREETINGS_PATH}/${id}`);
 }

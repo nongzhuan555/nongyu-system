@@ -5,7 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 export type ServiceAction =
   | { kind: "navigate"; href: Href }
   | { kind: "share" }
-  | { kind: "about" };
+  | { kind: "about" }
+  | { kind: "admin" };
 
 export type ServiceItem = {
   key: string;
@@ -16,7 +17,16 @@ export type ServiceItem = {
 };
 
 /** 农屿品牌官网（关于入口） */
-export const ABOUT_URL = "https://nongyu-app.github.io/index.html";
+export const ABOUT_URL = "http://101.43.34.229/";
+
+/** 管理员可见：Web 管理台入口 */
+export const ADMIN_SERVICE_ITEM: ServiceItem = {
+  key: "admin",
+  title: "农屿管理台",
+  description: "打开 Web 管理后台（自动登录）",
+  icon: "desktop-outline",
+  action: { kind: "admin" },
+};
 
 /** 「更多服务」入口配置（本版本不含评论/回复） */
 export const SERVICE_ITEMS: ServiceItem[] = [
@@ -42,3 +52,17 @@ export const SERVICE_ITEMS: ServiceItem[] = [
     action: { kind: "about" },
   },
 ];
+
+/**
+ * 按角色组装「更多服务」列表（管理员在关于前插入管理台）
+ */
+export function buildServiceItems(role: 0 | 1 | null): ServiceItem[] {
+  if (role !== 1) return SERVICE_ITEMS;
+  const aboutIndex = SERVICE_ITEMS.findIndex((item) => item.key === "about");
+  if (aboutIndex < 0) return [...SERVICE_ITEMS, ADMIN_SERVICE_ITEM];
+  return [
+    ...SERVICE_ITEMS.slice(0, aboutIndex),
+    ADMIN_SERVICE_ITEM,
+    ...SERVICE_ITEMS.slice(aboutIndex),
+  ];
+}

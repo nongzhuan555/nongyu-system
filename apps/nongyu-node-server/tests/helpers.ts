@@ -38,6 +38,7 @@ export async function truncateAll() {
     "app_versions",
     "llm_user_usage_daily",
     "llm_api_keys",
+    "home_greetings",
     "users",
   ]) {
     await pool.query(`TRUNCATE TABLE ${table}`);

@@ -175,7 +175,7 @@ function widgetBody(
       <KpiCard
         title="当前在线"
         value={data.overview?.onlineUsers ?? null}
-        hint="业务库在线状态"
+        hint="近 10 分钟有心跳"
         loading={args.coreLoading}
         error={args.coreError}
       />

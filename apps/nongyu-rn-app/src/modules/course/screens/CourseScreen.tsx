@@ -23,6 +23,7 @@ import { CourseMoreSheet } from "../components/CourseMoreSheet";
 import { CourseWeekSkeleton } from "../components/CourseSkeletons";
 import { PeerLookupSheet } from "../components/PeerLookupSheet";
 import { ScheduleFormSheet } from "../components/ScheduleFormSheet";
+import { ScheduleListSheet } from "../components/ScheduleListSheet";
 import { SemesterStartPicker } from "../components/SemesterStartPicker";
 import { WeekPager, type EmptyCellTarget } from "../components/WeekPager";
 import { ExamSchedulePanel } from "@/modules/jiaowu/components/ExamSchedulePanel";
@@ -98,6 +99,7 @@ export function CourseScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [peerLookupVisible, setPeerLookupVisible] = useState(false);
   const [moreVisible, setMoreVisible] = useState(false);
+  const [scheduleListVisible, setScheduleListVisible] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseEntry | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<ScheduleEntry | null>(null);
   const [scheduleTarget, setScheduleTarget] = useState<EmptyCellTarget | null>(null);
@@ -794,6 +796,17 @@ export function CourseScreen() {
         onClose={() => setMoreVisible(false)}
         onRefresh={() => void onPressRefresh()}
         onShare={() => setPeerLookupVisible(true)}
+        onMySchedules={() => setScheduleListVisible(true)}
+      />
+
+      <ScheduleListSheet
+        visible={scheduleListVisible}
+        schedules={displaySchedules}
+        onClose={() => setScheduleListVisible(false)}
+        onSelect={(schedule) => {
+          setScheduleListVisible(false);
+          openScheduleDetail(schedule);
+        }}
       />
 
       <PeerLookupSheet

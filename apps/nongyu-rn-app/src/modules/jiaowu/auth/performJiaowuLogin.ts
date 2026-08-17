@@ -2,6 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { getPersonalInfo } from "nongyu-tool-jiaowu";
 import { toast } from "@/components/ui/toast";
 import { appAuthLogin, appAuthLogout } from "@/api/appAuth";
+import { parseAppUserRole } from "@/api/parseAppUserRole";
 import { clearAgentConfig } from "@/storage/agentConfig";
 import { clearCredentials, saveCredentials } from "@/storage/secureCredentials";
 import { clearSessionSnapshot, clearAiTipMuted, saveSessionSnapshot } from "@/storage/mmkv";
@@ -85,6 +86,7 @@ export async function performJiaowuLogin(
 
   // Node 登录：失败仍可进入教务本地会话，但需提示具体原因便于联调
   let token: string | null = null;
+  let role: 0 | 1 | null = null;
   let nodeOk = false;
   try {
     const auth = await appAuthLogin({
@@ -99,6 +101,7 @@ export async function performJiaowuLogin(
       campus: profile.campus,
     });
     token = auth.token;
+    role = parseAppUserRole(auth.user);
     nodeOk = true;
   } catch (err) {
     const message = err instanceof Error ? err.message : "农屿服务未接通";
@@ -110,9 +113,9 @@ export async function performJiaowuLogin(
   await saveCredentials(trimmedId, trimmedPwd);
   bridgeSetLoginData(trimmedId, trimmedPwd);
   persistCurrentAspCookie();
-  saveSessionSnapshot(JSON.stringify(profile), token);
+  saveSessionSnapshot(JSON.stringify(profile), token, role);
 
-  useSessionStore.getState().setSession({ profile, token });
+  useSessionStore.getState().setSession({ profile, token, role });
 
   if (queryClient) {
     await queryClient.invalidateQueries({ queryKey: ["jiaowu"] });

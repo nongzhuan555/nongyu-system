@@ -52,6 +52,8 @@ export const JIAOWU_ASP_COOKIE_KEY = "jiaowu:asp_cookie";
 export const SESSION_PROFILE_KEY = "session:profile";
 /** 农屿 App Token（冷启动恢复用） */
 export const SESSION_TOKEN_KEY = "session:app_token";
+/** Node 用户角色 0|1（冷启动恢复用） */
+export const SESSION_ROLE_KEY = "session:role";
 /** 课表开学日（epoch ms 字符串） */
 export const COURSE_SEMESTER_START_KEY = "course:semester_start_ms";
 /** 课表是否高亮当日列（"1" / "0"） */
@@ -123,19 +125,32 @@ export function clearSecondAccessToken(): void {
 /**
  * 持久化会话档案与 Token（登出须清除）
  */
-export function saveSessionSnapshot(profileJson: string, token: string | null): void {
+export function saveSessionSnapshot(
+  profileJson: string,
+  token: string | null,
+  role?: 0 | 1 | null,
+): void {
   appStorage.set(SESSION_PROFILE_KEY, profileJson);
   if (token) appStorage.set(SESSION_TOKEN_KEY, token);
   else appStorage.delete(SESSION_TOKEN_KEY);
+  if (role === 0 || role === 1) appStorage.set(SESSION_ROLE_KEY, String(role));
+  else appStorage.delete(SESSION_ROLE_KEY);
 }
 
 /**
  * 读取冷启动会话快照
  */
-export function loadSessionSnapshot(): { profileJson?: string; token?: string } {
+export function loadSessionSnapshot(): {
+  profileJson?: string;
+  token?: string;
+  role?: 0 | 1;
+} {
+  const roleRaw = appStorage.getString(SESSION_ROLE_KEY);
+  const role = roleRaw === "0" || roleRaw === "1" ? (Number(roleRaw) as 0 | 1) : undefined;
   return {
     profileJson: appStorage.getString(SESSION_PROFILE_KEY),
     token: appStorage.getString(SESSION_TOKEN_KEY),
+    role,
   };
 }
 
@@ -145,6 +160,7 @@ export function loadSessionSnapshot(): { profileJson?: string; token?: string } 
 export function clearSessionSnapshot(): void {
   appStorage.delete(SESSION_PROFILE_KEY);
   appStorage.delete(SESSION_TOKEN_KEY);
+  appStorage.delete(SESSION_ROLE_KEY);
 }
 
 /**

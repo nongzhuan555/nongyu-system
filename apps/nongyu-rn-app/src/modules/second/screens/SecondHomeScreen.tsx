@@ -69,7 +69,7 @@ export function SecondHomeScreen() {
       >
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>二课中心</Text>
-          <Text style={styles.headerSubtitle}>集成 i川农核心功能</Text>
+          <Text style={styles.headerSubtitle}>i川农核心功能集成（不含二课活动报名）</Text>
         </View>
 
         <SecondServiceList isAuthenticated={isSecondAuthed} />

@@ -217,4 +217,48 @@ describe("auth.admin", () => {
     await adminLogin(studentNo, "CustomAdmin9");
     await adminLogin(studentNo, defaultPassword);
   });
+
+  it("app handoff issues ticket and redeem yields admin session", async () => {
+    const { token } = await registerAppUser({ studentNo: "202377777" });
+    await promoteAdmin("202377777", "AdminPass1");
+
+    const handoff = await api()
+      .post("/api/admin/auth/app-handoff")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(handoff.body.code).toBe(0);
+    expect(handoff.body.data.ticket).toBeTruthy();
+    expect(handoff.body.data.expiresIn).toBe(60);
+
+    const ticket = handoff.body.data.ticket as string;
+    const redeemed = await api()
+      .post("/api/admin/auth/handoff-redeem")
+      .send({ ticket })
+      .expect(200);
+    expect(redeemed.body.data.loginType).toBe("in_app");
+    expect(redeemed.body.data.user.role).toBe(1);
+    expect(redeemed.body.data.user.bootstrap).toBeUndefined();
+
+    await api()
+      .get("/api/admin/auth/me")
+      .set("Authorization", `Bearer ${redeemed.body.data.token}`)
+      .expect(200);
+
+    const reuse = await api().post("/api/admin/auth/handoff-redeem").send({ ticket }).expect(401);
+    expect(reuse.body.code).toBe(40102);
+  });
+
+  it("app handoff rejects non-admin", async () => {
+    const { token } = await registerAppUser({ studentNo: "202388888" });
+    const res = await api()
+      .post("/api/admin/auth/app-handoff")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(403);
+    expect(res.body.code).toBe(40302);
+  });
+
+  it("handoff-redeem rejects empty ticket", async () => {
+    const res = await api().post("/api/admin/auth/handoff-redeem").send({ ticket: "" }).expect(400);
+    expect(res.body.code).toBe(40001);
+  });
 });

@@ -2,18 +2,25 @@ import type { RowDataPacket } from "mysql2/promise";
 import { getPool } from "../../lib/db.js";
 import { getEnv } from "../../config/env.js";
 import { businessDayUtcRange, eachBusinessDateKeys } from "../../lib/time.js";
+import { ONLINE_FRESH_WINDOW_SEC, clearStaleOnlineUsers } from "../users/repo.js";
 
 export async function getOverview() {
   const tz = getEnv().BUSINESS_TZ;
   const { start, end } = businessDayUtcRange(tz);
+  // Track 离线回写失败时 is_online 会永久为 1；读大屏前按心跳窗口收敛
+  await clearStaleOnlineUsers(ONLINE_FRESH_WINDOW_SEC);
   const pool = getPool();
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT
       (SELECT COUNT(*) FROM users) AS totalUsers,
       (SELECT COUNT(*) FROM users WHERE role = 1) AS totalAdmins,
-      (SELECT COUNT(*) FROM users WHERE is_online = 1) AS onlineUsers,
+      (SELECT COUNT(*) FROM users
+         WHERE is_online = 1
+           AND last_active_at IS NOT NULL
+           AND last_active_at >= (UTC_TIMESTAMP(3) - INTERVAL ? SECOND)
+      ) AS onlineUsers,
       (SELECT COUNT(*) FROM users WHERE created_at >= ? AND created_at < ?) AS todayNewUsers`,
-    [start, end],
+    [ONLINE_FRESH_WINDOW_SEC, start, end],
   );
   const r = rows[0];
   return {

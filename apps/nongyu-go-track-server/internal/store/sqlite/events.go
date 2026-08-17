@@ -26,13 +26,17 @@ type EventRow struct {
 
 // InsertEvent 幂等插入；duplicated=true 表示 UNIQUE(event_id) 命中。
 func (s *Store) InsertEvent(ctx context.Context, tx *sql.Tx, row EventRow) (duplicated bool, err error) {
+	var userID any
+	if row.UserID > 0 {
+		userID = row.UserID
+	}
 	res, err := tx.ExecContext(ctx, `
 INSERT OR IGNORE INTO events (
   event_id, user_id, student_no, event_type, event_name, app_version, platform,
   device_brand, session_id, duration_ms, props_json, client_ts_ms, received_at_ms, stat_date
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		row.EventID,
-		row.UserID,
+		userID,
 		nullIfEmpty(row.StudentNo),
 		row.EventType,
 		row.EventName,

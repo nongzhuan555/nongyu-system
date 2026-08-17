@@ -1,24 +1,25 @@
 import { useThemeTokens } from "@/theme/ThemeProvider";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SERVICE_ITEMS, type ServiceItem } from "@/modules/mine/constants/services";
+import type { ServiceItem } from "@/modules/mine/constants/services";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
 type ServiceListProps = {
+  items: ServiceItem[];
   onPressItem: (item: ServiceItem) => void;
 };
 
 /**
  * 「更多服务」：克制列表，少装饰
  */
-export function ServiceList({ onPressItem }: ServiceListProps) {
+export function ServiceList({ items, onPressItem }: ServiceListProps) {
   const styles = useStyles();
   const t = useThemeTokens();
   return (
     <View style={styles.section}>
       <Text style={styles.sectionEyebrow}>更多服务</Text>
       <View style={styles.list}>
-        {SERVICE_ITEMS.map((item, index) => (
+        {items.map((item, index) => (
           <View key={item.key}>
             {index > 0 ? <View style={styles.divider} /> : null}
             <Pressable

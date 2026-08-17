@@ -12,6 +12,7 @@ import (
 
 	"nongyu-go-track-server/internal/bizday"
 	"nongyu-go-track-server/internal/sqlguard"
+	"nongyu-go-track-server/internal/store/sqlite"
 )
 
 var allowedTrend = map[string]struct{}{
@@ -29,13 +30,9 @@ func (a *API) handleOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	metrics, err := a.store.GetMetricMap(ctx, date)
-	if err != nil {
-		writeFail(w, http.StatusInternalServerError, "INTERNAL", "query failed")
-		return
-	}
-	needLive := bizday.IsToday(date, a.now()) && metrics["dau"] == 0 && metrics["app_open_count"] == 0
-	if needLive {
+	// 今日日聚合要到次日 00:10 才落库；若误用/联调写过当日 daily_metrics，
+	// 旧条件（dau==0 && app_open_count==0）会跳过 live，日活会一直卡在错误的 0。
+	if bizday.IsToday(date, a.now()) {
 		if live, ok := a.liveOverview(date); ok {
 			writeOK(w, http.StatusOK, live)
 			return
@@ -57,8 +54,17 @@ func (a *API) handleOverview(w http.ResponseWriter, r *http.Request) {
 			"screen_view_count":  screens,
 			"button_click_count": clicks,
 		}
-		a.cacheLive(date, live)
+		// 空结果不缓存，避免「先查到 0 → 事件刚写入仍吃缓存」
+		if dau > 0 || appOpen > 0 || screens > 0 || clicks > 0 || crashes > 0 {
+			a.cacheLive(date, live)
+		}
 		writeOK(w, http.StatusOK, live)
+		return
+	}
+
+	metrics, err := a.store.GetMetricMap(ctx, date)
+	if err != nil {
+		writeFail(w, http.StatusInternalServerError, "INTERNAL", "query failed")
 		return
 	}
 	writeOK(w, http.StatusOK, map[string]any{
@@ -71,31 +77,83 @@ func (a *API) handleOverview(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *API) handleTrend(w http.ResponseWriter, r *http.Request) {
-	metric := r.URL.Query().Get("metric")
-	from := r.URL.Query().Get("from")
-	to := r.URL.Query().Get("to")
-	if _, ok := allowedTrend[metric]; !ok {
-		writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid metric")
-		return
+	func (a *API) handleTrend(w http.ResponseWriter, r *http.Request) {
+		metric := r.URL.Query().Get("metric")
+		from := r.URL.Query().Get("from")
+		to := r.URL.Query().Get("to")
+		if _, ok := allowedTrend[metric]; !ok {
+			writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid metric")
+			return
+		}
+		ft, err1 := bizday.ParseDate(from)
+		tt, err2 := bizday.ParseDate(to)
+		if err1 != nil || err2 != nil || ft.After(tt) {
+			writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid from/to")
+			return
+		}
+		rows, err := a.store.Trend(r.Context(), metric, from, to)
+		if err != nil {
+			writeFail(w, http.StatusInternalServerError, "INTERNAL", "query failed")
+			return
+		}
+		points := make([]map[string]any, 0, len(rows))
+		for _, row := range rows {
+			points = append(points, map[string]any{"date": row.StatDate, "value": row.Value})
+		}
+
+		// 今日尚无日聚合；区间含今天时用 events / presence live 填今日点，避免趋势图今日恒为缺省/0
+		today := bizday.StatDate(a.now())
+		if from <= today && today <= to {
+			live, liveErr := a.liveTrendValue(r.Context(), metric, today)
+			if liveErr != nil {
+				writeFail(w, http.StatusInternalServerError, "INTERNAL", "live trend failed")
+				return
+			}
+			replaced := false
+			for i := range points {
+				if points[i]["date"] == today {
+					points[i]["value"] = live
+					replaced = true
+					break
+				}
+			}
+			if !replaced {
+				points = append(points, map[string]any{"date": today, "value": live})
+			}
+		}
+
+		writeOK(w, http.StatusOK, points)
 	}
-	ft, err1 := bizday.ParseDate(from)
-	tt, err2 := bizday.ParseDate(to)
-	if err1 != nil || err2 != nil || ft.After(tt) {
-		writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid from/to")
-		return
+
+	func (a *API) liveTrendValue(ctx context.Context, metric, date string) (int64, error) {
+		q := a.store.ReadDB()
+		switch metric {
+		case "dau":
+			return a.store.CountDistinctDAU(ctx, q, date)
+		case "app_open_count":
+			return a.store.CountByType(ctx, q, date, "app_open")
+		case "screen_view_count":
+			return a.store.CountByType(ctx, q, date, "screen_view")
+		case "crash_count":
+			return a.store.CountByType(ctx, q, date, "crash")
+		case "online_peak":
+			online, err := a.store.CountOnline(ctx)
+			if err != nil {
+				return 0, err
+			}
+			metrics, err := a.store.GetMetricMap(ctx, date)
+			if err != nil {
+				return 0, err
+			}
+			peak := metrics["online_peak"]
+			if online > peak {
+				return online, nil
+			}
+			return peak, nil
+		default:
+			return 0, nil
+		}
 	}
-	rows, err := a.store.Trend(r.Context(), metric, from, to)
-	if err != nil {
-		writeFail(w, http.StatusInternalServerError, "INTERNAL", "query failed")
-		return
-	}
-	points := make([]map[string]any, 0, len(rows))
-	for _, row := range rows {
-		points = append(points, map[string]any{"date": row.StatDate, "value": row.Value})
-	}
-	writeOK(w, http.StatusOK, points)
-}
 
 func (a *API) handleDims(w http.ResponseWriter, r *http.Request) {
 	metric := r.URL.Query().Get("metric")
@@ -120,7 +178,15 @@ func (a *API) handleDims(w http.ResponseWriter, r *http.Request) {
 		}
 		limit = n
 	}
-	rows, err := a.store.Dims(r.Context(), metric, date, limit)
+
+	var rows []sqlite.DimRow
+	var err error
+	// 今日日聚合要到次日才落 daily_dims；大屏默认查今天，必须 live，否则永远空。
+	if bizday.IsToday(date, a.now()) {
+		rows, err = a.store.LiveDims(r.Context(), metric, date, limit)
+	} else {
+		rows, err = a.store.Dims(r.Context(), metric, date, limit)
+	}
 	if err != nil {
 		writeFail(w, http.StatusInternalServerError, "INTERNAL", "query failed")
 		return

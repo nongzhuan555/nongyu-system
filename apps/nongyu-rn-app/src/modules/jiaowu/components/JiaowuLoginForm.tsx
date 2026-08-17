@@ -31,13 +31,12 @@ export function JiaowuLoginForm({ onSuccess, compact }: JiaowuLoginFormProps) {
   const [idError, setIdError] = useState<string | null>(null);
   const [statusText, setStatusText] = useState("");
 
-  const canSubmit =
-    STUDENT_ID_RE.test(studentId.trim()) && password.trim().length > 0 && !submitting;
+  /** 有密码且未提交中即可点；学号格式仅在 submit 校验 */
+  const canSubmit = password.trim().length > 0 && !submitting;
 
   const onChangeStudentId = (value: string) => {
     setStudentId(value);
-    if (value.length === 0 || STUDENT_ID_RE.test(value)) setIdError(null);
-    else setIdError("学号需为 9 位数字");
+    if (idError) setIdError(null);
   };
 
   const handleSubmit = async () => {

@@ -9,6 +9,8 @@ import {
 import { appAuthMe } from "@/api/appAuth";
 import { AppApiError, isAuthInvalidCode } from "@/api/appApiError";
 import { handleAuthInvalid } from "@/api/handleAuthInvalid";
+import { parseAppUserRole } from "@/api/parseAppUserRole";
+import { saveSessionSnapshot } from "@/storage/mmkv";
 
 /**
  * 解析冷启动档案；损坏数据则忽略
@@ -67,11 +69,16 @@ export function useJiaowuBootstrap() {
           const snapshot = loadSessionSnapshot();
           const profile = parseStoredProfile(snapshot.profileJson, creds.studentId);
           const token = snapshot.token ?? null;
-          setSession({ profile, token });
+          const cachedRole = snapshot.role ?? null;
+          setSession({ profile, token, role: cachedRole });
 
           if (token) {
             try {
-              await appAuthMe(token, { skipAuthInvalidHandler: true });
+              const me = await appAuthMe(token, { skipAuthInvalidHandler: true });
+              if (cancelled) return;
+              const role = parseAppUserRole(me) ?? cachedRole;
+              setSession({ profile, token, role });
+              saveSessionSnapshot(JSON.stringify(profile), token, role);
             } catch (err) {
               if (cancelled) return;
               if (err instanceof AppApiError && isAuthInvalidCode(err.code)) {

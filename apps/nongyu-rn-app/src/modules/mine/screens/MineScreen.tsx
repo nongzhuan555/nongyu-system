@@ -1,17 +1,23 @@
 import { useThemeTokens } from "@/theme/ThemeProvider";
-import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TabScreenBackground } from "@/components/navigation/TabScreenBackground";
+import { toast } from "@/components/ui/toast";
 import { openAppUrl } from "@/lib/openAppUrl";
 import { GuestPrompt } from "@/modules/mine/components/GuestPrompt";
 import { InfoGrid } from "@/modules/mine/components/InfoGrid";
 import { ProfileHeader } from "@/modules/mine/components/ProfileHeader";
 import { ServiceList } from "@/modules/mine/components/ServiceList";
 import { ShareSheet } from "@/modules/mine/components/ShareSheet";
-import { ABOUT_URL } from "@/modules/mine/constants/services";
+import { ABOUT_URL, buildServiceItems } from "@/modules/mine/constants/services";
 import type { ServiceItem } from "@/modules/mine/constants/services";
+import {
+  buildAdminHandoffUrl,
+  getAdminHandoffErrorMessage,
+  requestAdminHandoff,
+} from "@/modules/mine/data/adminHandoff";
 import { trackClick } from "@/modules/telemetry";
 import { useSessionStore } from "@/stores/session";
 import { createThemedStyles } from "@/theme/createThemedStyles";
@@ -26,8 +32,11 @@ export function MineScreen() {
   const router = useRouter();
   const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
   const profile = useSessionStore((s) => s.profile);
+  const role = useSessionStore((s) => s.role);
   const [shareVisible, setShareVisible] = useState(false);
+  const [adminOpening, setAdminOpening] = useState(false);
 
+  const serviceItems = useMemo(() => buildServiceItems(role), [role]);
   const tabBarPad = t.tabBar.heightMax + t.tabBar.bottomGapMax + t.space.xl;
 
   const openSettings = () => {
@@ -36,6 +45,20 @@ export function MineScreen() {
 
   const openAbout = () => {
     void openAppUrl(ABOUT_URL, { label: "农屿官网" });
+  };
+
+  const openAdminConsole = async () => {
+    if (adminOpening) return;
+    setAdminOpening(true);
+    try {
+      const { ticket } = await requestAdminHandoff();
+      const url = buildAdminHandoffUrl(ticket);
+      await openAppUrl(url, { label: "农屿管理台" });
+    } catch (error) {
+      toast.error(getAdminHandoffErrorMessage(error));
+    } finally {
+      setAdminOpening(false);
+    }
   };
 
   const handleServicePress = async (item: ServiceItem) => {
@@ -47,6 +70,10 @@ export function MineScreen() {
     if (action.kind === "share") {
       trackClick("share_open");
       setShareVisible(true);
+      return;
+    }
+    if (action.kind === "admin") {
+      await openAdminConsole();
       return;
     }
     await openAbout();
@@ -70,7 +97,10 @@ export function MineScreen() {
         {isAuthenticated && profile ? (
           <>
             <InfoGrid profile={profile} onPress={() => router.push("/mine/profile" as Href)} />
-            <ServiceList onPressItem={(item) => void handleServicePress(item)} />
+            <ServiceList
+              items={serviceItems}
+              onPressItem={(item) => void handleServicePress(item)}
+            />
           </>
         ) : (
           <>
@@ -86,6 +116,13 @@ export function MineScreen() {
           </>
         )}
       </ScrollView>
+
+      {adminOpening ? (
+        <View style={styles.adminOverlay} pointerEvents="auto">
+          <ActivityIndicator color={t.color.brand} />
+          <Text style={styles.adminOverlayText}>正在打开管理台…</Text>
+        </View>
+      ) : null}
 
       <ShareSheet visible={shareVisible} onClose={() => setShareVisible(false)} />
     </View>
@@ -112,6 +149,18 @@ const useStyles = createThemedStyles((t) => ({
   aboutLinkText: {
     fontSize: t.fontSize.md,
     color: t.color.brand,
+    fontWeight: "600",
+  },
+  adminOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "rgba(0,0,0,0.28)",
+  },
+  adminOverlayText: {
+    fontSize: 14,
+    color: "#fff",
     fontWeight: "600",
   },
 }));

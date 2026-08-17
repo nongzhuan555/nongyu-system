@@ -5,6 +5,70 @@
 
 ---
 
+## 2026-08-17 · nongyu-node-server / nongyu-go-track-server · 大屏「当前在线」虚高、日活/趋势易误解
+
+- **现象**：无人使用时「当前在线」仍为 1；今日有登录体感但「今日日活」为 0；趋势今日点常缺/为 0。
+- **根因**：①「当前在线」读 MySQL `users.is_online`；登录会置 1，离线依赖 Track→Node 回写。回写失败或 App 未打到 Track 时，在线位可永久卡住（生产复现：Track `user_presence` 已离线，业务库仍 `is_online=1` 且 `last_active_at` 为昨日）。② 今日 Track `events` 为空时日活为 0 属口径正确（需装带 `EXPO_PUBLIC_TRACK_BASE_URL` 的包才会上报）。③ 趋势接口只读 `daily_metrics`，今日无聚合则今日点不准。
+- **修复**：Node `getOverview` 先按 10 分钟窗口清理过期在线，再按 `is_online=1 AND last_active_at` 新鲜度计数；Track `usersync` 离线立即 flush；趋势区间含今天时 live 填今日点；补测试与文档。
+
+---
+
+## 2026-08-16 · nongyu-go-track-server · 管理端今日日活一直为 0
+
+- **现象**：管理后台「今日日活」长期显示 0；Track overview 在已有 `app_open` 事件时仍返回 `dau=0`。
+- **根因**：`handleOverview` 用 `dau==0 && app_open_count==0` 判断是否走 live。当日 `daily_metrics` 一旦被误写入/联调聚合写成 `app_open_count>0` 且 `dau=0`，就会跳过实时统计，一直读脏指标。契约上今日本就不该依赖当日聚合结果（定时任务只落历史日）。
+- **修复**：今日 overview **始终**对 `events` 实时统计；空结果不写 live 缓存；`user_id<=0` 入库为 NULL；补回归测试；清理本地脏 `daily_metrics`。
+
+---
+
+## 2026-08-16 · nongyu-go-track-server · 大屏页面使用/性能维度一直为空
+
+- **现象**：数据大屏「页面使用」「关键性能」列表始终为空。
+- **根因**：`handleDims` 只读 `daily_dims`；日聚合定时任务只落**昨天**，而大屏默认查**今天** → 正常运行下今日 dims 永远空。
+- **修复**：今日 dims 对 `events` live 汇总（`screen_view`/`button_click` 计数、`perf` 分位）；历史日仍读 `daily_dims`；补回归测试。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · 生产包未配置 Track Base URL 导致大屏无数据
+
+- **现象**：远端 Track 已部署且 live 正常，管理端日活仍为 0、页面/性能为空。
+- **根因**：生产 Track `events` 为空。RN `eas.json` / `.env` 未注入 `EXPO_PUBLIC_TRACK_BASE_URL`，默认 `http://127.0.0.1:8082`，真机事件到不了 `https://47.108.74.61`。
+- **修复**：`eas.json` preview/production 与 `.env` 写入 `EXPO_PUBLIC_TRACK_BASE_URL=https://47.108.74.61`；需重新打包/重装 App 后事件才会进库。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · CourseScreen 渲染中更新 CourseWidgetSyncHost
+
+- **现象**：红屏/警告 `Cannot update a component (CourseWidgetSyncHost) while rendering a different component (CourseScreen)`。
+- **根因**：`CourseWidgetSyncHost` 订阅 `queryCache`，课表页 `useQuery` 等在 render 路径同步触发 `updated`；订阅回调里立刻 `setCacheTick`。
+- **修复**：`setCacheTick` 改为 `queueMicrotask` 延后，并合并同拍多次 notify。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · 启动闪屏只显示中间小图
+
+- **现象**：冷启动闪屏图缩在屏幕中央，未铺满（重打 dev-client 后依旧）。
+- **根因**：Android 12+ / 当前 `expo-splash-screen@57` 把 `image` 当 **居中启动图标**（默认约 100～180dp），`enableFullScreenImage_legacy` **仅作用于 iOS**；把全屏竖图塞进该槽位会缩成中间一小块。
+- **修复**：① 原生 Android 改用 `adaptive-icon` + 底色作极短过渡；iOS 仍可用 legacy 全屏图；② 新增 `BootSplashOverlay`：RN 起来后立即 `hide` 系统启动屏，用 `resizeMode: cover` 全屏展示 `splash-icon.jpg` 直到会话门禁就绪。JS 层改动 Metro 热更即可验；原生配置变更需重建壳。
+
+---
+
+## 2026-08-16 · nongyu-rn-app · 登录学号边输边校验
+
+- **现象**：学号未满 9 位即标红，且主按钮不可点。
+- **根因**：`JiaowuLoginForm` 在 `onChangeText` 实时校验并绑定 `canSubmit`。
+- **修复**：输入中只清错误态；9 位规则与 Toast 仅在提交时触发；有密码即可点登录。
+
+---
+
+## 2026-08-16 · nongyu-rn-app / node-server · 登录后广场提示缺少 Token
+
+- **现象**：教务登录成功进入 App 后，广场报「未登录或缺少联调 Token」。
+- **根因**：① 登录门禁不强制 Node JWT，签发失败仍进主界面；② 长地址等字段超 Node schema 上限会导致签发 400；③ 部分构建 API Base 指向不可达的 `:3000` / 未注入 env；④ 错误文案误导为「联调」。
+- **修复**：RN 登录体字段截断与性别清洗；`ensureAppAccessToken` 供广场重试补签发；文案去「联调」；`eas.json` preview/production 注入 `https://8.137.82.17`；Node `appLoginSchema` 超长截断、异常 gender 按未知。
+
+---
+
 ## 2026-08-16 · nongyu-rn-app · EAS Gradle 打 JS 包找不到 babel-preset-expo
 
 - **现象**：`eas:build:prod` 在 Run gradlew 的 `:app:createBundleReleaseJsAndAssets` 失败：`Cannot find module 'babel-preset-expo'`（EAGER_BUNDLE 已成功）。

@@ -1,20 +1,29 @@
 import { View } from "react-native";
 import { TypewriterText } from "@/components/ui/TypewriterText";
-import { GREETING_RESERVED_HEIGHT, buildGreetingText } from "@/modules/home/constants/greeting";
-import { useSessionStore } from "@/stores/session";
+import { GreetingSkeleton } from "@/modules/home/components/Greeting/GreetingSkeleton";
+import { GREETING_MAX_LINES, GREETING_RESERVED_HEIGHT } from "@/modules/home/constants/greeting";
+import { useGreetingBootstrap } from "@/modules/home/hooks/useGreetingBootstrap";
 import { createThemedStyles } from "@/theme/createThemedStyles";
 
 /**
- * 时段问候 + 打字机（按约 2 行预留，避免与通知栏间距过大）
+ * 时段问候 + 运营第二句；骨架等数据齐后再打字机
  */
 export function Greeting() {
   const styles = useStyles();
-  const name = useSessionStore((s) => s.profile?.name);
-  const fullText = buildGreetingText(name);
+  const { loading, fullText } = useGreetingBootstrap();
+
+  if (loading) {
+    return <GreetingSkeleton />;
+  }
 
   return (
     <View style={styles.wrap}>
-      <TypewriterText fullText={fullText} style={styles.text} numberOfLines={2} lastCharBoost={3} />
+      <TypewriterText
+        fullText={fullText}
+        style={styles.text}
+        numberOfLines={GREETING_MAX_LINES}
+        lastCharBoost={3}
+      />
     </View>
   );
 }
