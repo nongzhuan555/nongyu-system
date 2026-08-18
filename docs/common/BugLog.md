@@ -1,5 +1,13 @@
 ---
 
+## 2026-08-18 · nongyu-agent-gui / nongyu-agent-sdk · 开发脚本硬编码 LLM Key 入库
+
+- **现象**：`packages/nongyu-agent-gui/dev/main.tsx`、`packages/nongyu-agent-sdk/test/debug-cli.ts` 含明文 DeepSeek Key（及注释中的智谱 Key），会随仓库扩散。
+- **根因**：本地调试为图省事把 Key 写进源码，未走环境变量。
+- **修复**：改为必填环境变量（GUI：`VITE_AGENT_API_KEY`；SDK debug：`AGENT_API_KEY`）；补 `.env.example` 占位；`vite` `envDir` 指向包根；`pnpm debug` 用 `--env-file=.env`。真实 Key 仅本机 `.env`（gitignore）。已泄露 Key 需在服务商侧轮换。
+
+---
+
 ## 2026-08-17 · nongyu-rn-app / web-admin · 管理台 handoff 外链可盗用 + 内置 WebView 白屏
 
 - **现象**：应用内打开管理台先闪登录框再白屏；外置浏览器正常。且 ticket 在 URL 中时，外链理论上可被他人在 TTL 内免密进入管理台。

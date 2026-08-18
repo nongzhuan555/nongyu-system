@@ -22,7 +22,7 @@
     "lint": "oxlint \"src/**/*.ts\"",
     "type-check": "tsc --noEmit",
     "test": "tsx test/test.ts",
-    "debug": "tsx test/debug-cli.ts"
+    "debug": "tsx --env-file=.env test/debug-cli.ts"
   },
   "dependencies": {
     "axios": "catalog:",

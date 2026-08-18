@@ -1,10 +1,11 @@
 /**
  * 农屿 Agent SDK - 控制台调试 CLI
  *
- * 当前默认接入智谱 AI (GLM-4.7-Flash)，集成了完整的教务工具集。
- *
  * 用法：
- *   pnpm debug
+ *   1. 复制 packages/nongyu-agent-sdk/.env.example 为 .env 并填写 AGENT_API_KEY
+ *   2. pnpm debug
+ *
+ * 真实 Key 仅放本机 .env（已 gitignore），禁止入库。
  */
 
 import {
@@ -29,9 +30,18 @@ const systemPrompt = buildSystemPrompt({
   principles: "请严格遵守下方系列教务工具的使用方式，按照所要求的参数数量和格式进行工具调用。",
   workflow: "请严格按照教务系统的操作流程进行，不进行任何修改。",
   outputFormat: "请严格按照教务系统的输出格式进行，不进行任何修改。",
-  // few_shots: '请严格按照教务系统的示例进行，不进行任何修改。',
-  // tools: jiaowuTools,
 });
+
+/** 调试 CLI 必填环境变量；缺省则启动失败 */
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(
+      `缺少环境变量 ${name}。请复制 packages/nongyu-agent-sdk/.env.example 为 .env 后填写，或在 shell 中导出该变量；勿提交真实 Key。`,
+    );
+  }
+  return value;
+}
 
 // 将 Agent 流式块映射为通道出站封包
 async function* mapChunksToEnvelopes(
@@ -69,33 +79,27 @@ async function* mapChunksToEnvelopes(
   }
 }
 
-// ===== 主函数 =====
-
 async function main() {
-  // ===== 智谱 AI 配置 =====
-  // const model = new OpenAIProvider({
-  //   apiKey: '7a2158a374964d93a92674a7902bb4f0.Tb5Tv132jVsl7XQB',
-  //   baseURL: 'https://open.bigmodel.cn/api/paas/v4',
-  //   model: 'glm-4.7-flash',
-  // });
+  const apiKey = requireEnv("AGENT_API_KEY");
+  const baseURL = process.env.AGENT_BASE_URL?.trim() || "https://api.deepseek.com";
+  const model = process.env.AGENT_MODEL?.trim() || "deepseek-v4-flash";
 
-  const model = new OpenAIProvider({
-    apiKey: "sk-8c051b961b6b4a62a7cb69fb20caeea6",
-    baseURL: "https://api.deepseek.com",
-    model: "deepseek-v4-flash",
+  const modelProvider = new OpenAIProvider({
+    apiKey,
+    baseURL,
+    model,
   });
 
   console.log(`\n农屿 Agent SDK - 调试控制台`);
-  console.log(`  模型: glm-4.7-flash (智谱 AI)`);
-  console.log(`  端点: https://open.bigmodel.cn/api/paas/v4`);
+  console.log(`  模型: ${model}`);
+  console.log(`  端点: ${baseURL}`);
   console.log(`  已加载教务工具: ${Object.keys(jiaowuTools).length} 个\n`);
 
-  // 创建 Agent
   const agent: Agent = createAgent({
     name: "nongyu-jiaowu-assistant",
     description: "农屿教务助手，集成了完整的教务系统查询能力",
     systemPrompt,
-    model,
+    model: modelProvider,
     tools: jiaowuTools,
     runConfig: {
       maxSteps: 15,
@@ -103,17 +107,15 @@ async function main() {
     },
   });
 
-  // 监听 Agent 事件（仅处理流式块覆盖不到的错误/状态）
   agent.on("tool:error", ({ toolName, error }) => {
-    process.stdout.write(`\n  [❌ 工具错误] ${toolName}: ${error.message}\n`);
+    process.stdout.write(`\n  [工具错误] ${toolName}: ${error.message}\n`);
   });
 
-  // 创建通道 & 网关
   const stdioChannel = new StdioChannel({
     id: "debug-console",
     name: "调试控制台",
-    prompt: "\n👤 你: ",
-    agentPrefix: "\n🤖 Agent: ",
+    prompt: "\n你: ",
+    agentPrefix: "\nAgent: ",
   });
 
   const gateway = new Gateway();
@@ -121,7 +123,6 @@ async function main() {
 
   const conversationId = "debug-console:main";
 
-  // 注册消息处理器：流式调用 Agent + 流式输出到控制台
   gateway.onMessage(async (envelope) => {
     try {
       const stream = agent.stream({ prompt: envelope.text });
@@ -132,7 +133,6 @@ async function main() {
     }
   });
 
-  // 启动
   await gateway.start();
 }
 
