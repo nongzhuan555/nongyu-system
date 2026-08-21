@@ -1,6 +1,6 @@
 import { STORAGE_AGENT_CONFIG_KEY } from "../../lib/constants";
 
-export const DEFAULT_AGENT_MODEL = "gpt-4o-mini";
+export const DEFAULT_AGENT_MODEL = "deepseek-v4-flash";
 
 export type AgentConfigStored = {
   baseURL: string;

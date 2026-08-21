@@ -2,7 +2,6 @@ import { adminDashboardOverviewTool } from "./dashboard";
 import { adminSettingsDistributionTool } from "./dashboard";
 import { adminUserDistributionTool } from "./dashboard";
 import { adminUserGrowthTool } from "./dashboard";
-import { adminTrackSqlTool } from "./sql";
 import {
   adminTrackCrashesTool,
   adminTrackDimsTool,
@@ -22,5 +21,4 @@ export const adminAssistantTools = {
   admin_track_trend: adminTrackTrendTool,
   admin_track_dims: adminTrackDimsTool,
   admin_track_crashes: adminTrackCrashesTool,
-  admin_track_sql: adminTrackSqlTool,
 };

@@ -1,5 +1,13 @@
 ---
 
+## 2026-08-19 · nongyu-agent-sdk · 工具 JSON Schema 丢失 union/literal、describe，且 optional 被标成 required
+
+- **现象**：发给模型的 tools 里 `role`/`status` 变成 `"role": {}`；`z.string().optional().describe(...)` 的 description 全部缺失；所有字段都被塞进 `required`（含明确 `.optional()` 的 keyword/page/range/date）。
+- **根因**：Zod 3 走手写 `convertZodToJSONSchema`：未处理 `ZodUnion`/`ZodLiteral`（兜底 `{}`）；`.optional().describe()` 的描述在 Optional 包装层，unwrap 时丢掉；用了不存在的 `_def.optionalValidator` 判断必填，导致 optional 一律进 required。
+- **修复**：补全 literal/union（字面量联合折叠为 `enum`）、从包装层回填 description、按 `ZodOptional`/`ZodDefault` 排除 required；顺带带上 string/number 的 pattern、min/max、int。
+
+---
+
 ## 2026-08-18 · nongyu-agent-gui / nongyu-agent-sdk · 开发脚本硬编码 LLM Key 入库
 
 - **现象**：`packages/nongyu-agent-gui/dev/main.tsx`、`packages/nongyu-agent-sdk/test/debug-cli.ts` 含明文 DeepSeek Key（及注释中的智谱 Key），会随仓库扩散。

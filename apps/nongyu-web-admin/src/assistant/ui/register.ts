@@ -14,4 +14,4 @@ registerToolUI("admin_track_overview", AdminKpiGroupCard);
 registerToolUI("admin_track_trend", AdminChartCard);
 registerToolUI("admin_track_dims", AdminChartCard);
 registerToolUI("admin_track_crashes", AdminDataTableCard);
-registerToolUI("admin_track_sql", AdminSqlBlockCard);
+registerToolUI("admin_sql_agent", AdminSqlBlockCard);
