@@ -1,0 +1,223 @@
+name: CD
+
+# 只做持续交付：本机 CR / husky 通过后再 push。不在此跑 lint、单测、业务审查。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 部署目标（push 时忽略，改按路径选择）
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - site
+          - admin
+          - node
+          - track
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      site: ${{ steps.gate.outputs.site }}
+      admin: ${{ steps.gate.outputs.admin }}
+      node: ${{ steps.gate.outputs.node }}
+      track: ${{ steps.gate.outputs.track }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+        with:
+          fetch-depth: 2
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'push'
+        with:
+          filters: |
+            site:
+              - 'apps/nongyu-web-site/**'
+            admin:
+              - 'apps/nongyu-web-admin/**'
+              - 'packages/nongyu-agent-sdk/**'
+              - 'packages/nongyu-tool-jiaowu/**'
+              - 'packages/nongyu-tool-second/**'
+            node:
+              - 'apps/nongyu-node-server/**'
+            track:
+              - 'apps/nongyu-go-track-server/**'
+      - id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TARGET: ${{ inputs.target }}
+          FILTER_SITE: ${{ steps.filter.outputs.site }}
+          FILTER_ADMIN: ${{ steps.filter.outputs.admin }}
+          FILTER_NODE: ${{ steps.filter.outputs.node }}
+          FILTER_TRACK: ${{ steps.filter.outputs.track }}
+        run: |
+          site=false
+          admin=false
+          node=false
+          track=false
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            case "$TARGET" in
+              all) site=true; admin=true; node=true; track=true ;;
+              site) site=true ;;
+              admin) admin=true ;;
+              node) node=true ;;
+              track) track=true ;;
+            esac
+          else
+            site="${FILTER_SITE:-false}"
+            admin="${FILTER_ADMIN:-false}"
+            node="${FILTER_NODE:-false}"
+            track="${FILTER_TRACK:-false}"
+          fi
+          {
+            echo "site=$site"
+            echo "admin=$admin"
+            echo "node=$node"
+            echo "track=$track"
+          } >> "$GITHUB_OUTPUT"
+
+  deploy-site:
+    needs: plan
+    if: needs.plan.outputs.site == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cd-web
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          filter: "nongyu-web-site..."
+      - name: 构建官网
+        run: |
+          pnpm --filter nongyu-web-site build
+          test -f apps/nongyu-web-site/dist/index.html
+          tar -czf nongyu-web-site-dist.tgz -C apps/nongyu-web-site/dist .
+      - name: 发布官网
+        env:
+          SSH_KEY: ${{ secrets.WEB_SSH_KEY }}
+          SSH_HOST: ${{ secrets.WEB_SSH_HOST }}
+          SSH_USER: ${{ secrets.WEB_SSH_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf 'Host deploy\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking accept-new\n' \
+            "$SSH_HOST" "$SSH_USER" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+          scp nongyu-web-site-dist.tgz deploy:/tmp/nongyu-web-site-dist.tgz
+          scp scripts/cd/publish-static.sh deploy:/tmp/publish-static-site.sh
+          ssh deploy 'sed -i "s/\r$//" /tmp/publish-static-site.sh && bash /tmp/publish-static-site.sh /var/www/site /tmp/nongyu-web-site-dist.tgz && rm -f /tmp/publish-static-site.sh'
+
+  deploy-admin:
+    needs: plan
+    if: needs.plan.outputs.admin == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cd-web
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          filter: "nongyu-web-admin..."
+      - name: 构建管理端与 workspace 依赖
+        run: |
+          pnpm -r --filter nongyu-web-admin... run build
+          test -f apps/nongyu-web-admin/dist/index.html
+          tar -czf nongyu-web-admin-dist.tgz -C apps/nongyu-web-admin/dist .
+      - name: 发布管理端
+        env:
+          SSH_KEY: ${{ secrets.WEB_SSH_KEY }}
+          SSH_HOST: ${{ secrets.WEB_SSH_HOST }}
+          SSH_USER: ${{ secrets.WEB_SSH_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf 'Host deploy\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking accept-new\n' \
+            "$SSH_HOST" "$SSH_USER" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+          scp nongyu-web-admin-dist.tgz deploy:/tmp/nongyu-web-admin-dist.tgz
+          scp scripts/cd/publish-static.sh deploy:/tmp/publish-static-admin.sh
+          ssh deploy 'sed -i "s/\r$//" /tmp/publish-static-admin.sh && bash /tmp/publish-static-admin.sh /var/www/admin /tmp/nongyu-web-admin-dist.tgz && rm -f /tmp/publish-static-admin.sh'
+
+  deploy-node:
+    needs: plan
+    if: needs.plan.outputs.node == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cd-node
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          filter: "nongyu-node-server..."
+      - name: 构建 Node dist
+        run: |
+          pnpm --filter nongyu-node-server build
+          test -f apps/nongyu-node-server/dist/index.js
+          tar -czf nongyu-node-dist.tgz -C apps/nongyu-node-server/dist .
+      - name: 发布 Node 并安全重启
+        env:
+          SSH_KEY: ${{ secrets.NODE_SSH_KEY }}
+          SSH_HOST: ${{ secrets.NODE_SSH_HOST }}
+          SSH_USER: ${{ secrets.NODE_SSH_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf 'Host deploy\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking accept-new\n' \
+            "$SSH_HOST" "$SSH_USER" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+          scp nongyu-node-dist.tgz deploy:/tmp/nongyu-node-dist.tgz
+          scp apps/nongyu-node-server/package.json deploy:/tmp/nongyu-node-package.json
+          scp scripts/cd/publish-node.sh deploy:/tmp/publish-node.sh
+          ssh deploy 'sed -i "s/\r$//" /tmp/publish-node.sh && bash /tmp/publish-node.sh /opt/nongyu-node nongyu-node.service http://127.0.0.1:3000/health /tmp/nongyu-node-dist.tgz /tmp/nongyu-node-package.json && rm -f /tmp/publish-node.sh'
+
+  deploy-track:
+    needs: plan
+    if: needs.plan.outputs.track == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cd-track
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/nongyu-go-track-server/go.mod
+          cache-dependency-path: apps/nongyu-go-track-server/go.sum
+      - name: 交叉编译 linux/amd64
+        working-directory: apps/nongyu-go-track-server
+        run: |
+          mkdir -p dist
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/nongyu-track ./cmd/track-server
+          test -f dist/nongyu-track
+      - name: 发布 Track 并安全重启
+        env:
+          SSH_KEY: ${{ secrets.TRACK_SSH_KEY }}
+          SSH_HOST: ${{ secrets.TRACK_SSH_HOST }}
+          SSH_USER: ${{ secrets.TRACK_SSH_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf 'Host deploy\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking accept-new\n' \
+            "$SSH_HOST" "$SSH_USER" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+          scp apps/nongyu-go-track-server/dist/nongyu-track scripts/cd/publish-track.sh deploy:/tmp/
+          ssh deploy 'sed -i "s/\r$//" /tmp/publish-track.sh && bash /tmp/publish-track.sh /usr/local/bin/nongyu-track nongyu-track.service http://127.0.0.1:8081/health /tmp/nongyu-track && rm -f /tmp/publish-track.sh'

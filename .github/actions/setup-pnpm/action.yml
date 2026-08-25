@@ -1,0 +1,19 @@
+name: setup-pnpm
+description: 启用 pnpm 11 与 Node 22，并按 filter 安装 workspace 依赖
+inputs:
+  filter:
+    description: pnpm --filter 选择器（含 ... 时会带上 workspace 依赖）
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 11.5.1
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: pnpm
+    - name: 安装 workspace 子集
+      shell: bash
+      run: pnpm install --frozen-lockfile --filter "${{ inputs.filter }}"
