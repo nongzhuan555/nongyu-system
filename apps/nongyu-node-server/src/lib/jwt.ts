@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify, errors as JoseErrors, type JWTPayload } from "jose";
 import { getEnv } from "../config/env.js";
 import { AppError, ErrorCodes } from "./errors.js";
+import { isAdminRole } from "./roles.js";
 
 export type AppTokenClaims = {
   uid: number;
@@ -13,7 +14,7 @@ export type AppTokenClaims = {
 export type AdminTokenClaims = {
   uid: number;
   studentNo: string;
-  role: 1;
+  role: 1 | 2;
   typ: "admin";
   bootstrap?: boolean;
 };
@@ -55,12 +56,12 @@ export async function signAppToken(claims: Omit<AppTokenClaims, "typ">): Promise
 }
 
 export async function signAdminToken(
-  claims: Omit<AdminTokenClaims, "typ" | "role"> & { bootstrap?: boolean },
+  claims: Omit<AdminTokenClaims, "typ"> & { bootstrap?: boolean },
 ): Promise<string> {
   const payload: Record<string, unknown> = {
     uid: claims.uid,
     studentNo: claims.studentNo,
-    role: 1,
+    role: claims.role,
     typ: "admin",
   };
   if (claims.bootstrap) {
@@ -98,9 +99,11 @@ export async function verifyAppToken(token: string): Promise<AppTokenClaims> {
 
 export async function verifyAdminToken(token: string): Promise<AdminTokenClaims> {
   const payload = await verifyRaw(token);
-  if (payload.typ !== "admin" || Number(payload.role) !== 1) {
+  const roleNum = Number(payload.role);
+  if (payload.typ !== "admin" || !isAdminRole(roleNum)) {
     throw new AppError(ErrorCodes.TOKEN_INVALID, "Token 类型错误", 401);
   }
+  const role = roleNum as 1 | 2;
   const studentNo = String(payload.studentNo ?? "");
   const bootstrap = payload.bootstrap === true;
   const uid = Number(payload.uid);
@@ -109,11 +112,11 @@ export async function verifyAdminToken(token: string): Promise<AdminTokenClaims>
     if (!isSuperAdminStudentNo(studentNo) || uid !== 0) {
       throw new AppError(ErrorCodes.TOKEN_INVALID, "Token 载荷不完整", 401);
     }
-    return { uid: 0, studentNo, role: 1, typ: "admin", bootstrap: true };
+    return { uid: 0, studentNo, role: 2, typ: "admin", bootstrap: true };
   }
 
   if (!uid || !studentNo) {
     throw new AppError(ErrorCodes.TOKEN_INVALID, "Token 载荷不完整", 401);
   }
-  return { uid, studentNo, role: 1, typ: "admin" };
+  return { uid, studentNo, role, typ: "admin" };
 }

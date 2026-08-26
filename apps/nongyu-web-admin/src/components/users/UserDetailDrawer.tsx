@@ -10,12 +10,15 @@ type UserDetailDrawerProps = {
   userId: number | null;
   open: boolean;
   currentUserId: number | null;
+  canManageRole: boolean;
   onClose: () => void;
   onChanged: () => void;
 };
 
-function RoleTag({ role }: { role: 0 | 1 }) {
-  return role === 1 ? <Tag color="success">管理员</Tag> : <Tag>普通用户</Tag>;
+function RoleTag({ role }: { role: 0 | 1 | 2 }) {
+  if (role === 2) return <Tag color="purple">超级管理员</Tag>;
+  if (role === 1) return <Tag color="success">管理员</Tag>;
+  return <Tag>普通用户</Tag>;
 }
 
 function StatusTag({ status }: { status: 0 | 1 }) {
@@ -26,6 +29,7 @@ export function UserDetailDrawer({
   userId,
   open,
   currentUserId,
+  canManageRole,
   onClose,
   onChanged,
 }: UserDetailDrawerProps) {
@@ -237,17 +241,19 @@ export function UserDetailDrawer({
             <div>
               <p className="mb-3 text-sm font-medium text-ink">操作</p>
               <Space wrap>
-                {detail.role === 0 ? (
-                  <Button type="primary" loading={acting} onClick={promote}>
-                    设为管理员
-                  </Button>
-                ) : (
-                  <Tooltip title={isSelf ? "不能对自己执行此操作" : undefined}>
-                    <Button danger disabled={isSelf || acting} onClick={demote}>
-                      取消管理员
+                {canManageRole && detail.role !== 2 ? (
+                  detail.role === 0 ? (
+                    <Button type="primary" loading={acting} onClick={promote}>
+                      设为管理员
                     </Button>
-                  </Tooltip>
-                )}
+                  ) : (
+                    <Tooltip title={isSelf ? "不能对自己执行此操作" : undefined}>
+                      <Button danger disabled={isSelf || acting} onClick={demote}>
+                        取消管理员
+                      </Button>
+                    </Tooltip>
+                  )
+                ) : null}
 
                 {detail.status === 1 ? (
                   <Tooltip title={isSelf ? "不能对自己执行此操作" : undefined}>
@@ -266,7 +272,7 @@ export function UserDetailDrawer({
                   </Button>
                 )}
 
-                {detail.role === 1 ? (
+                {detail.role === 1 || detail.role === 2 ? (
                   <Button onClick={() => setPasswordOpen(true)}>设置管理员密码</Button>
                 ) : null}
               </Space>

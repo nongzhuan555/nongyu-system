@@ -5,6 +5,7 @@ import { withTransaction } from "../../lib/db.js";
 import { AppError, ErrorCodes } from "../../lib/errors.js";
 import { isSuperAdminStudentNo, signAppToken, signAdminToken } from "../../lib/jwt.js";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
+import { isAdminRole } from "../../lib/roles.js";
 import { parseGender, studentNoSchema } from "../../lib/util.js";
 import { insertDefaultSettings } from "../settings/repo.js";
 import {
@@ -142,8 +143,9 @@ export async function appLogin(body: z.infer<typeof appLoginSchema>) {
       );
     }
 
+    // 超管学号建档/登录：role 置 2（覆盖旧逻辑置 1）
     if (isSuperAdminStudentNo(body.studentNo)) {
-      await setUserRole(userId, 1, conn);
+      await setUserRole(userId, 2, conn);
     }
 
     const user = await findUserById(userId, conn);
@@ -205,6 +207,7 @@ export async function adminLogin(body: z.infer<typeof adminLoginSchema>) {
       const token = await signAdminToken({
         uid: 0,
         studentNo: body.studentNo,
+        role: 2,
         bootstrap: true,
       });
       return {
@@ -214,13 +217,13 @@ export async function adminLogin(body: z.infer<typeof adminLoginSchema>) {
           id: 0,
           studentNo: body.studentNo,
           name: "超级管理员",
-          role: 1 as const,
+          role: 2 as const,
           bootstrap: true as const,
         },
       };
     }
 
-    if (user.role !== 1) {
+    if (!isAdminRole(user.role)) {
       throw new AppError(ErrorCodes.ADMIN_REQUIRED, "需要管理员权限", 403);
     }
     if (user.status !== 1) {
@@ -230,6 +233,7 @@ export async function adminLogin(body: z.infer<typeof adminLoginSchema>) {
     const token = await signAdminToken({
       uid: user.id,
       studentNo: user.student_no,
+      role: user.role,
     });
     return {
       token,
@@ -238,7 +242,7 @@ export async function adminLogin(body: z.infer<typeof adminLoginSchema>) {
         id: Number(user.id),
         studentNo: user.student_no,
         name: user.name,
-        role: 1 as const,
+        role: user.role,
       },
     };
   }
@@ -246,7 +250,7 @@ export async function adminLogin(body: z.infer<typeof adminLoginSchema>) {
   if (!user) {
     throw new AppError(ErrorCodes.USER_NOT_FOUND, "用户不存在，请先在 App 登录注册", 404);
   }
-  if (user.role !== 1) {
+  if (!isAdminRole(user.role)) {
     throw new AppError(ErrorCodes.ADMIN_REQUIRED, "需要管理员权限", 403);
   }
   if (user.status !== 1) {
@@ -262,6 +266,7 @@ export async function adminLogin(body: z.infer<typeof adminLoginSchema>) {
   const token = await signAdminToken({
     uid: user.id,
     studentNo: user.student_no,
+    role: user.role,
   });
   return {
     token,
@@ -270,7 +275,7 @@ export async function adminLogin(body: z.infer<typeof adminLoginSchema>) {
       id: Number(user.id),
       studentNo: user.student_no,
       name: user.name,
-      role: 1 as const,
+      role: user.role,
     },
   };
 }
@@ -285,7 +290,7 @@ export async function changeOwnAdminPassword(userId: number, plain: string) {
   }
   const user = await findUserById(userId);
   if (!user) throw new AppError(ErrorCodes.USER_NOT_FOUND, "用户不存在", 404);
-  if (user.role !== 1) {
+  if (!isAdminRole(user.role)) {
     throw new AppError(ErrorCodes.ADMIN_REQUIRED, "需要管理员权限", 403);
   }
   const hash = await hashAdminPassword(plain);
@@ -300,7 +305,7 @@ export async function createAppHandoff(appUserId: number) {
   if (!user) {
     throw new AppError(ErrorCodes.TOKEN_REVOKED, "登录状态已失效，请重新登录", 401);
   }
-  if (user.role !== 1) {
+  if (!isAdminRole(user.role)) {
     throw new AppError(ErrorCodes.ADMIN_REQUIRED, "需要管理员权限", 403);
   }
   if (user.status !== 1) {
@@ -326,7 +331,7 @@ export async function redeemHandoff(ticket: string) {
   if (!user) {
     throw new AppError(ErrorCodes.TOKEN_INVALID, "Ticket 无效或已失效", 401);
   }
-  if (user.role !== 1) {
+  if (!isAdminRole(user.role)) {
     throw new AppError(ErrorCodes.ADMIN_REQUIRED, "需要管理员权限", 403);
   }
   if (user.status !== 1) {
@@ -336,6 +341,7 @@ export async function redeemHandoff(ticket: string) {
   const token = await signAdminToken({
     uid: user.id,
     studentNo: user.student_no,
+    role: user.role,
   });
   return {
     token,
@@ -344,7 +350,7 @@ export async function redeemHandoff(ticket: string) {
       id: Number(user.id),
       studentNo: user.student_no,
       name: user.name,
-      role: 1 as const,
+      role: user.role,
     },
   };
 }

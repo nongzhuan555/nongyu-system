@@ -3,6 +3,7 @@ import { AppState, type AppStateStatus } from "react-native";
 import { usePathname } from "expo-router";
 import { useSessionStore } from "@/stores/session";
 import { enqueue, flushPending } from "./client";
+import { initTrackSampleRate } from "./sampleRate";
 import { beginScreenDwell, resumeScreenDwell, settleScreenDwell } from "./screenDwell";
 
 const FLUSH_MS = 10_000;
@@ -37,6 +38,8 @@ export function TelemetryHost() {
       lastPath.current = null;
       return;
     }
+
+    initTrackSampleRate();
 
     enqueue({
       event_type: "app_open",

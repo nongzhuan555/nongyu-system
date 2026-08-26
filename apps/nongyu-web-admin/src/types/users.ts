@@ -1,4 +1,4 @@
-export type UserRole = 0 | 1;
+export type UserRole = 0 | 1 | 2;
 export type UserStatus = 0 | 1;
 export type Gender = 0 | 1 | 2;
 
@@ -70,6 +70,6 @@ export type AdminUserListQuery = {
 };
 
 export type PatchAdminUserBody = {
-  role?: UserRole;
+  role?: 0 | 1;
   status?: UserStatus;
 };

@@ -41,10 +41,15 @@ export async function truncateAll() {
     "llm_api_keys",
     "home_greetings",
     "agent_chat_suggestions",
+    "app_runtime_config",
     "users",
   ]) {
     await pool.query(`TRUNCATE TABLE ${table}`);
   }
+  await pool.query(
+    `INSERT INTO app_runtime_config (id, track_sample_rate, updated_at)
+     VALUES (1, 100, UTC_TIMESTAMP(3))`,
+  );
   await pool.query("SET FOREIGN_KEY_CHECKS = 1");
 }
 
@@ -86,6 +91,16 @@ export async function promoteAdmin(studentNo: string, password = "AdminPass1") {
   const pool = getPool();
   const hash = await hashPassword(password);
   await pool.query(`UPDATE users SET role = 1, admin_password_hash = ? WHERE student_no = ?`, [
+    hash,
+    studentNo,
+  ]);
+  return password;
+}
+
+export async function promoteSuperAdmin(studentNo: string, password = "AdminPass1") {
+  const pool = getPool();
+  const hash = await hashPassword(password);
+  await pool.query(`UPDATE users SET role = 2, admin_password_hash = ? WHERE student_no = ?`, [
     hash,
     studentNo,
   ]);

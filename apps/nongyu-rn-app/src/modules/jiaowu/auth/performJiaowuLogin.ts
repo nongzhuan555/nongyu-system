@@ -86,7 +86,7 @@ export async function performJiaowuLogin(
 
   // Node 登录：失败仍可进入教务本地会话，但需提示具体原因便于联调
   let token: string | null = null;
-  let role: 0 | 1 | null = null;
+  let role: 0 | 1 | 2 | null = null;
   let nodeOk = false;
   try {
     const auth = await appAuthLogin({

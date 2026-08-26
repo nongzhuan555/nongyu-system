@@ -1,6 +1,7 @@
 import { loadEnvFiles, getEnv } from "./config/env.js";
 import { createApp } from "./app.js";
 import { closePool } from "./lib/db.js";
+import { ensureSuperAdminRole } from "./lib/ensureSuperAdmin.js";
 import { createLogger } from "./lib/logger.js";
 
 loadEnvFiles();
@@ -10,6 +11,7 @@ const app = createApp();
 
 const server = app.listen(env.PORT, env.LISTEN_HOST, () => {
   logger.info({ host: env.LISTEN_HOST, port: env.PORT }, "nongyu-node-server listening");
+  void ensureSuperAdminRole();
 });
 
 async function shutdown(signal: string) {

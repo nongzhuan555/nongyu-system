@@ -2,6 +2,7 @@ import { Button } from "antd";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Layouts } from "react-grid-layout";
 import { DashboardGrid, type DashboardGridData } from "../components/dashboard/DashboardGrid";
+import { TrackSampleRateBar } from "../components/dashboard/TrackSampleRateBar";
 import { PageFrame } from "../components/layout/PageFrame";
 import { useForegroundRefresh } from "../hooks/useForegroundRefresh";
 import {
@@ -15,6 +16,7 @@ import {
   fetchUserGrowth,
 } from "../lib/adminApi";
 import { AUTH_ERROR_CODES, FOREGROUND_REFRESH_INTERVAL_MS } from "../lib/constants";
+import { useAuthStore } from "../stores/authStore";
 import {
   clearDashboardPrefs,
   defaultDashboardPrefs,
@@ -57,6 +59,7 @@ function messageFromError(err: unknown, track: boolean): string {
 }
 
 export function DashboardPage() {
+  const isSuperAdmin = useAuthStore((state) => state.user?.role === 2);
   const [prefs, setPrefs] = useState<DashboardPrefsV1>(() => readDashboardPrefs());
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
@@ -197,6 +200,7 @@ export function DashboardPage() {
         </>
       }
     >
+      <TrackSampleRateBar visible={isSuperAdmin} />
       <DashboardGrid
         prefs={prefs}
         data={data}

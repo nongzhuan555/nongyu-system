@@ -13,7 +13,7 @@ export async function getOverview() {
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT
       (SELECT COUNT(*) FROM users) AS totalUsers,
-      (SELECT COUNT(*) FROM users WHERE role = 1) AS totalAdmins,
+      (SELECT COUNT(*) FROM users WHERE role IN (1, 2)) AS totalAdmins,
       (SELECT COUNT(*) FROM users
          WHERE is_online = 1
            AND last_active_at IS NOT NULL

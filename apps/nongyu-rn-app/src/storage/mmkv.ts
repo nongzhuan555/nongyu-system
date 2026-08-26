@@ -132,12 +132,12 @@ export function clearSecondAccessToken(): void {
 export function saveSessionSnapshot(
   profileJson: string,
   token: string | null,
-  role?: 0 | 1 | null,
+  role?: 0 | 1 | 2 | null,
 ): void {
   appStorage.set(SESSION_PROFILE_KEY, profileJson);
   if (token) appStorage.set(SESSION_TOKEN_KEY, token);
   else appStorage.delete(SESSION_TOKEN_KEY);
-  if (role === 0 || role === 1) appStorage.set(SESSION_ROLE_KEY, String(role));
+  if (role === 0 || role === 1 || role === 2) appStorage.set(SESSION_ROLE_KEY, String(role));
   else appStorage.delete(SESSION_ROLE_KEY);
 }
 
@@ -147,10 +147,13 @@ export function saveSessionSnapshot(
 export function loadSessionSnapshot(): {
   profileJson?: string;
   token?: string;
-  role?: 0 | 1;
+  role?: 0 | 1 | 2;
 } {
   const roleRaw = appStorage.getString(SESSION_ROLE_KEY);
-  const role = roleRaw === "0" || roleRaw === "1" ? (Number(roleRaw) as 0 | 1) : undefined;
+  const role =
+    roleRaw === "0" || roleRaw === "1" || roleRaw === "2"
+      ? (Number(roleRaw) as 0 | 1 | 2)
+      : undefined;
   return {
     profileJson: appStorage.getString(SESSION_PROFILE_KEY),
     token: appStorage.getString(SESSION_TOKEN_KEY),

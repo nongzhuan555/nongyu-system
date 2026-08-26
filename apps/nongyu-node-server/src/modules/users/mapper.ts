@@ -16,7 +16,7 @@ export type AppUserProfile = {
   hometown: string | null;
   campus: string | null;
   qq: string | null;
-  role: 0 | 1;
+  role: 0 | 1 | 2;
   createdAt: string;
 };
 

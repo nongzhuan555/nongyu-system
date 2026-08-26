@@ -79,7 +79,7 @@ adminAuthRouter.get(
         id: 0,
         studentNo: claims.studentNo,
         name: "超级管理员",
-        role: 1 as const,
+        role: 2 as const,
         bootstrap: true as const,
       });
       return;
@@ -90,7 +90,7 @@ adminAuthRouter.get(
       id: Number(user.id),
       studentNo: user.student_no,
       name: user.name,
-      role: 1 as const,
+      role: user.role,
     });
   }),
 );

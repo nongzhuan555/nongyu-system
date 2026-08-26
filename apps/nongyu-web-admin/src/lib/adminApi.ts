@@ -45,26 +45,27 @@ import type {
   PatchAgentChatSuggestionBody,
 } from "../types/agentChatSuggestions";
 import {
+  ADMIN_AGENT_CHAT_SUGGESTIONS_PATH,
+  ADMIN_DASHBOARD_DISTRIBUTION_PATH,
+  ADMIN_DASHBOARD_GROWTH_PATH,
+  ADMIN_DASHBOARD_OVERVIEW_PATH,
+  ADMIN_DASHBOARD_SETTINGS_PATH,
   ADMIN_HANDOFF_REDEEM_PATH,
+  ADMIN_HOME_GREETINGS_PATH,
   ADMIN_LOGIN_PATH,
   ADMIN_LOGOUT_PATH,
+  ADMIN_LLM_KEYS_PATH,
   ADMIN_ME_PATH,
   ADMIN_PASSWORD_PATH,
   ADMIN_POSTS_PATH,
-  ADMIN_USERS_PATH,
-  ADMIN_DASHBOARD_OVERVIEW_PATH,
-  ADMIN_DASHBOARD_GROWTH_PATH,
-  ADMIN_DASHBOARD_DISTRIBUTION_PATH,
-  ADMIN_DASHBOARD_SETTINGS_PATH,
-  ADMIN_TRACK_OVERVIEW_PATH,
-  ADMIN_TRACK_DIMS_PATH,
   ADMIN_TRACK_CRASHES_PATH,
+  ADMIN_TRACK_DIMS_PATH,
   ADMIN_TRACK_LLM_PROXY_FAILS_PATH,
+  ADMIN_TRACK_OVERVIEW_PATH,
   ADMIN_TRACK_QUERY_PATH,
+  ADMIN_TRACK_SAMPLE_RATE_PATH,
   ADMIN_TRACK_TREND_PATH,
-  ADMIN_LLM_KEYS_PATH,
-  ADMIN_HOME_GREETINGS_PATH,
-  ADMIN_AGENT_CHAT_SUGGESTIONS_PATH,
+  ADMIN_USERS_PATH,
   AUTH_ERROR_CODES,
 } from "./constants";
 import { readSession } from "./storage";
@@ -219,11 +220,26 @@ export async function fetchAdminUser(id: number): Promise<AdminUserDetail> {
 export async function patchAdminUser(
   id: number,
   body: PatchAdminUserBody,
-): Promise<{ id: number; studentNo: string; name: string; role: 0 | 1; status: 0 | 1 }> {
+): Promise<{ id: number; studentNo: string; name: string; role: 0 | 1 | 2; status: 0 | 1 }> {
   const response = await adminApi.patch<
-    ApiEnvelope<{ id: number; studentNo: string; name: string; role: 0 | 1; status: 0 | 1 }>
+    ApiEnvelope<{ id: number; studentNo: string; name: string; role: 0 | 1 | 2; status: 0 | 1 }>
   >(`${ADMIN_USERS_PATH}/${id}`, body);
   return unwrapData(response.data);
+}
+
+export async function fetchTrackSampleRate(): Promise<number> {
+  const response = await adminApi.get<ApiEnvelope<{ sampleRate: number }>>(
+    ADMIN_TRACK_SAMPLE_RATE_PATH,
+  );
+  return unwrapData<{ sampleRate: number }>(response.data).sampleRate;
+}
+
+export async function updateTrackSampleRate(sampleRate: number): Promise<number> {
+  const response = await adminApi.put<ApiEnvelope<{ sampleRate: number }>>(
+    ADMIN_TRACK_SAMPLE_RATE_PATH,
+    { sampleRate },
+  );
+  return unwrapData<{ sampleRate: number }>(response.data).sampleRate;
 }
 
 export async function setAdminUserPassword(id: number, adminPassword: string): Promise<void> {

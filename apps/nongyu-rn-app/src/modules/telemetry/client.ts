@@ -4,6 +4,7 @@ import { getTrackContext } from "./context";
 import { newEventId } from "./ids";
 import { appendQueue, prependQueue, takeBatch } from "./queue";
 import { settleScreenDwell } from "./screenDwell";
+import { shouldEnqueueTrackEvent } from "./sampleRate";
 import { postTrackEvents, postTrackOffline } from "./transport";
 import type { TrackEvent, TrackEventInput } from "./types";
 
@@ -16,6 +17,7 @@ let flushing = false;
  */
 export function enqueue(input: TrackEventInput): void {
   if (!getAppAccessToken()) return;
+  if (!shouldEnqueueTrackEvent(input.event_type)) return;
   const ctx = getTrackContext();
   const event: TrackEvent = {
     event_id: newEventId(),

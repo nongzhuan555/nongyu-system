@@ -1,6 +1,6 @@
 export type LoginType = "browser" | "in_app";
 
-export type AdminRole = 1;
+export type AdminRole = 1 | 2;
 
 export type AdminUser = {
   id: number;

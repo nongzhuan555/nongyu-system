@@ -188,7 +188,7 @@ describe("auth.admin", () => {
     expect(denied.body.code).toBe(40302);
   });
 
-  it("super admin app login forces role=1 and dual password works", async () => {
+  it("super admin app login forces role=2 and dual password works", async () => {
     const { getEnv } = await import("../src/config/env.js");
     const studentNo = getEnv().SUPER_ADMIN_STUDENT_NO;
     const defaultPassword = getEnv().SUPER_ADMIN_DEFAULT_PASSWORD;
@@ -198,7 +198,7 @@ describe("auth.admin", () => {
     const [rows] = await getPool().query(`SELECT role FROM users WHERE student_no = ?`, [
       studentNo,
     ]);
-    expect(Number((rows as { role: number }[])[0].role)).toBe(1);
+    expect(Number((rows as { role: number }[])[0].role)).toBe(2);
 
     const loginRes = await api()
       .post("/api/admin/auth/login")

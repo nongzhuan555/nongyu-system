@@ -37,7 +37,11 @@ const envSchema = z.object({
   JWT_ADMIN_TTL: z.string().default("7d"),
   BCRYPT_COST: z.coerce.number().int().min(4).max(15).default(10),
   BUSINESS_TZ: z.string().default("Asia/Shanghai"),
-  CORS_ORIGIN: z.string().default("*"),
+  /**
+   * 浏览器跨域白名单。留空 = 开发/test 放行本地 Vite Origin，生产禁止跨域（依赖 Nginx 同源反代）。
+   * `*` = 任意 Origin（仅联调/过渡）；否则逗号分隔，如 `http://101.43.34.229,http://localhost:5173`
+   */
+  CORS_ORIGIN: z.string().default(""),
   INTERNAL_TOKEN: z.string().min(16),
   /** Track 根地址，无尾斜杠；Node 代理 Admin 指标时使用 */
   TRACK_BASE_URL: z

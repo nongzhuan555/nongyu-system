@@ -63,8 +63,8 @@ export const SERVICE_ITEMS: ServiceItem[] = [
 /**
  * 按角色组装「更多服务」列表（管理员在关于前插入管理台）
  */
-export function buildServiceItems(role: 0 | 1 | null): ServiceItem[] {
-  if (role !== 1) return SERVICE_ITEMS;
+export function buildServiceItems(role: 0 | 1 | 2 | null): ServiceItem[] {
+  if (role !== 1 && role !== 2) return SERVICE_ITEMS;
   const aboutIndex = SERVICE_ITEMS.findIndex((item) => item.key === "about");
   if (aboutIndex < 0) return [...SERVICE_ITEMS, ADMIN_SERVICE_ITEM];
   return [

@@ -8,7 +8,7 @@ function isAdminUser(value: unknown): value is AdminUser {
     typeof record.id === "number" &&
     typeof record.studentNo === "string" &&
     typeof record.name === "string" &&
-    record.role === 1
+    (record.role === 1 || record.role === 2)
   );
 }
 

@@ -13,7 +13,7 @@ export type UserRow = {
   hometown: string | null;
   campus: string | null;
   qq: string | null;
-  role: 0 | 1;
+  role: 0 | 1 | 2;
   admin_password_hash: string | null;
   status: 0 | 1;
   is_online: number;
@@ -152,7 +152,11 @@ export async function updateUserOnAppLogin(
   );
 }
 
-export async function setUserRole(id: number, role: 0 | 1, conn?: PoolConnection): Promise<void> {
+export async function setUserRole(
+  id: number,
+  role: 0 | 1 | 2,
+  conn?: PoolConnection,
+): Promise<void> {
   const db = conn ?? getPool();
   await db.query(`UPDATE users SET role = ? WHERE id = ?`, [role, id]);
 }

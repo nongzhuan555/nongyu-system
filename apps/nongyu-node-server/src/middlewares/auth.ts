@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { AppError, ErrorCodes } from "../lib/errors.js";
 import { verifyAdminToken, verifyAppToken } from "../lib/jwt.js";
+import { isAdminRole } from "../lib/roles.js";
 import { findUserById } from "../modules/users/repo.js";
 import { asyncHandler } from "./common.js";
 
@@ -48,10 +49,11 @@ async function attachAdminAuth(req: Request): Promise<void> {
   if (user.status !== 1) {
     throw new AppError(ErrorCodes.ACCOUNT_DISABLED, "账号已禁用", 403);
   }
-  if (user.role !== 1) {
+  if (!isAdminRole(user.role)) {
     throw new AppError(ErrorCodes.ADMIN_REQUIRED, "需要管理员权限", 403);
   }
-  req.adminAuth = claims;
+  // 以库中真实 role 为准（JWT 可能过时）
+  req.adminAuth = { ...claims, role: user.role };
 }
 
 /** 允许 bootstrap 超管票（auth/me、logout、改密入口校验） */

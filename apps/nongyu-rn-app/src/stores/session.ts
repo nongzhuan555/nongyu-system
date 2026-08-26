@@ -2,8 +2,8 @@ import { create } from "zustand";
 
 export type ThemeMode = "sicauGreen" | "sakura" | "dark" | "system";
 
-/** 农屿用户角色：0 普通 / 1 管理员 */
-export type AppUserRole = 0 | 1;
+/** 农屿用户角色：0 普通 / 1 管理员 / 2 超级管理员 */
+export type AppUserRole = 0 | 1 | 2;
 
 /** 本地会话中的学生档案摘要（对齐教务 PersonalInfo 可持久化字段） */
 export type SessionProfile = {

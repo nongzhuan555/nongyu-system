@@ -52,6 +52,7 @@ export const ADMIN_DASHBOARD_OVERVIEW_PATH = "/api/admin/dashboard/overview";
 export const ADMIN_DASHBOARD_GROWTH_PATH = "/api/admin/dashboard/user-growth";
 export const ADMIN_DASHBOARD_DISTRIBUTION_PATH = "/api/admin/dashboard/user-distribution";
 export const ADMIN_DASHBOARD_SETTINGS_PATH = "/api/admin/dashboard/settings-distribution";
+export const ADMIN_TRACK_SAMPLE_RATE_PATH = "/api/admin/dashboard/track-sample-rate";
 export const ADMIN_TRACK_OVERVIEW_PATH = "/api/admin/track/overview";
 export const ADMIN_TRACK_DIMS_PATH = "/api/admin/track/dims";
 export const ADMIN_TRACK_CRASHES_PATH = "/api/admin/track/crashes";

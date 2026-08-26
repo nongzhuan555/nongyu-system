@@ -347,7 +347,7 @@ HTTP 目前仍可用，但新客户端应优先 HTTPS。证书 SAN 是 IP，Base
 - 口令、私钥、生产 `.env` **禁止提交**；仓库只有 `*.example`。
 - 聊天里出现过的 SSH 口令应视为泄露，在云控制台轮换；之后只用密钥。
 - 生产 `JWT_SECRET` / `LLM_KEY_ENCRYPTION_SECRET` 若与开发共用同一 MySQL，改密钥会导致旧 Token 失效、库里已加密的 LLM Key 解不开。本次为对齐已有库数据沿用了开发机同套密钥——**长期应轮换并做数据迁移**，不要当成最佳实践。
-- `CORS_ORIGIN=*` 是过渡；管理端若改独立域名再收紧。
+- 生产 `CORS_ORIGIN` 留空（禁止跨域，Admin 走 WEB 机 Nginx 同源反代）；直连 Node 时再填管理端 Origin，勿长期 `*`。
 - 超管默认密码不要长期与 SSH 等复用。
 
 ---

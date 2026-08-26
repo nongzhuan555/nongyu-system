@@ -15,6 +15,7 @@ type StatusFilter = "all" | UserStatus;
 
 export function UsersPage() {
   const currentUserId = useAuthStore((state) => state.user?.id ?? null);
+  const canManageRole = useAuthStore((state) => state.user?.role === 2);
 
   const [keywordInput, setKeywordInput] = useState("");
   const [keyword, setKeyword] = useState("");
@@ -113,8 +114,11 @@ export function UsersPage() {
       title: "角色",
       dataIndex: "role",
       width: 100,
-      render: (value: UserRole) =>
-        value === 1 ? <Tag color="success">管理员</Tag> : <Tag>普通用户</Tag>,
+      render: (value: UserRole) => {
+        if (value === 2) return <Tag color="purple">超级管理员</Tag>;
+        if (value === 1) return <Tag color="success">管理员</Tag>;
+        return <Tag>普通用户</Tag>;
+      },
     },
     {
       title: "状态",
@@ -175,6 +179,7 @@ export function UsersPage() {
               { value: "all", label: "全部角色" },
               { value: 0, label: "普通用户" },
               { value: 1, label: "管理员" },
+              { value: 2, label: "超级管理员" },
             ]}
           />
           <Select<StatusFilter>
@@ -241,6 +246,7 @@ export function UsersPage() {
         open={drawerOpen}
         userId={selectedId}
         currentUserId={currentUserId}
+        canManageRole={canManageRole}
         onClose={() => {
           setDrawerOpen(false);
           setSelectedId(null);

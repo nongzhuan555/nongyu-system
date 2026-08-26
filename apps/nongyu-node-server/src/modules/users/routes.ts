@@ -4,6 +4,7 @@ import { asyncHandler } from "../../middlewares/common.js";
 import { requireProvisionedAdminAuth, requireAppAuth } from "../../middlewares/auth.js";
 import { ok } from "../../lib/response.js";
 import { AppError, ErrorCodes } from "../../lib/errors.js";
+import { isAdminRole, isSuperAdminRole } from "../../lib/roles.js";
 import { toIsoUtc, toIsoUtcRequired } from "../../lib/time.js";
 import { boolFromDb, pageParams } from "../../lib/util.js";
 import {
@@ -122,6 +123,17 @@ adminUsersRouter.patch(
       .parse(req.body);
     const user = await findUserById(id);
     if (!user) throw new AppError(ErrorCodes.USER_NOT_FOUND, "用户不存在", 404);
+
+    if (body.role !== undefined) {
+      const operator = await findUserById(req.adminAuth!.uid);
+      if (!operator || !isSuperAdminRole(operator.role)) {
+        throw new AppError(ErrorCodes.ADMIN_REQUIRED, "仅超级管理员可修改用户角色", 403);
+      }
+      if (isSuperAdminRole(user.role)) {
+        throw new AppError(ErrorCodes.ADMIN_REQUIRED, "禁止修改超级管理员的角色", 403);
+      }
+    }
+
     await patchUserAdmin(id, body);
     const updated = await findUserById(id);
     ok(res, {
@@ -142,7 +154,7 @@ adminUsersRouter.put(
     const body = z.object({ adminPassword: z.string().min(1) }).parse(req.body);
     const user = await findUserById(id);
     if (!user) throw new AppError(ErrorCodes.USER_NOT_FOUND, "用户不存在", 404);
-    if (user.role !== 1) {
+    if (!isAdminRole(user.role)) {
       throw new AppError(ErrorCodes.ADMIN_REQUIRED, "目标用户不是管理员", 403);
     }
     const hash = await hashAdminPassword(body.adminPassword);

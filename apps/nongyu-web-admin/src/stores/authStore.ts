@@ -12,6 +12,10 @@ import { AUTH_ERROR_CODES } from "../lib/constants";
 import { clearSession, readSession, writeSession } from "../lib/storage";
 import type { AdminUser, LoginType } from "../types/auth";
 
+function isAdminUserRole(role: number): role is 1 | 2 {
+  return role === 1 || role === 2;
+}
+
 type AuthState = {
   token: string | null;
   user: AdminUser | null;
@@ -59,7 +63,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (input) => {
     const result = await loginAdmin(input);
-    if (result.user.role !== 1) {
+    if (!isAdminUserRole(result.user.role)) {
       throw new AdminApiError(AUTH_ERROR_CODES.ADMIN_REQUIRED, "需要管理员权限", 403);
     }
     writeSession({ token: result.token, user: result.user });
@@ -73,7 +77,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   loginWithHandoff: async (ticket) => {
     const result = await redeemAdminHandoff(ticket);
-    if (result.user.role !== 1) {
+    if (!isAdminUserRole(result.user.role)) {
       throw new AdminApiError(AUTH_ERROR_CODES.ADMIN_REQUIRED, "需要管理员权限", 403);
     }
     writeSession({ token: result.token, user: result.user });
