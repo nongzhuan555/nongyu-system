@@ -39,11 +39,13 @@ const androidUrl = siteConfig.downloadAndroidUrl.trim();
 if (androidBtn) {
   if (androidUrl) {
     androidBtn.href = androidUrl;
+    androidBtn.setAttribute("download", "nongyu-android.apk");
     androidBtn.removeAttribute("aria-disabled");
     androidBtn.classList.remove("btn--disabled");
     androidBtn.textContent = "下载 Android APK";
   } else {
     androidBtn.removeAttribute("href");
+    androidBtn.removeAttribute("download");
     androidBtn.setAttribute("aria-disabled", "true");
     androidBtn.classList.add("btn--disabled");
     androidBtn.textContent = "Android · 即将开放";
