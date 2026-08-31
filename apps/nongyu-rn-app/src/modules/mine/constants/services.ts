@@ -16,8 +16,8 @@ export type ServiceItem = {
   action: ServiceAction;
 };
 
-/** 农屿品牌官网（关于入口） */
-export const ABOUT_URL = "http://101.43.34.229/";
+/** 农屿品牌官网（关于入口 / 分享落地页） */
+export const ABOUT_URL = "https://nongyu.site/";
 
 /** 管理员可见：Web 管理台入口 */
 export const ADMIN_SERVICE_ITEM: ServiceItem = {

@@ -1,11 +1,19 @@
 import { useThemeTokens } from "@/theme/ThemeProvider";
 import { type ComponentProps, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { toast } from "@/components/ui/toast";
 import { createThemedStyles } from "@/theme/createThemedStyles";
-import { SHARE_WEBPAGE_URL } from "@/modules/mine/constants/share";
+import { SHARE_IOS_WECHAT_UNSUPPORTED, SHARE_WEBPAGE_URL } from "@/modules/mine/constants/share";
 import {
   isWechatNativeAvailable,
   shareNongyuWebpage,
@@ -54,8 +62,11 @@ const ACTIONS: ShareAction[] = [
   },
 ];
 
+const IOS_WECHAT_UNSUPPORTED = Platform.OS === "ios";
+
 /**
- * 「分享农屿」底部面板：微信好友 / 朋友圈 / 复制官网链接
+ * 「分享农屿」底部面板：微信好友 / 朋友圈 / 复制官网链接。
+ * iOS 本期仅支持复制链接；点微信入口会 Toast 说明。
  */
 export function ShareSheet({ visible, onClose }: ShareSheetProps) {
   const styles = useStyles();
@@ -65,6 +76,10 @@ export function ShareSheet({ visible, onClose }: ShareSheetProps) {
   const runWechatShare = async (scene: WechatShareSceneKind, eventName: string) => {
     if (busy) return;
     trackClick(eventName);
+    if (IOS_WECHAT_UNSUPPORTED) {
+      toast.info("暂不支持", { description: SHARE_IOS_WECHAT_UNSUPPORTED });
+      return;
+    }
     if (!isWechatNativeAvailable()) {
       toast.info("需原生构建", {
         description: "请使用 Dev Client 或正式包后再试微信分享",
@@ -119,26 +134,34 @@ export function ShareSheet({ visible, onClose }: ShareSheetProps) {
             {busy ? <ActivityIndicator size="small" color={t.color.brand} /> : null}
           </View>
 
+          {IOS_WECHAT_UNSUPPORTED ? (
+            <Text style={styles.iosHint}>iOS 暂仅支持复制链接分享</Text>
+          ) : null}
+
           <View style={styles.grid}>
-            {ACTIONS.map((action) => (
-              <Pressable
-                key={action.key}
-                accessibilityRole="button"
-                accessibilityLabel={action.label}
-                disabled={busy}
-                onPress={() => onPressAction(action)}
-                style={({ pressed }) => [
-                  styles.gridItem,
-                  pressed && styles.pressed,
-                  busy && styles.disabled,
-                ]}
-              >
-                <View style={[styles.iconBox, { backgroundColor: action.iconBg }]}>
-                  <Ionicons name={action.icon} size={26} color={action.iconColor} />
-                </View>
-                <Text style={styles.gridLabel}>{action.label}</Text>
-              </Pressable>
-            ))}
+            {ACTIONS.map((action) => {
+              const wechatLocked =
+                IOS_WECHAT_UNSUPPORTED && (action.kind === "wechat" || action.kind === "moments");
+              return (
+                <Pressable
+                  key={action.key}
+                  accessibilityRole="button"
+                  accessibilityLabel={wechatLocked ? `${action.label}，iOS 暂不支持` : action.label}
+                  disabled={busy}
+                  onPress={() => onPressAction(action)}
+                  style={({ pressed }) => [
+                    styles.gridItem,
+                    pressed && styles.pressed,
+                    (busy || wechatLocked) && styles.disabled,
+                  ]}
+                >
+                  <View style={[styles.iconBox, { backgroundColor: action.iconBg }]}>
+                    <Ionicons name={action.icon} size={26} color={action.iconColor} />
+                  </View>
+                  <Text style={styles.gridLabel}>{action.label}</Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           <Pressable
@@ -180,6 +203,15 @@ const useStyles = createThemedStyles((t) => ({
     justifyContent: "center",
     gap: 10,
     paddingVertical: t.space.md,
+  },
+  iosHint: {
+    textAlign: "center",
+    fontSize: 12,
+    color: t.color.textSecondary,
+    paddingHorizontal: t.space.lg,
+    marginTop: -4,
+    marginBottom: t.space.sm,
+    lineHeight: 18,
   },
   grid: {
     flexDirection: "row",

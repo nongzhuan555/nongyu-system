@@ -1,5 +1,13 @@
 ---
 
+## 2026-08-31 · nongyu-rn-app · 大院详情留言框被键盘顶得过高
+
+- **现象**：帖子详情底部留言输入框调起键盘后，键盘顶部与输入条底部之间空隙过大。
+- **根因**：Android 已用 `adjustResize`/`softwareKeyboardLayoutMode` 缩短窗口，`useComposerKeyboardInset` 仍按键盘全高 + `safeBottom` + 间距叠加 `paddingBottom`，与系统避让双重顶起；`overlapFromEvent` 还用 `screen` 高度取 max，edge-to-edge 下进一步虚高。
+- **修复**：Android 键盘弹出时仅保留 8px 呼吸间距；iOS 仍用键盘高度；去掉 screen 推算；`app.json` 明确 `softwareKeyboardLayoutMode: resize`。
+
+---
+
 ## 2026-08-31 · nongyu-web-admin · 登录页/侧栏品牌 logo 404
 
 - **现象**：管理端登录页、左上角品牌图裂图；浏览器请求 `http://nongyu.site/nongyu-logo.png` 返回官网 HTML 而非图片。

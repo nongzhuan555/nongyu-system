@@ -2,7 +2,7 @@
   "expo": {
     "name": "农屿",
     "slug": "nongyu",
-    "version": "1.0.0",
+    "version": "4.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": ["nongyu", "wx174b5a4d92447b73"],
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nongyu.app",
-      "buildNumber": "1",
+      "buildNumber": "4",
       "associatedDomains": ["applinks:nongyu.app"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -29,8 +29,8 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.nongyu.app",
-      "versionCode": 1,
-      "softwareKeyboardLayoutMode": "pan",
+      "versionCode": 4,
+      "softwareKeyboardLayoutMode": "resize",
       "intentFilters": [
         {
           "action": "VIEW",

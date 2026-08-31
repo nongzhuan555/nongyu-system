@@ -1,5 +1,6 @@
-import { Image } from "react-native";
+import { Image, Platform } from "react-native";
 import {
+  SHARE_IOS_WECHAT_UNSUPPORTED,
   SHARE_WEBPAGE_DESCRIPTION,
   SHARE_WEBPAGE_TITLE,
   SHARE_WEBPAGE_URL,
@@ -122,6 +123,10 @@ export type WechatShareSceneKind = "session" | "timeline";
  * 分享官网网页到微信好友或朋友圈
  */
 export async function shareNongyuWebpage(scene: WechatShareSceneKind): Promise<void> {
+  if (Platform.OS === "ios") {
+    throw new Error(SHARE_IOS_WECHAT_UNSUPPORTED);
+  }
+
   const mod = loadWechatModule();
   if (!mod) {
     throw new Error("微信分享需使用 Dev Client 或正式包，当前环境未加载原生模块");

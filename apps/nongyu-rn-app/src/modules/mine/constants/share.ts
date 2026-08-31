@@ -15,4 +15,7 @@ export const SHARE_WEBPAGE_URL = ABOUT_URL;
 export const SHARE_WEBPAGE_TITLE = "农屿 - 专属川农er的校园助手";
 
 export const SHARE_WEBPAGE_DESCRIPTION =
-  "在农屿，无广告课表、便捷教务信息查询、i川农二课接入，你想要的，农屿都能做到！";
+  "无广告课表、教务二课数据集成、智能AI助手，在农屿都能得到~";
+
+/** iOS 点击微信好友 / 朋友圈时的说明（本期仅支持复制链接） */
+export const SHARE_IOS_WECHAT_UNSUPPORTED = "iOS 暂不支持分享到微信和朋友圈，请使用「复制链接」";
