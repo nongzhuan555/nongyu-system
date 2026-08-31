@@ -1,24 +1,68 @@
 # 复制到服务器 /etc/nginx/conf.d/ 后：
 # 1. 把 YOUR_PUBLIC_IP 换成公网 IP
-# 2. 主配置 /etc/nginx/nginx.conf 的 http{} 里不要再留 default_server（避免抢走 :80）
-# 3. 证书签发前先只启用 80 文件；签发后再启用 ssl 文件
+# 2. 主配置 http{} 通过 include conf.d/*.conf 加载本文件（zone 须在 http 作用域）
+# 3. 建议另放 00-nongyu-track-rate.conf 只写 zone，避免 http/ssl 两个文件重复定义
 # 4. nginx -t && systemctl reload nginx
+#
+# IP 限流：5r/s ≈ 300/min，burst=50（对齐 Track 应用层突发）；超限 429
+# ACME、/health 不限流；应用层 IP/用户限流保持不变
+#
+# 官网 RUM CORS（按需启用）：将 YOUR_SITE_ORIGIN 换成官网 Origin，例如 https://nongyu.example
+# map $http_origin $track_cors_origin {
+#     default "";
+#     "https://YOUR_SITE_ORIGIN" $http_origin;
+#     "http://localhost:5174" $http_origin;
+# }
+#
+# location /v1/track/web/ {
+#     if ($request_method = OPTIONS) {
+#         add_header Access-Control-Allow-Origin $track_cors_origin always;
+#         add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+#         add_header Access-Control-Allow-Headers "Content-Type, X-Site-Key, X-Request-Id" always;
+#         add_header Access-Control-Max-Age 86400 always;
+#         add_header Content-Length 0;
+#         add_header Content-Type text/plain;
+#         return 204;
+#     }
+#     add_header Access-Control-Allow-Origin $track_cors_origin always;
+#     limit_req zone=nongyu_track_ip burst=50 nodelay;
+#     proxy_pass http://127.0.0.1:8081;
+#     proxy_http_version 1.1;
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Real-IP $remote_addr;
+#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#     proxy_set_header X-Forwarded-Proto $scheme;
+#     proxy_set_header Connection "";
+# }
 
-# --- HTTP：ACME + 反代（443 未放行时业务仍可走 80）---
-# 文件名建议：nongyu-track.conf
+# --- 建议单独文件：/etc/nginx/conf.d/00-nongyu-track-rate.conf ---
+limit_req_zone $binary_remote_addr zone=nongyu_track_ip:10m rate=5r/s;
 
+# --- HTTP：ACME + 反代（文件名建议 nongyu-track.conf）---
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
     server_name YOUR_PUBLIC_IP _;
 
     client_max_body_size 1m;
+    limit_req_status 429;
 
     location /.well-known/acme-challenge/ {
         root /var/www/acme;
     }
 
+    location = /health {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
     location / {
+        limit_req zone=nongyu_track_ip burst=50 nodelay;
         proxy_pass http://127.0.0.1:8081;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -29,11 +73,7 @@ server {
     }
 }
 
-# --- HTTPS：acme.sh 安装证书后再启用 ---
-# 文件名建议：nongyu-track-ssl.conf
-# ssl_certificate     /etc/nginx/certs/YOUR_PUBLIC_IP.fullchain.pem;
-# ssl_certificate_key /etc/nginx/certs/YOUR_PUBLIC_IP.key;
-
+# --- HTTPS（文件名建议 nongyu-track-ssl.conf）---
 # server {
 #     listen 443 ssl http2;
 #     listen [::]:443 ssl http2;
@@ -43,8 +83,20 @@ server {
 #     ssl_certificate_key /etc/nginx/certs/YOUR_PUBLIC_IP.key;
 #
 #     client_max_body_size 1m;
+#     limit_req_status 429;
+#
+#     location = /health {
+#         proxy_pass http://127.0.0.1:8081;
+#         proxy_http_version 1.1;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#         proxy_set_header Connection "";
+#     }
 #
 #     location / {
+#         limit_req zone=nongyu_track_ip burst=50 nodelay;
 #         proxy_pass http://127.0.0.1:8081;
 #         proxy_http_version 1.1;
 #         proxy_set_header Host $host;

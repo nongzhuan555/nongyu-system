@@ -1,0 +1,22 @@
+{
+  "name": "nongyu-track-contract",
+  "version": "1.0.0",
+  "description": "农屿埋点事件类型契约（RN Telemetry 与 Track Server 共享）",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "lint": "oxlint \"src/**/*.ts\"",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}

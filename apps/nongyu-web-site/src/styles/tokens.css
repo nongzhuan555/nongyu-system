@@ -2,19 +2,21 @@
   --ny-brand: #0a7c59;
   --ny-brand-muted: #d4e9df;
   --ny-on-brand: #ffffff;
-  --ny-bg: #fafbfa;
+  --ny-bg: #f7faf8;
   --ny-surface: #ffffff;
-  --ny-text: #111827;
-  --ny-text-2: #424945;
+  --ny-text: #0f1a14;
+  --ny-text-2: #4a564f;
   --ny-outline: #cfe3da;
   --ny-secondary: #2e7d6e;
-  --ny-glow: rgba(10, 124, 89, 0.18);
-  --ny-radius-media: 24px;
-  --ny-radius-sm: 14px;
+  --ny-glow: rgba(10, 124, 89, 0.2);
+  --ny-glow-soft: rgba(143, 191, 155, 0.35);
+  --ny-radius-media: 28px;
+  --ny-radius-sm: 16px;
   --ny-max: 1120px;
   --ny-font-display: "Fraunces", "Noto Serif SC", "Songti SC", serif;
   --ny-font-sans: "DM Sans", "Noto Sans SC", system-ui, -apple-system, sans-serif;
   --ny-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ny-ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
   color-scheme: light;
 }
 
@@ -33,7 +35,7 @@ body {
   min-height: 100vh;
   font-family: var(--ny-font-sans);
   font-size: 16px;
-  line-height: 1.6;
+  line-height: 1.65;
   color: var(--ny-text);
   background: var(--ny-bg);
   -webkit-font-smoothing: antialiased;

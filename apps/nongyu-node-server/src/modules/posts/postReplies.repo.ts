@@ -115,8 +115,9 @@ export async function createAdminReply(
     throw new ReplyAlreadyExistsError();
   }
   const [result] = await conn.query<ResultSetHeader>(
-    `INSERT INTO post_replies (post_id, kind, author_user_id, content, notified_author)
-     VALUES (?, 'admin_reply', ?, ?, 0)`,
+    `INSERT INTO post_replies
+       (post_id, kind, author_user_id, content, notified_author, created_at, updated_at)
+     VALUES (?, 'admin_reply', ?, ?, 0, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
     [postId, adminUserId, content],
   );
   const [row] = await conn.query<RowDataPacket[]>(
@@ -142,7 +143,10 @@ export async function updateAdminReply(
     throw new ReplyNotFoundError();
   }
   const replyId = Number(existing[0].id);
-  await conn.query(`UPDATE post_replies SET content = ? WHERE id = ?`, [content, replyId]);
+  await conn.query(
+    `UPDATE post_replies SET content = ?, updated_at = UTC_TIMESTAMP(3) WHERE id = ?`,
+    [content, replyId],
+  );
   return { id: replyId, publishedAt: existing[0].created_at as Date };
 }
 
@@ -184,8 +188,9 @@ export async function createComment(
   }
 
   const [result] = await conn.query<ResultSetHeader>(
-    `INSERT INTO post_replies (post_id, kind, author_user_id, content, notified_author)
-     VALUES (?, 'comment', ?, ?, 0)`,
+    `INSERT INTO post_replies
+       (post_id, kind, author_user_id, content, notified_author, created_at, updated_at)
+     VALUES (?, 'comment', ?, ?, 0, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
     [postId, userId, content],
   );
   const [row] = await conn.query<RowDataPacket[]>(

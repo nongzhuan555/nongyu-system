@@ -42,6 +42,7 @@ interface StreamChunk {
   totalTokens?: number;
   error?: Error;
   renderComponent?: string;
+  showUI?: boolean;
   ok?: boolean;
   beforeTokens?: number;
   afterTokens?: number;
@@ -229,6 +230,7 @@ export function useAgentChat(config: UseAgentChatConfig): UseAgentChatReturn {
                         input: chunk.input,
                         status: "executing" as const,
                         renderComponent: chunk.renderComponent,
+                        showUI: chunk.showUI,
                       } as ToolCallRecord,
                     ],
                     status: "streaming" as const,

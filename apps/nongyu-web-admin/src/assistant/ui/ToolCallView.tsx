@@ -8,6 +8,8 @@ export function ToolCallView({
   tc: ToolCallRecord;
   onAction?: (text: string) => void;
 }) {
+  if (tc.showUI === false) return null;
+
   const Renderer = getToolUI(tc.toolName);
   if (!Renderer) {
     return (

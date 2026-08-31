@@ -1,0 +1,21 @@
+{
+  "name": "nongyu-node-track-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=21"
+  },
+  "scripts": {
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "dotenv": "^16.4.7",
+    "fastify": "^5.2.1",
+    "fastify-plugin": "^6.0.0",
+    "jose": "^6.0.11",
+    "pino": "^9.6.0",
+    "zod": "^3.24.2"
+  }
+}

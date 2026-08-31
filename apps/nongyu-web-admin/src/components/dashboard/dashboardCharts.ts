@@ -1,6 +1,7 @@
 import type { EChartsOption } from "echarts";
 import type { DistKeyCount, TrackDimItem, UserGrowth } from "../../types/dashboard";
 import { formatRnRouteLabel } from "../../lib/rnRouteLabels";
+import { webVitalChartLabel, webVitalTooltipLine } from "./webVitalsMeta";
 
 export const CHART_COLORS = ["#0A7C59", "#2E7D6E", "#8FBF9B", "#D4E9DF", "#5A9A86", "#A8C9B8"];
 
@@ -246,6 +247,62 @@ export function perfOption(p50: TrackDimItem[], p95: TrackDimItem[]): EChartsOpt
       },
       {
         name: "p95",
+        type: "bar",
+        data: names.map((name) => p95Map.get(name) ?? 0),
+        barMaxWidth: 18,
+        itemStyle: { borderRadius: [8, 8, 0, 0] },
+      },
+    ],
+  };
+}
+
+/** 官网 CWV：纵轴为 ms；CLS 为 score×1000；坐标轴与 tooltip 使用中文可读标签 */
+export function webVitalsOption(p50: TrackDimItem[], p95: TrackDimItem[]): EChartsOption | null {
+  const names = [...new Set([...p50, ...p95].map((item) => item.dimValue))].slice(0, 20);
+  if (names.length === 0) return null;
+  const p50Map = new Map(p50.map((item) => [item.dimValue, item.metricValue]));
+  const p95Map = new Map(p95.map((item) => [item.dimValue, item.metricValue]));
+  const labels = names.map((name) => webVitalChartLabel(name));
+  return {
+    color: CHART_COLORS,
+    tooltip: {
+      ...TOOLTIP,
+      trigger: "axis",
+      formatter(params: unknown) {
+        const rows = Array.isArray(params) ? params : [params];
+        const idx = typeof rows[0]?.dataIndex === "number" ? rows[0].dataIndex : 0;
+        const key = names[idx] ?? "";
+        const lines = rows.map((row) => {
+          const series = String(row.seriesName ?? "") as "p50" | "p95";
+          const val = typeof row.value === "number" ? row.value : Number(row.value ?? 0);
+          return webVitalTooltipLine(key, series, val);
+        });
+        return lines.join("<br/>");
+      },
+    },
+    legend: { data: ["p50（典型）", "p95（最差5%）"], bottom: 0, textStyle: { color: "#424945" } },
+    grid: { left: 16, right: 16, top: 16, bottom: 48, containLabel: true },
+    xAxis: {
+      type: "category",
+      data: labels,
+      axisLabel: { color: "#424945", rotate: 18, width: 96, overflow: "truncate", interval: 0 },
+    },
+    yAxis: {
+      type: "value",
+      name: "ms / CLS×1000",
+      axisLabel: { color: "#424945" },
+      splitLine: { lineStyle: { color: "#F1F5F9" } },
+    },
+    series: [
+      {
+        name: "p50（典型）",
+        type: "bar",
+        data: names.map((name) => p50Map.get(name) ?? 0),
+        barMaxWidth: 18,
+        itemStyle: { borderRadius: [8, 8, 0, 0] },
+      },
+      {
+        name: "p95（最差5%）",
         type: "bar",
         data: names.map((name) => p95Map.get(name) ?? 0),
         barMaxWidth: 18,

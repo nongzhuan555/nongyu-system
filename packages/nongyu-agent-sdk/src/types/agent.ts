@@ -80,6 +80,11 @@ export interface ToolCallRecord {
   error?: string;
   /** 前端内联渲染组件名（透传自 ToolDefinition.render.component） */
   renderComponent?: string;
+  /**
+   * 是否在对话面渲染本工具 UI（来自模型入参 showUI，缺省 true）。
+   * false 时前端应完全隐藏该次调用的卡片/chip。
+   */
+  showUI?: boolean;
 }
 
 // ===== Agent 状态 =====

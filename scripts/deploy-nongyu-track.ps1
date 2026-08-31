@@ -1,7 +1,7 @@
 ﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-  nongyu-go-track-server: local cross-compile, upload, remote restart.
+  nongyu-node-track-server: local build, upload, remote restart.
 
 .DESCRIPTION
   Reads scripts/ops/track-deploy.env (gitignored).
@@ -9,7 +9,7 @@
   Does not sync .env, does not overwrite SQLite, does not touch MySQL.
 
 .PARAMETER SkipBuild
-  Skip go build; upload existing TRACK_LOCAL_BIN.
+  Skip pnpm build; upload existing TRACK_LOCAL_DIST_TGZ.
 
 .PARAMETER SkipRestart
   Upload only; no systemctl restart.
@@ -45,8 +45,8 @@ function Import-TrackDeployEnv([string]$Path) {
 Import-TrackDeployEnv $EnvFile
 
 foreach ($req in @(
-    "TRACK_SSH_HOST", "TRACK_SSH_USER", "TRACK_REMOTE_BIN",
-    "TRACK_LOCAL_BIN", "TRACK_GO_WORKDIR", "TRACK_GO_PACKAGE",
+    "TRACK_SSH_HOST", "TRACK_SSH_USER", "TRACK_REMOTE_DIR",
+    "TRACK_LOCAL_DIST_TGZ", "TRACK_PKG_WORKDIR",
     "TRACK_SYSTEMD_UNIT", "TRACK_HTTP_ADDR"
   )) {
   $reqVal = [Environment]::GetEnvironmentVariable($req)
@@ -55,8 +55,8 @@ foreach ($req in @(
   }
 }
 
-$LocalBin = Join-Path $RepoRoot $env:TRACK_LOCAL_BIN
-$GoWorkdir = Join-Path $RepoRoot $env:TRACK_GO_WORKDIR
+$LocalTgz = Join-Path $RepoRoot $env:TRACK_LOCAL_DIST_TGZ
+$PkgWorkdir = Join-Path $RepoRoot $env:TRACK_PKG_WORKDIR
 $Remote = "$($env:TRACK_SSH_USER)@$($env:TRACK_SSH_HOST)"
 
 function Get-OpenSsh([string]$Name) {
@@ -65,14 +65,6 @@ function Get-OpenSsh([string]$Name) {
   $fallback = Join-Path $env:SystemRoot "System32\OpenSSH\$Name.exe"
   if (Test-Path $fallback) { return $fallback }
   Write-Error "Cannot find $Name.exe. Install Windows OpenSSH."
-}
-
-function Get-GoExe {
-  $cmd = Get-Command go -ErrorAction SilentlyContinue
-  if ($cmd) { return $cmd.Source }
-  $fallback = "C:\Program Files\Go\bin\go.exe"
-  if (Test-Path $fallback) { return $fallback }
-  Write-Error "Cannot find go.exe. Install Go 1.23+."
 }
 
 $SshExe = Get-OpenSsh "ssh"
@@ -106,23 +98,25 @@ function Send-RemoteFile([string]$Local, [string]$RemotePath) {
 }
 
 if (-not $SkipBuild) {
-  if (-not (Test-Path $GoWorkdir)) {
-    Write-Error "Go project dir missing: $GoWorkdir"
+  if (-not (Test-Path $PkgWorkdir)) {
+    Write-Error "Track package dir missing: $PkgWorkdir"
   }
-  New-Item -ItemType Directory -Force -Path (Split-Path $LocalBin) | Out-Null
-  $GoExe = Get-GoExe
-  Push-Location $GoWorkdir
+  New-Item -ItemType Directory -Force -Path (Split-Path $LocalTgz) | Out-Null
+  Push-Location $RepoRoot
   try {
-    $env:GOOS = "linux"
-    $env:GOARCH = $(if ($env:TRACK_GOARCH) { $env:TRACK_GOARCH } else { "amd64" })
-    $env:CGO_ENABLED = "0"
-    if (-not $env:GOPROXY) {
-      $env:GOPROXY = "https://goproxy.cn,direct"
-    }
-    Write-Host "Building $($env:GOOS)/$($env:GOARCH) -> $LocalBin"
-    & $GoExe build -o $LocalBin $env:TRACK_GO_PACKAGE
+    Write-Host "Building nongyu-node-track-server..."
+    pnpm --filter nongyu-node-track-server... build
     if ($LASTEXITCODE -ne 0) {
-      Write-Error "go build failed"
+      Write-Error "pnpm build failed"
+    }
+    $distDir = Join-Path $PkgWorkdir "dist"
+    if (-not (Test-Path (Join-Path $distDir "index.js"))) {
+      Write-Error "dist/index.js missing after build"
+    }
+    if (Test-Path $LocalTgz) { Remove-Item -Force $LocalTgz }
+    tar -czf $LocalTgz -C $distDir .
+    if ($LASTEXITCODE -ne 0) {
+      Write-Error "tar failed"
     }
   }
   finally {
@@ -130,23 +124,35 @@ if (-not $SkipBuild) {
   }
 }
 
-if (-not (Test-Path $LocalBin)) {
-  Write-Error "Local binary missing: $LocalBin"
+if (-not (Test-Path $LocalTgz)) {
+  Write-Error "Local dist tgz missing: $LocalTgz"
 }
 
-$tmpRemote = "/tmp/nongyu-track.new"
-Write-Host "Upload $LocalBin -> ${Remote}:$tmpRemote"
-Send-RemoteFile $LocalBin $tmpRemote
+$tmpTgz = "/tmp/nongyu-track-dist.tgz"
+$tmpPkg = "/tmp/nongyu-track-package.json"
+$pkgJson = Join-Path $PkgWorkdir "package.deploy.json"
+if (-not (Test-Path $pkgJson)) {
+  $pkgJson = Join-Path $PkgWorkdir "package.json"
+}
+Write-Host "Upload $LocalTgz -> ${Remote}:$tmpTgz"
+Send-RemoteFile $LocalTgz $tmpTgz
+Send-RemoteFile $pkgJson $tmpPkg
 
 $unit = $env:TRACK_SYSTEMD_UNIT
-$bin = $env:TRACK_REMOTE_BIN
+$remoteDir = $env:TRACK_REMOTE_DIR
 $healthHost = $env:TRACK_HTTP_ADDR
 $healthUrl = "http://$healthHost/health"
-$remoteScript = "set -e`ninstall -m 755 '$tmpRemote' '$bin'`nrm -f '$tmpRemote'"
-if (-not $SkipRestart) {
-  $remoteScript += "`nsystemctl restart '$unit'`nsystemctl is-active '$unit'`ncurl -sf '$healthUrl' || true"
-}
+$publishLocal = Join-Path $RepoRoot "scripts/cd/publish-track.sh"
+Send-RemoteFile $publishLocal "/tmp/publish-track.sh"
 
-Write-Host "Remote install/restart..."
+$remoteScript = "set -e`nsed -i 's/\r$//' /tmp/publish-track.sh"
+if (-not $SkipRestart) {
+  $remoteScript += "`nbash /tmp/publish-track.sh '$remoteDir' '$unit' '$healthUrl' '$tmpTgz' '$tmpPkg'"
+} else {
+  $remoteScript += "`necho skip restart; ls -la '$tmpTgz' '$tmpPkg'"
+}
+$remoteScript += "`nrm -f /tmp/publish-track.sh"
+
+Write-Host "Remote publish/restart..."
 Invoke-Remote $remoteScript
 Write-Host "Done."

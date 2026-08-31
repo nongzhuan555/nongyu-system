@@ -350,9 +350,16 @@ export async function fetchTrackOverview(): Promise<TrackOverview> {
 export async function fetchTrackDims(
   metric: "screen_views" | "screen_dwell_avg" | "button_clicks" | "perf_p50" | "perf_p95",
   date?: string,
+  opts?: { platform?: "ios" | "android" | "web"; namePrefix?: string; limit?: number },
 ): Promise<TrackDims> {
   const response = await adminApi.get<ApiEnvelope<TrackDims>>(ADMIN_TRACK_DIMS_PATH, {
-    params: { metric, date, limit: 100 },
+    params: {
+      metric,
+      date,
+      limit: opts?.limit ?? 100,
+      platform: opts?.platform,
+      namePrefix: opts?.namePrefix,
+    },
   });
   return unwrapData(response.data);
 }

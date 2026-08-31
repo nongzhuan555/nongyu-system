@@ -19,11 +19,16 @@ export function getPool(): Pool {
     database: env.MYSQL_DATABASE,
     waitForConnections: true,
     connectionLimit: 10,
+    // 客户端按 UTC 解释 DATETIME；须与库内 UTC 存储约定一致
     timezone: "Z",
     dateStrings: false,
     multipleStatements: true,
     connectTimeout: 30_000,
     enableKeepAlive: true,
+  });
+  // 会话时区 UTC：使 CURRENT_TIMESTAMP / ON UPDATE 与 UTC_TIMESTAMP 一致，避免东八区墙钟被当成 UTC 读出
+  pool.on("connection", (connection) => {
+    connection.query("SET time_zone = '+00:00'");
   });
   return pool;
 }

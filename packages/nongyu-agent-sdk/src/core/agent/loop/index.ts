@@ -13,6 +13,7 @@ import type { Tool } from "../../../types/tool";
 import type { AgentStreamChunk } from "../../../types/stream";
 import { EventBus } from "../../events";
 import { prepareConversationWindow } from "../../context/prepareWindow";
+import { extractAndStripShowUI } from "../../tool/show-ui";
 import { stopConditions, type StopCondition } from "./stop-conditions";
 
 /**
@@ -158,13 +159,14 @@ export class AgentLoop {
             if (this.stopped) break;
 
             const tool = this.tools.get(tc.function.name);
-            // 解析工具入参
-            let input: unknown;
+            // 解析工具入参，剥离 A2UI 元参数 showUI
+            let rawInput: unknown;
             try {
-              input = JSON.parse(tc.function.arguments);
+              rawInput = JSON.parse(tc.function.arguments);
             } catch {
-              input = tc.function.arguments;
+              rawInput = tc.function.arguments;
             }
+            const { showUI, input } = extractAndStripShowUI(rawInput);
 
             // 未找到工具则把无工具提示作为工具结果
             if (!tool) {
@@ -179,7 +181,7 @@ export class AgentLoop {
               continue;
             }
 
-            // 检查审批——在 tool:call 事件之前
+            // 检查审批——在 tool:call 事件之前（入参已无 showUI）
             if (tool.needsApproval(input)) {
               this.events.emit("tool:approval-required", {
                 agentName: this.agentName,
@@ -210,6 +212,7 @@ export class AgentLoop {
               input,
               callId: tc.id,
               renderComponent: tool.renderComponent,
+              showUI,
             });
 
             const startTime = Date.now();
@@ -245,6 +248,7 @@ export class AgentLoop {
                 duration,
                 status: "done",
                 renderComponent: tool.renderComponent,
+                showUI,
               });
 
               messages.push({
@@ -271,6 +275,7 @@ export class AgentLoop {
                 status: "error",
                 error: error instanceof Error ? error.message : String(error),
                 renderComponent: tool.renderComponent,
+                showUI,
               });
 
               messages.push({
@@ -454,16 +459,17 @@ export class AgentLoop {
             if (!tc.function?.name) continue;
 
             const tool = this.tools.get(tc.function.name);
-            let input: unknown;
+            let rawInput: unknown;
             try {
-              input = JSON.parse(tc.function.arguments ?? "{}");
+              rawInput = JSON.parse(tc.function.arguments ?? "{}");
             } catch {
-              input = tc.function.arguments;
+              rawInput = tc.function.arguments;
             }
+            const { showUI, input } = extractAndStripShowUI(rawInput);
 
             if (!tool) continue;
 
-            // 检查审批——在 tool:call 之前
+            // 检查审批——在 tool:call 之前（入参已无 showUI）
             if (tool.needsApproval(input)) {
               this.events.emit("tool:approval-required", {
                 agentName: this.agentName,
@@ -491,6 +497,7 @@ export class AgentLoop {
               toolName: tc.function.name,
               input,
               renderComponent: tool.renderComponent,
+              showUI,
             };
 
             try {
@@ -518,6 +525,7 @@ export class AgentLoop {
                 duration,
                 status: "done",
                 renderComponent: tool.renderComponent,
+                showUI,
               });
 
               messages.push({
@@ -544,6 +552,7 @@ export class AgentLoop {
                 status: "error",
                 error: err.message,
                 renderComponent: tool.renderComponent,
+                showUI,
               });
 
               messages.push({

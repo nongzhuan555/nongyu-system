@@ -4,7 +4,8 @@ type NongyuLogoProps = {
   rounded?: boolean;
 };
 
-const LOGO_SRC = "/nongyu-logo.png";
+/** 生产 base=/admin/，须相对部署前缀，勿写站点根路径 /nongyu-logo.png */
+const LOGO_SRC = `${import.meta.env.BASE_URL}nongyu-logo.png`;
 
 /**
  * 农屿品牌图（与 public/nongyu-logo.png、favicon 同源）

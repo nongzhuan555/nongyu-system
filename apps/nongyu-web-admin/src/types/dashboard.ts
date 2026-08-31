@@ -38,6 +38,7 @@ export type TrackOverview = {
   appOpenCount: number;
   screenViewCount: number;
   buttonClickCount?: number;
+  webScreenViewCount?: number;
 };
 
 export type TrackDimItem = {

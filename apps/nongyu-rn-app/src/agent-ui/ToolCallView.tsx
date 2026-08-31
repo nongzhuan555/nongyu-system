@@ -20,6 +20,9 @@ interface ToolCallViewProps {
  */
 function ToolCallViewInner({ tc, onAction }: ToolCallViewProps) {
   const styles = useStyles();
+  // showUI=false：对话面完全隐藏（兜底；列表层通常已过滤）
+  if (tc.showUI === false) return null;
+
   const Renderer = getToolUI(tc.toolName);
 
   if (!Renderer) {

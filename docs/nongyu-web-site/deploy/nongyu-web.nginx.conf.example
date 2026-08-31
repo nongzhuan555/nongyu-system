@@ -1,5 +1,6 @@
 # 复制到服务器 /etc/nginx/conf.d/nongyu-web.conf 后：
-# 1. 把 YOUR_WEB_IP / YOUR_NODE_UPSTREAM 换成实际值（Upstream 无尾斜杠，如 http://8.137.82.17）
+# 1. 把 YOUR_WEB_IP / YOUR_NODE_UPSTREAM / YOUR_TRACK_UPSTREAM 换成实际值
+#    Node 示例 http://8.137.82.17；Track 示例 https://47.108.74.61（无尾斜杠）
 # 2. nginx -t && systemctl reload nginx
 
 server {
@@ -30,14 +31,51 @@ server {
         proxy_set_header Connection "";
     }
 
+    # 官网 RUM：浏览器同源 /v1/track/web → Track 服务
+    location /v1/track/web/ {
+        proxy_pass YOUR_TRACK_UPSTREAM/v1/track/web/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
     location = /admin {
         return 301 /admin/;
     }
 
-    # Vite base=/admin/ → 产物落在 /var/www/admin/
+    # 管理端静态资源（Vite hash）
+    location /admin/assets/ {
+        root /var/www;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
     location /admin/ {
         root /var/www;
+        add_header Cache-Control "no-cache";
         try_files $uri $uri/ /admin/index.html;
+    }
+
+    # 官网：带 content-hash 的构建产物
+    location /assets/ {
+        root /var/www/site;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # 官网：功能截图 webp（换图须改文件名）
+    location /features/ {
+        root /var/www/site;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    location = /index.html {
+        root /var/www/site;
+        add_header Cache-Control "no-cache";
     }
 
     location / {

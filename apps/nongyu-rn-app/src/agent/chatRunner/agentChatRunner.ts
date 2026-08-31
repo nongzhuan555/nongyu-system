@@ -25,6 +25,7 @@ interface StreamChunk {
   stepNumber?: number;
   error?: Error;
   renderComponent?: string;
+  showUI?: boolean;
   ok?: boolean;
   beforeTokens?: number;
   afterTokens?: number;
@@ -445,6 +446,7 @@ class AgentChatRunner {
                     input: chunk.input,
                     status: "executing" as const,
                     renderComponent: chunk.renderComponent,
+                    showUI: chunk.showUI,
                   } as ToolCallRecord,
                 ],
                 status: "streaming" as const,

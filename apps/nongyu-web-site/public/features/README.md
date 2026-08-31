@@ -1,14 +1,16 @@
-# 功能 GIF 资源
+# 功能截图（构建产物）
 
-将演示动图放到本目录，文件名需与 `src/site-config.ts` 中 `gifSrc` 一致：
+浏览器引用 **`*.webp`**，由 `pnpm run optimize-images`（`prebuild` 自动执行）从 `assets/feature-screens/` 源图生成。
 
-| 文件            | 功能         |
-| --------------- | ------------ |
-| `01-course.gif` | 智能课表     |
-| `02-jiaowu.gif` | 教务聚合     |
-| `03-second.gif` | 二课查询     |
-| `04-ai.gif`     | 农屿 AI      |
-| `05-plaza.gif`  | 校园广场     |
-| `06-theme.gif`  | 主题与个性化 |
+| webp                            | 分区                   |
+| ------------------------------- | ---------------------- |
+| `home.webp`                     | 认识农屿               |
+| `jiaowu1.webp`                  | 教务功能               |
+| `course1.webp` … `course5.webp` | 课表功能（多图轮播）   |
+| `second1.webp` … `second3.webp` | 二课功能（多图轮播）   |
+| `agent1.webp`、`agent2.webp`    | Agent 功能（多图轮播） |
+| `center.webp`                   | 广场功能               |
 
-缺失时页面自动显示「动图占位」，不破版。建议比例接近 **16:10**。
+**换图流程：** 替换 `assets/feature-screens/` 下源文件 → 执行 `pnpm --filter nongyu-web-site build` → 若需破缓存可改 webp 文件名并同步 `site-config.ts`。
+
+缺失时页面显示「图片占位」，不破版。媒体窗比例约 **9:16**（手机竖屏）。

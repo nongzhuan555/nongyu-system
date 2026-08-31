@@ -3,7 +3,17 @@ export { createAgent, AgentImpl } from "./core/agent";
 
 export { buildSystemPrompt } from "./core/prompt";
 
-export { tool, ToolRegistry, zodToJsonSchema } from "./core/tool";
+export {
+  tool,
+  ToolRegistry,
+  zodToJsonSchema,
+  SHOW_UI_PARAM,
+  SHOW_UI_DESCRIPTION,
+  resolveShowUI,
+  extractAndStripShowUI,
+  injectShowUIIntoJsonSchema,
+  shouldShowToolUI,
+} from "./core/tool";
 
 // ===== 内置工具 =====
 export { webSearchTool, webDetailTool } from "./core/tool/BuiltinTools";

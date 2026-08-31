@@ -36,6 +36,20 @@ function sanitizeItems(items: unknown, fallback: GridItemLayout[]): GridItemLayo
   return fallback.map((def) => known.get(def.i) ?? def);
 }
 
+/** 合并 breakpoints，避免 Responsive 只回传部分断点时丢失其它断面的已存布局 */
+export function mergeDashboardLayouts(
+  prev: DashboardPrefsV1["layouts"],
+  incoming: Partial<Record<GridBreakpoint, GridItemLayout[]>>,
+): DashboardPrefsV1["layouts"] {
+  const merged: DashboardPrefsV1["layouts"] = { ...prev };
+  for (const bp of BREAKPOINTS) {
+    if (Array.isArray(incoming[bp])) {
+      merged[bp] = sanitizeItems(incoming[bp], DEFAULT_LAYOUTS[bp]);
+    }
+  }
+  return merged;
+}
+
 function sanitizeLayouts(raw: unknown): DashboardPrefsV1["layouts"] {
   const source = raw !== null && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const layouts: DashboardPrefsV1["layouts"] = {};

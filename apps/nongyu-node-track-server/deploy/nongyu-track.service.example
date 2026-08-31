@@ -1,0 +1,19 @@
+# nongyu-track.service — Node Track（复用单元名；仅改 ExecStart）
+# 将 Node 绝对路径换成与业务机对齐的版本（现网业务 v21.7.3）
+
+[Unit]
+Description=Nongyu Track Server (Node)
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/nongyu-track.env
+WorkingDirectory=/opt/nongyu-track
+ExecStart=/usr/local/bin/node /opt/nongyu-track/dist/index.js
+Restart=on-failure
+RestartSec=3
+MemoryMax=512M
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

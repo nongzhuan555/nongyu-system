@@ -8,6 +8,8 @@ export type AgentStreamChunk =
       toolName: string;
       input: unknown;
       renderComponent?: string;
+      /** 是否渲染 A2UI；缺省按 true */
+      showUI?: boolean;
     }
   | { type: "tool:result"; callId?: string; toolName: string; output: unknown; duration: number }
   | { type: "tool:error"; callId?: string; toolName: string; error: Error }

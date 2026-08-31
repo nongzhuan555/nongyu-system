@@ -1,5 +1,75 @@
 ---
 
+## 2026-08-31 · nongyu-web-admin · 登录页/侧栏品牌 logo 404
+
+- **现象**：管理端登录页、左上角品牌图裂图；浏览器请求 `http://nongyu.site/nongyu-logo.png` 返回官网 HTML 而非图片。
+- **根因**：生产 Vite `base=/admin/`，logo 与 favicon 产物在 `/admin/nongyu-logo.png`；`NongyuLogo` 写死站点根路径 `/nongyu-logo.png`，Nginx 走官网 `try_files` 回落到 `index.html`。
+- **修复**：`NongyuLogo` 使用 `` `${import.meta.env.BASE_URL}nongyu-logo.png` ``；`index.html` favicon 改为 `%BASE_URL%favicon.png`。
+
+---
+
+## 2026-08-31 · nongyu-web-admin · 大屏部分卡片拖拽刷新后恢复默认位置
+
+- **现象**：部分图表（如性别分布）拖放/缩放后，刷新页面又回到改动前位置。
+- **根因**：① **RGL 事件顺序**：`onDragStop`/`onResizeStop` 先于最终 `onLayoutChange` 触发，在 stop 回调里写 localStorage 会持久化拖拽前布局（内存已是新位置，刷新后从 storage 读回旧值）；② 挂载/断点切换时 RGL compact 的 `onLayoutChange` 须忽略；③ 多 breakpoint 须增量 merge。
+- **修复**：仅在用户交互后的 `onLayoutChange` 中防抖 `writeDashboardPrefs`（不再在 stop 回调里写）；`layoutsDraftRef` + `mergeDashboardLayouts`；忽略未交互前的 `onLayoutChange`。
+
+---
+
+## 2026-08-31 · nongyu-node-track-server · 远端发布后找不到 nongyu-track-contract
+
+- **现象**：发布到 `/opt/nongyu-track` 后进程起不来：`Cannot find package 'nongyu-track-contract'`，health 失败回滚。
+- **根因**：源码改为 `import ... from "nongyu-track-contract"` 后 tsup 未打进 `dist`；`package.deploy.json` 又删掉了该依赖。
+- **修复**：`tsup.config.ts` 增加 `noExternal: ["nongyu-track-contract"]`，强制打进 bundle。
+
+---
+
+## 2026-08-31 · nongyu-node-server · `pnpm dev` 报 Invalid environment
+
+- **现象**：本地 `pnpm --filter nongyu-node-server dev` 启动即 `MYSQL_HOST: Required; JWT_SECRET: Required...`，尽管 `.env` 已存在。
+- **根因**：`ensureSuperAdmin.ts` 模块顶层 `createLogger()` → `getEnv()`，在 `index.ts` 的 `loadEnvFiles()` 之前执行（ESM import 提升）。
+- **修复**：将 `createLogger()` 移入 `ensureSuperAdminRole()` 函数体内，待 env 加载后再取。
+
+---
+
+## 2026-08-31 · nongyu-node-track-server · Web 上报 platform=web 被当成重复
+
+- **现象**：`POST /v1/track/web/events` 返回 200 但 `accepted=0`、`duplicated=1`（或静默丢事件）。
+- **根因**：`migrations/003_platform_web.sql` 已写但未登记到 `runner.ts` 的 `STEPS`；表 CHECK 仍仅 `ios|android`。`INSERT OR IGNORE` 对 CHECK 失败也记为 `changes=0`，Writer 误判为 duplicate。
+- **修复**：在 runner 注册 `003_platform_web`；`001_init.sql` 同步允许 `web`（新库）；补 Web ingest 单测。
+
+---
+
+## 2026-08-30 · nongyu-web-site · 顶栏「菜单」二字竖排
+
+- **现象**：窄屏顶栏按钮「菜单」视觉上上下叠字，而非横排。
+- **根因**：`.nav__menu-btn` 固定 `width: 2.5rem`，不足以容纳两字，被迫换行。
+- **修复**：改为 `min-width` + 水平 padding，并设 `white-space: nowrap`。
+
+---
+
+## 2026-08-30 · nongyu-web-site · 功能截图一直显示「图片占位」
+
+- **现象**：`public/features/*.jpg` 已就位且 URL 可 200 访问，功能区仍只显示占位文案。
+- **根因**：`mountImage` 用离屏 `new Image()` + `loading="lazy"`，再等 `load` 才挂到 DOM；未入文档的 lazy 图不会真正加载，`load` 永不触发，占位无法移除。
+- **修复**：先把 `img` 插入槽位再设 `src`；去掉离屏 lazy；兼容 `complete` 缓存命中立即揭幕。
+
+---
+
+- **现象**：大院留言 / 管理员回复的 `publishedAt` 回显与真实发送时刻不符（如本地 10:00 显示 18:00）。
+- **根因**：`post_replies` 插入未显式写时间，依赖 `CURRENT_TIMESTAMP(3)`（跟 MySQL 会话/系统时区，现网多为东八区墙钟）；`mysql2` `timezone: "Z"` + `toIsoUtcRequired` 却按 UTC 解读并返回 ISO，RN `dayjs` 再转到本地 → 多加 8 小时。发帖 `published_at` 使用 `UTC_TIMESTAMP(3)` 故往往正常。
+- **修复**：① `createComment` / `createAdminReply` 显式 `UTC_TIMESTAMP(3)`；② 连接池 `SET time_zone = '+00:00'`；③ 迁移 `011_fix_post_replies_created_at_utc.sql` 在东八区环境下将历史行 `CONVERT_TZ(+08→+00)`。前端回显逻辑无需改。
+
+---
+
+## 2026-08-26 · GitHub CD · Actions SSH Secret 误填 root 密码导致部署失败
+
+- **现象**：`deploy-admin` / `deploy-node` 在 SCP/SSH 步骤失败；日志为 `Load key ... error in libcrypto` 或 `Permission denied (publickey,...)`，exit code 255。
+- **根因**：`WEB_SSH_KEY` / `NODE_SSH_KEY` / `TRACK_SSH_KEY` 被误填为服务器 root 登录口令；当前 `cd.yml` 仅支持私钥认证，不支持密码登录。另常见误配：私钥格式损坏（缺首尾行、压成一行）、三台机器 Host/Key 混用（WEB `101.43.34.229`、NODE `8.137.82.17`、TRACK `47.108.74.61` 须各用对应 `id_ed25519_nongyu_*`）。
+- **修复**：GitHub Secrets 填各机部署专用私钥全文（含 `BEGIN/END OPENSSH PRIVATE KEY`），Host/User 与 `scripts/ops/*-deploy.env` 一致；本机用 `ssh -i <key> root@<host> "echo ok"` 验证免密后再重跑 CD。口令仅用于首次手动登录装公钥，不进 Secret。
+
+---
+
 ## 2026-08-19 · nongyu-agent-sdk · 工具 JSON Schema 丢失 union/literal、describe，且 optional 被标成 required
 
 - **现象**：发给模型的 tools 里 `role`/`status` 变成 `"role": {}`；`z.string().optional().describe(...)` 的 description 全部缺失；所有字段都被塞进 `required`（含明确 `.optional()` 的 keyword/page/range/date）。

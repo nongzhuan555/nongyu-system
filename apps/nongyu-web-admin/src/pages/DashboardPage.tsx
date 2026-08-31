@@ -20,6 +20,7 @@ import { useAuthStore } from "../stores/authStore";
 import {
   clearDashboardPrefs,
   defaultDashboardPrefs,
+  mergeDashboardLayouts,
   readDashboardPrefs,
   writeDashboardPrefs,
 } from "../lib/dashboardPrefs";
@@ -38,8 +39,18 @@ const EMPTY_DATA: DashboardGridData = {
   buttonClicks: [],
   perfP50: [],
   perfP95: [],
+  webVitalP50: [],
+  webVitalP95: [],
   crashes: null,
 };
+
+function withoutWebPerf(items: { dimKey: string; dimValue: string; metricValue: number }[]) {
+  return items.filter((item) => !item.dimValue.startsWith("cwv_"));
+}
+
+function withoutWebHome(items: { dimKey: string; dimValue: string; metricValue: number }[]) {
+  return items.filter((item) => item.dimValue !== "web_home");
+}
 
 function messageFromError(err: unknown, track: boolean): string {
   if (err instanceof AdminApiError) {
@@ -63,6 +74,12 @@ export function DashboardPage() {
   const [prefs, setPrefs] = useState<DashboardPrefsV1>(() => readDashboardPrefs());
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
+  /** 与 react-grid-layout 同步的最新 layouts；persist 时必须用它，不能读可能滞后的 prefsRef */
+  const layoutsDraftRef = useRef<Layouts>(prefs.layouts as Layouts);
+
+  useEffect(() => {
+    layoutsDraftRef.current = prefs.layouts as Layouts;
+  }, [prefs.layouts]);
 
   const [data, setData] = useState<DashboardGridData>(EMPTY_DATA);
   const [coreLoading, setCoreLoading] = useState(true);
@@ -99,23 +116,28 @@ export function DashboardPage() {
       setTrackError(null);
     }
     try {
-      const [trackOverview, screens, dwell, buttons, p50, p95, crashes] = await Promise.all([
-        fetchTrackOverview(),
-        fetchTrackDims("screen_views"),
-        fetchTrackDims("screen_dwell_avg"),
-        fetchTrackDims("button_clicks"),
-        fetchTrackDims("perf_p50"),
-        fetchTrackDims("perf_p95"),
-        fetchTrackCrashes(page, 10),
-      ]);
+      const [trackOverview, screens, dwell, buttons, p50, p95, webP50, webP95, crashes] =
+        await Promise.all([
+          fetchTrackOverview(),
+          fetchTrackDims("screen_views"),
+          fetchTrackDims("screen_dwell_avg"),
+          fetchTrackDims("button_clicks"),
+          fetchTrackDims("perf_p50"),
+          fetchTrackDims("perf_p95"),
+          fetchTrackDims("perf_p50", undefined, { platform: "web", namePrefix: "cwv_" }),
+          fetchTrackDims("perf_p95", undefined, { platform: "web", namePrefix: "cwv_" }),
+          fetchTrackCrashes(page, 10),
+        ]);
       setData((prev) => ({
         ...prev,
         trackOverview,
-        screenViews: screens.items,
-        screenDwell: dwell.items,
+        screenViews: withoutWebHome(screens.items),
+        screenDwell: withoutWebHome(dwell.items),
         buttonClicks: buttons.items,
-        perfP50: p50.items,
-        perfP95: p95.items,
+        perfP50: withoutWebPerf(p50.items),
+        perfP95: withoutWebPerf(p95.items),
+        webVitalP50: webP50.items,
+        webVitalP95: webP95.items,
         crashes,
       }));
       if (silent) setTrackError(null);
@@ -145,11 +167,21 @@ export function DashboardPage() {
   }
 
   function handleLayoutsChange(layouts: Layouts) {
-    setPrefs((prev) => ({ ...prev, layouts }));
+    const merged = mergeDashboardLayouts(prefsRef.current.layouts, layouts);
+    layoutsDraftRef.current = merged as Layouts;
+    setPrefs((prev) => ({ ...prev, layouts: merged }));
   }
 
   function handleLayoutPersist() {
-    writeDashboardPrefs(prefsRef.current);
+    const merged = mergeDashboardLayouts(prefsRef.current.layouts, layoutsDraftRef.current);
+    const next: DashboardPrefsV1 = {
+      ...prefsRef.current,
+      layouts: merged,
+    };
+    layoutsDraftRef.current = merged as Layouts;
+    prefsRef.current = next;
+    setPrefs(next);
+    writeDashboardPrefs(next);
   }
 
   async function handleGrowthRangeChange(range: GrowthRange) {

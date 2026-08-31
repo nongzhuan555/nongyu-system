@@ -2,9 +2,17 @@ import { createThemedStyles } from "@/theme/createThemedStyles";
 import { memo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Markdown from "react-native-markdown-display";
-import type { ChatMessage } from "nongyu-agent-sdk";
+import remend from "remend";
+import { shouldShowToolUI, type ChatMessage } from "nongyu-agent-sdk";
 import { useThemeTokens } from "@/theme/ThemeProvider";
 import { ToolCallView } from "./ToolCallView";
+
+/** 流式半截语法补全：与 Web AssistantMarkdown 对齐 */
+const STREAM_HEAL_OPTIONS = {
+  linkMode: "text-only" as const,
+  katex: false,
+  inlineKatex: false,
+};
 
 interface AssistantMessageProps {
   message: ChatMessage;
@@ -31,8 +39,8 @@ export function getAssistantActionLabel(message: ChatMessage): "重试" | "重�
 
 /**
  * assistant：无气泡全宽排版（Claude / ChatGPT 风格）
- * 流式用纯 Text，完成后切 Markdown
- * 工具调用 ≥2 时默认只展示最后一条，可展开查看全部。
+ * 流式与完成后均走 Markdown；流式时 remend 补半截语法（对齐 Web）
+ * 先按 showUI 过滤，再对可见工具 ≥2 时默认只展示最后一条，可展开查看全部。
  */
 function AssistantMessageInner({
   message,
@@ -45,13 +53,16 @@ function AssistantMessageInner({
   const t = useThemeTokens();
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const isStreaming = message.status === "streaming" || message.status === "pending";
-  const toolCalls = message.toolCalls ?? [];
-  const showTyping = isStreaming && !message.content && toolCalls.length === 0;
+  const toolCallsForUi = (message.toolCalls ?? []).filter(shouldShowToolUI);
+  const showTyping = isStreaming && !message.content && toolCallsForUi.length === 0;
   const actionLabel = showActions ? getAssistantActionLabel(message) : null;
-  const useMarkdown = !isStreaming && (message.status === "done" || message.status === "stopped");
-  const canCollapseTools = toolCalls.length > 1;
-  const visibleToolCalls = !canCollapseTools || toolsExpanded ? toolCalls : toolCalls.slice(-1);
-  const hiddenToolCount = canCollapseTools && !toolsExpanded ? toolCalls.length - 1 : 0;
+  const canCollapseTools = toolCallsForUi.length > 1;
+  const visibleToolCalls =
+    !canCollapseTools || toolsExpanded ? toolCallsForUi : toolCallsForUi.slice(-1);
+  const hiddenToolCount = canCollapseTools && !toolsExpanded ? toolCallsForUi.length - 1 : 0;
+  const markdownSource = isStreaming
+    ? remend(message.content, STREAM_HEAL_OPTIONS)
+    : message.content;
 
   return (
     <View style={styles.root}>
@@ -62,15 +73,9 @@ function AssistantMessageInner({
         </View>
       ) : null}
 
-      {message.content ? (
-        useMarkdown ? (
-          <Markdown style={markdownStyles}>{message.content}</Markdown>
-        ) : (
-          <Text style={styles.text}>{message.content}</Text>
-        )
-      ) : null}
+      {message.content ? <Markdown style={markdownStyles}>{markdownSource}</Markdown> : null}
 
-      {toolCalls.length > 0 ? (
+      {toolCallsForUi.length > 0 ? (
         <View style={styles.tools}>
           {hiddenToolCount > 0 ? (
             <Pressable
@@ -129,11 +134,6 @@ const useStyles = createThemedStyles((t) => ({
     alignSelf: "stretch",
     paddingVertical: 10,
     paddingRight: t.space.sm,
-  },
-  text: {
-    fontSize: 15,
-    color: t.color.text,
-    lineHeight: 24,
   },
   typing: {
     flexDirection: "row",

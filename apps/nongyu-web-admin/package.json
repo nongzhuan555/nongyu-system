@@ -25,6 +25,7 @@
     "react-resizable": "catalog:",
     "react-router-dom": "^7.1.5",
     "remark-gfm": "catalog:",
+    "remend": "catalog:",
     "sqlite3-parser": "catalog:",
     "zod": "^3.24.2",
     "zustand": "^5.0.3"

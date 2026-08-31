@@ -5,11 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "optimize-images": "node scripts/optimize-feature-images.mjs",
+    "generate-brand-icons": "node scripts/generate-brand-icons.mjs",
+    "prebuild": "pnpm run optimize-images && pnpm run generate-brand-icons",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit"
   },
+  "dependencies": {
+    "web-vitals": "^6.2.1"
+  },
   "devDependencies": {
+    "sharp": "^0.34.5",
     "typescript": "catalog:",
     "vite": "catalog:"
   }

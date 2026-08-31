@@ -12,12 +12,19 @@ export async function getTrackOverview(date: string) {
   return mapOverview(data);
 }
 
-export async function getTrackDims(metric: string, date: string, limit: number) {
+export async function getTrackDims(
+  metric: string,
+  date: string,
+  limit: number,
+  opts?: { platform?: string; namePrefix?: string },
+) {
   const query = new URLSearchParams({
     metric,
     date,
     limit: String(limit),
   });
+  if (opts?.platform) query.set("platform", opts.platform);
+  if (opts?.namePrefix) query.set("name_prefix", opts.namePrefix);
   const data = await trackAdminGet(`/v1/admin/metrics/dims?${query.toString()}`);
   return mapDims(data);
 }

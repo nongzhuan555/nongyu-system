@@ -56,11 +56,19 @@ adminTrackRouter.get(
         metric: dimMetricSchema,
         date: dateSchema.optional(),
         limit: z.coerce.number().int().min(1).max(100).optional(),
+        platform: z.enum(["ios", "android", "web"]).optional(),
+        namePrefix: z.string().trim().min(1).max(64).optional(),
       })
       .parse(req.query);
     const date = query.date ?? todayBusinessDate();
     const limit = query.limit ?? 50;
-    ok(res, await getTrackDims(query.metric, date, limit));
+    ok(
+      res,
+      await getTrackDims(query.metric, date, limit, {
+        platform: query.platform,
+        namePrefix: query.namePrefix,
+      }),
+    );
   }),
 );
 

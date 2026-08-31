@@ -1,4 +1,4 @@
-import type { ChatMessage } from "nongyu-agent-sdk";
+import { shouldShowToolUI, type ChatMessage } from "nongyu-agent-sdk";
 import { useEffect, useRef } from "react";
 import { AssistantMarkdown } from "./AssistantMarkdown";
 import { ToolCallView } from "./ToolCallView";
@@ -28,10 +28,9 @@ function AssistantMessage({
   onRegenerate?: () => void;
 }) {
   const isStreaming = message.status === "streaming" || message.status === "pending";
-  const toolCalls = message.toolCalls ?? [];
-  const showTyping = isStreaming && !message.content && toolCalls.length === 0;
+  const toolCallsForUi = (message.toolCalls ?? []).filter(shouldShowToolUI);
+  const showTyping = isStreaming && !message.content && toolCallsForUi.length === 0;
   const actionLabel = showActions ? getAssistantActionLabel(message) : null;
-  const useMarkdown = !isStreaming && (message.status === "done" || message.status === "stopped");
 
   return (
     <div className="w-full py-2.5 pr-1">
@@ -43,16 +42,12 @@ function AssistantMessage({
       ) : null}
 
       {message.content ? (
-        useMarkdown ? (
-          <AssistantMarkdown content={message.content} />
-        ) : (
-          <p className="whitespace-pre-wrap text-[15px] leading-6 text-ink">{message.content}</p>
-        )
+        <AssistantMarkdown content={message.content} isStreaming={isStreaming} />
       ) : null}
 
-      {toolCalls.length > 0 ? (
+      {toolCallsForUi.length > 0 ? (
         <div className="mt-2 flex flex-col gap-2">
-          {toolCalls.map((tc) => (
+          {toolCallsForUi.map((tc) => (
             <ToolCallView key={tc.callId ?? tc.toolName} tc={tc} />
           ))}
         </div>

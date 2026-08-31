@@ -40,6 +40,7 @@ export function mapOverview(raw: unknown): {
   appOpenCount: number;
   screenViewCount: number;
   buttonClickCount?: number;
+  webScreenViewCount?: number;
 } {
   const record = isRecord(raw) ? raw : {};
   const mapped: {
@@ -49,6 +50,7 @@ export function mapOverview(raw: unknown): {
     appOpenCount: number;
     screenViewCount: number;
     buttonClickCount?: number;
+    webScreenViewCount?: number;
   } = {
     date: asString(record.date),
     dau: asNumber(record.dau),
@@ -58,6 +60,9 @@ export function mapOverview(raw: unknown): {
   };
   if (record.button_click_count !== undefined) {
     mapped.buttonClickCount = asNumber(record.button_click_count);
+  }
+  if (record.web_screen_view_count !== undefined) {
+    mapped.webScreenViewCount = asNumber(record.web_screen_view_count);
   }
   return mapped;
 }

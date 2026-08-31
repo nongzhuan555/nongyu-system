@@ -1,0 +1,7 @@
+﻿data/
+dist-out/
+dist/
+*.db
+*.db-shm
+*.db-wal
+.env

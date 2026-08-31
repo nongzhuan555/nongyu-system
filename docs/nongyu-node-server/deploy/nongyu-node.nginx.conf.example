@@ -1,42 +1,35 @@
-# 复制到服务器 /etc/nginx/conf.d/nongyu-node.conf 后：
+# 复制到服务器 /etc/nginx/conf.d/ 后：
 # 1. 把 YOUR_PUBLIC_IP 换成公网 IP
-# 2. 证书签发前可先只开 80 的 ACME location
+# 2. zone 建议单独：/etc/nginx/conf.d/00-nongyu-node-rate.conf
 # 3. nginx -t && systemctl reload nginx
+#
+# IP 限流仅作用于 /api*（含 LLM 流式）；静态管理端与 ACME、/health 不限流
+# 10r/s，burst=30，超限 429；进程内登录等局部限流保持不变
 
+limit_req_zone $binary_remote_addr zone=nongyu_node_ip:10m rate=10r/s;
+
+# --- HTTP（现网可同时托管旧 Admin 静态 + Node API）---
 server {
-    listen 80;
-    listen [::]:80;
-    server_name YOUR_PUBLIC_IP;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name YOUR_PUBLIC_IP _;
+
+    root /var/www/nongyu-admin;
+    index index.html;
+    limit_req_status 429;
 
     location /.well-known/acme-challenge/ {
         root /var/www/acme;
     }
 
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name YOUR_PUBLIC_IP;
-
-    ssl_certificate     /etc/letsencrypt/live/YOUR_PUBLIC_IP/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/YOUR_PUBLIC_IP/privkey.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
+    location /health {
+        proxy_pass http://127.0.0.1:3000/health;
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Connection "";
     }
 
-    # LLM 流式：关闭缓冲、拉长读超时
     location /api/app/llm/ {
+        limit_req zone=nongyu_node_ip burst=30 nodelay;
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_buffering off;
@@ -47,4 +40,77 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Connection "";
     }
+
+    location /api {
+        limit_req zone=nongyu_node_ip burst=30 nodelay;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /assets {
+        expires 7d;
+        add_header Cache-Control "public";
+    }
 }
+
+# --- HTTPS：证书路径按现网（/etc/nginx/certs 或 letsencrypt）调整 ---
+# server {
+#     listen 443 ssl http2;
+#     listen [::]:443 ssl http2;
+#     server_name YOUR_PUBLIC_IP;
+#
+#     ssl_certificate     /etc/nginx/certs/YOUR_PUBLIC_IP.fullchain.pem;
+#     ssl_certificate_key /etc/nginx/certs/YOUR_PUBLIC_IP.key;
+#
+#     root /var/www/nongyu-admin;
+#     index index.html;
+#     limit_req_status 429;
+#
+#     location /health {
+#         proxy_pass http://127.0.0.1:3000/health;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#     }
+#
+#     location /api/app/llm/ {
+#         limit_req zone=nongyu_node_ip burst=30 nodelay;
+#         proxy_pass http://127.0.0.1:3000;
+#         proxy_http_version 1.1;
+#         proxy_buffering off;
+#         proxy_read_timeout 300s;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#         proxy_set_header Connection "";
+#     }
+#
+#     location /api {
+#         limit_req zone=nongyu_node_ip burst=30 nodelay;
+#         proxy_pass http://127.0.0.1:3000;
+#         proxy_http_version 1.1;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#         proxy_set_header Connection "";
+#     }
+#
+#     location / {
+#         try_files $uri $uri/ /index.html;
+#     }
+#
+#     location /assets {
+#         expires 7d;
+#         add_header Cache-Control "public";
+#     }
+# }

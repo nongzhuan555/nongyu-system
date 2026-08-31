@@ -49,7 +49,8 @@ jobs:
             node:
               - 'apps/nongyu-node-server/**'
             track:
-              - 'apps/nongyu-go-track-server/**'
+              - 'apps/nongyu-node-track-server/**'
+              - 'packages/nongyu-track-contract/**'
       - id: gate
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -196,16 +197,14 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: ./.github/actions/setup-pnpm
         with:
-          go-version-file: apps/nongyu-go-track-server/go.mod
-          cache-dependency-path: apps/nongyu-go-track-server/go.sum
-      - name: 交叉编译 linux/amd64
-        working-directory: apps/nongyu-go-track-server
+          filter: "nongyu-node-track-server..."
+      - name: 构建 Node Track dist
         run: |
-          mkdir -p dist
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/nongyu-track ./cmd/track-server
-          test -f dist/nongyu-track
+          pnpm --filter nongyu-node-track-server... build
+          test -f apps/nongyu-node-track-server/dist/index.js
+          tar -czf nongyu-track-dist.tgz -C apps/nongyu-node-track-server/dist .
       - name: 发布 Track 并安全重启
         env:
           SSH_KEY: ${{ secrets.TRACK_SSH_KEY }}
@@ -219,5 +218,7 @@ jobs:
           printf 'Host deploy\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking accept-new\n' \
             "$SSH_HOST" "$SSH_USER" > ~/.ssh/config
           chmod 600 ~/.ssh/config
-          scp apps/nongyu-go-track-server/dist/nongyu-track scripts/cd/publish-track.sh deploy:/tmp/
-          ssh deploy 'sed -i "s/\r$//" /tmp/publish-track.sh && bash /tmp/publish-track.sh /usr/local/bin/nongyu-track nongyu-track.service http://127.0.0.1:8081/health /tmp/nongyu-track && rm -f /tmp/publish-track.sh'
+          scp nongyu-track-dist.tgz deploy:/tmp/nongyu-track-dist.tgz
+          scp apps/nongyu-node-track-server/package.deploy.json deploy:/tmp/nongyu-track-package.json
+          scp scripts/cd/publish-track.sh deploy:/tmp/publish-track.sh
+          ssh deploy 'sed -i "s/\r$//" /tmp/publish-track.sh && bash /tmp/publish-track.sh /opt/nongyu-track nongyu-track.service http://127.0.0.1:8081/health /tmp/nongyu-track-dist.tgz /tmp/nongyu-track-package.json && rm -f /tmp/publish-track.sh'

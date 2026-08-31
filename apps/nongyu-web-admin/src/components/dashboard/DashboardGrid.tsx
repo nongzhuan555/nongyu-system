@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Grid, Select } from "antd";
 import { Responsive, WidthProvider, type Layout, type Layouts } from "react-grid-layout";
 import type {
@@ -27,10 +28,12 @@ import {
   growthOption,
   perfOption,
   pieOption,
+  webVitalsOption,
 } from "./dashboardCharts";
 import { EchartsBlock } from "./EchartsBlock";
 import { KpiCard } from "./KpiCard";
 import { SettingsPies } from "./SettingsPies";
+import { WebVitalsGuide } from "./WebVitalsGuide";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -53,6 +56,8 @@ export type DashboardGridData = {
   buttonClicks: TrackDimItem[];
   perfP50: TrackDimItem[];
   perfP95: TrackDimItem[];
+  webVitalP50: TrackDimItem[];
+  webVitalP95: TrackDimItem[];
   crashes: TrackCrashPage | null;
 };
 
@@ -83,6 +88,23 @@ export function DashboardGrid({
 }) {
   const screens = Grid.useBreakpoint();
   const canEditLayout = screens.md ?? false;
+  /** 忽略挂载/断点切换时 RGL 自动 compact 触发的 onLayoutChange，避免覆盖 localStorage 布局 */
+  const layoutTouchedRef = useRef(false);
+  /** RGL 先 onDragStop/onResizeStop 再 onLayoutChange；持久化必须等 layout 变更后再写 */
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => {
+    return () => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    };
+  }, []);
+
+  function scheduleLayoutPersist() {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      onLayoutPersist();
+    }, 80);
+  }
 
   return (
     <ResponsiveGridLayout
@@ -97,9 +119,17 @@ export function DashboardGrid({
       isResizable={canEditLayout}
       draggableHandle=".dashboard-drag-handle"
       draggableCancel=".dashboard-no-drag,input,button,textarea,.ant-select,.ant-pagination"
-      onLayoutChange={(_current: Layout[], all: Layouts) => onLayoutsChange(all)}
-      onDragStop={onLayoutPersist}
-      onResizeStop={onLayoutPersist}
+      onLayoutChange={(_current: Layout[], all: Layouts) => {
+        if (!layoutTouchedRef.current) return;
+        onLayoutsChange(all);
+        scheduleLayoutPersist();
+      }}
+      onDragStart={() => {
+        layoutTouchedRef.current = true;
+      }}
+      onResizeStart={() => {
+        layoutTouchedRef.current = true;
+      }}
     >
       {renderWidgets({
         data,
@@ -132,6 +162,7 @@ function renderWidgets(args: {
     "kpi-dau",
     "kpi-online",
     "kpi-today-new",
+    "kpi-web-pv",
     "chart-user-growth",
     "chart-gender",
     "chart-campus",
@@ -143,6 +174,7 @@ function renderWidgets(args: {
     "chart-button-clicks",
     "chart-settings",
     "chart-perf",
+    "chart-web-vitals",
     "table-crashes",
   ];
   return ids.map((id) => <div key={id}>{widgetBody(id, args)}</div>);
@@ -204,6 +236,17 @@ function widgetBody(
         hint="今日完成注册的用户"
         loading={args.coreLoading}
         error={args.coreError}
+      />
+    );
+  }
+  if (id === "kpi-web-pv") {
+    return (
+      <KpiCard
+        title="今日官网访问"
+        value={data.trackOverview?.webScreenViewCount ?? null}
+        hint="每次打开/刷新官网计 1 次（PV），不含 App 页面浏览"
+        loading={args.trackLoading}
+        error={args.trackError}
       />
     );
   }
@@ -336,6 +379,26 @@ function widgetBody(
         empty={!option}
       >
         {option ? <EchartsBlock option={option} /> : null}
+      </ChartCard>
+    );
+  }
+  if (id === "chart-web-vitals") {
+    const option = webVitalsOption(data.webVitalP50, data.webVitalP95);
+    return (
+      <ChartCard
+        title="官网 Web Vitals"
+        loading={args.trackLoading}
+        error={args.trackError}
+        empty={!option}
+      >
+        {option ? (
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="min-h-[140px] flex-1">
+              <EchartsBlock option={option} />
+            </div>
+            <WebVitalsGuide />
+          </div>
+        ) : null}
       </ChartCard>
     );
   }

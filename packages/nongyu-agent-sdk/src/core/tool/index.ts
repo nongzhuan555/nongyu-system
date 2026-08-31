@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { Tool, ToolContext, ToolDefinition } from "../../types/tool";
 import { zodToJsonSchema } from "./json-schema";
+import { injectShowUIIntoJsonSchema } from "./show-ui";
 
 /**
  * Tool 内部实现类
@@ -31,7 +32,10 @@ class ToolImpl<TInput extends z.ZodTypeAny, TOutput> implements Tool<TInput, TOu
   }
 
   toJSONSchema(): Record<string, unknown> {
-    return zodToJsonSchema(this.inputSchema);
+    const base = zodToJsonSchema(this.inputSchema);
+    // 仅对声明了 render 的工具注入 A2UI 开关，供模型决定是否展示结果 UI
+    if (!this.renderComponent) return base;
+    return injectShowUIIntoJsonSchema(base, { toolName: this.name });
   }
 
   async execute(input: z.infer<TInput>, context: ToolContext): Promise<TOutput> {
@@ -67,3 +71,11 @@ export function tool<TInput extends z.ZodTypeAny, TOutput = unknown>(
 
 export { zodToJsonSchema } from "./json-schema";
 export { ToolRegistry } from "./registry";
+export {
+  SHOW_UI_PARAM,
+  SHOW_UI_DESCRIPTION,
+  resolveShowUI,
+  extractAndStripShowUI,
+  injectShowUIIntoJsonSchema,
+  shouldShowToolUI,
+} from "./show-ui";

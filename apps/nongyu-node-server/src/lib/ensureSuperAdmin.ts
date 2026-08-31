@@ -2,13 +2,12 @@ import { getEnv } from "../config/env.js";
 import { getPool } from "./db.js";
 import { createLogger } from "./logger.js";
 
-const logger = createLogger();
-
 /**
  * 启动时幂等：将 SUPER_ADMIN_STUDENT_NO 对应用户升为 role=2。
  * env 未配或用户不存在时跳过，不阻断启动。
  */
 export async function ensureSuperAdminRole(): Promise<void> {
+  const logger = createLogger();
   const studentNo = getEnv().SUPER_ADMIN_STUDENT_NO?.trim();
   if (!studentNo) {
     logger.warn("SUPER_ADMIN_STUDENT_NO 未配置，跳过超管升权");

@@ -25,6 +25,8 @@ export type AgentEventMap = {
     callId?: string;
     /** 前端内联渲染组件名（来自 ToolDefinition.render.component） */
     renderComponent?: string;
+    /** 是否渲染 A2UI；缺省按 true */
+    showUI?: boolean;
   };
   "tool:result": {
     agentName: string;
