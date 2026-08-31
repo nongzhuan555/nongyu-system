@@ -30,11 +30,11 @@ jobs:
       node: ${{ steps.gate.outputs.node }}
       track: ${{ steps.gate.outputs.track }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: github.event_name == 'push'
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         if: github.event_name == 'push'
         with:
@@ -93,7 +93,7 @@ jobs:
       group: cd-web
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-pnpm
         with:
           filter: "nongyu-web-site..."
@@ -127,7 +127,7 @@ jobs:
       group: cd-web
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-pnpm
         with:
           filter: "nongyu-web-admin..."
@@ -161,7 +161,7 @@ jobs:
       group: cd-node
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-pnpm
         with:
           filter: "nongyu-node-server..."
@@ -196,7 +196,7 @@ jobs:
       group: cd-track
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-pnpm
         with:
           filter: "nongyu-node-track-server..."
