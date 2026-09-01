@@ -1,5 +1,13 @@
 ---
 
+## 2026-09-01 · nongyu-rn-app · 分享/关于官网误用 https
+
+- **现象**：复制链接得到 `https://nongyu.site/`；微信好友/朋友圈分享失败或打开异常。
+- **根因**：`ABOUT_URL`（与 `SHARE_WEBPAGE_URL` 同源）在 4.0.0 误改为 `https://nongyu.site/`，现网官网仅提供 HTTP；Spec 同步写错。
+- **修复**：改回 `http://nongyu.site/`；Spec「分享农屿」中 webpageUrl / 复制链接约定同步为 http。
+
+---
+
 ## 2026-09-01 · nongyu-rn-app · 4.0.1 安装包仍含错误键盘逻辑 / 遮挡未修
 
 - **现象**：用户反馈大院留言框仍被键盘挡住；怀疑「已修好」不成立。
