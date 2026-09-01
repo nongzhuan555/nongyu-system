@@ -1,5 +1,21 @@
 ---
 
+## 2026-09-01 · nongyu-rn-app · 4.0.1 安装包仍含错误键盘逻辑 / 遮挡未修
+
+- **现象**：用户反馈大院留言框仍被键盘挡住；怀疑「已修好」不成立。
+- **根因**：EAS 生产包基于提交 `242661f`，其中 Android 路径仍是「resize 假定成立、仅垫 8px」；本地 overlap 修复未提交进包。且仅用 `screenY` 推算时，部分机型（如 ColorOS）在 resize 未生效时仍报 cover≈0，继续只垫 8px。
+- **修复**：`useComposerKeyboardInset` 改为对比弹键盘前后 `Dimensions.window.height` 是否明显缩短：已缩短则仅呼吸间距，未缩短则与 AI 页一致按 `endCoordinates.height` 垫高；避免 screenY 误判与双重顶起。
+
+---
+
+## 2026-08-31 · nongyu-rn-app · 留言框修「顶过高」后反而被键盘盖住
+
+- **现象**：大院详情调起键盘后，留言输入条不再被顶起，仍被键盘遮挡。
+- **根因**：前一次修复假定 Android `softwareKeyboardLayoutMode: resize` 一定缩短窗口，键盘弹出时只垫 8px；部分机型 resize 未真正作用到该页布局，输入条仍贴原窗口底。
+- **修复**：`useComposerKeyboardInset` 按 `window.height - endCoordinates.screenY` 计算真实遮挡；resize 生效时 cover≈0 仅留呼吸间距，未生效时按遮挡高度垫高；不再在 cover≈0 时回退全高 `height`。
+
+---
+
 ## 2026-08-31 · nongyu-rn-app · 大院详情留言框被键盘顶得过高
 
 - **现象**：帖子详情底部留言输入框调起键盘后，键盘顶部与输入条底部之间空隙过大。

@@ -1,0 +1,36 @@
+# 继承 gitignore 语义：EAS 有 .easignore 时以本文件为准，需显式列出常用忽略项
+node_modules/
+dist/
+build/
+.expo/
+*.tsbuildinfo
+old-code/
+.env
+.env.*
+logs/
+*.log
+.vscode/
+.cursor/
+.codegraph/
+.codegraph-*/
+.git/
+
+# 本机临时解包 / 压测产物（勿上传 EAS）
+.tmp-apk/
+.tmp-second-docs/
+scripts/track-migration-bench/
+scripts/ops/
+
+# 敏感文档
+docs/nongyu-node-server/数据库连接信息.md
+docs/nongyu-node-server/服务器连接信息.md
+docs/nongyu-go-track-server/服务器连接信息.md
+
+# Track 本地数据与编译产物
+apps/nongyu-go-track-server/data/
+apps/nongyu-go-track-server/dist/
+apps/nongyu-node-track-server/dist-out/
+
+# RN 本地原生工程（云构建会 prebuild）
+apps/nongyu-rn-app/android/
+apps/nongyu-rn-app/ios/

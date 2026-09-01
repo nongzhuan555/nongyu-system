@@ -51,4 +51,11 @@ scripts/ops/
 apps/nongyu-go-track-server/data/
 apps/nongyu-go-track-server/dist/
 
+# 本机临时解包 / 压测产物
+.tmp-apk/
+.tmp-second-docs/
+scripts/track-migration-bench/out/
+scripts/track-migration-bench/out-full-node/
+scripts/track-migration-bench/nongyu-track-bench
+
 

@@ -1,48 +1,55 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dimensions, Keyboard, Platform, type KeyboardEvent } from "react-native";
 
-/** 输入条与键盘上沿之间的呼吸间距（不宜过大） */
+/** 输入条与键盘上沿之间的呼吸间距 */
 const KEYBOARD_GAP = 8;
+/** 窗口相对弹键盘前缩短超过该比例，视为 adjustResize 已真正生效 */
+const RESIZE_SHRINK_RATIO = 0.35;
 
-/**
- * 键盘相对当前窗口底部的遮挡高度。
- * 优先用 endCoordinates.height；仅当其明显偏小时再用 window 推算兜底。
- * 不用 screen 高度推算，避免 edge-to-edge 下把导航条/状态栏算进垫高导致空隙过大。
- */
-function overlapFromEvent(e: KeyboardEvent): number {
+function readKeyboardHeight(e: KeyboardEvent): number {
   const { height, screenY } = e.endCoordinates;
-  if (typeof height === "number" && height > 0) {
-    return height;
-  }
-  // 极少机型 height 为 0：用事件坐标相对窗口底估算
+  if (typeof height === "number" && height > 0) return Math.round(height);
   const winH = Dimensions.get("window").height;
-  if (typeof screenY === "number") {
-    return Math.max(0, winH - screenY);
-  }
+  if (typeof screenY === "number") return Math.max(0, Math.round(winH - screenY));
   return 0;
 }
 
 /**
  * 底部固定输入条相对屏幕底的垫高。
- * - 键盘收起：安全区 bottom。
- * - iOS 键盘弹出：键盘高度 + 小间距（系统不 resize 窗口）。
- * - Android 键盘弹出：仅小间距。项目已用 adjustResize / softwareKeyboardLayoutMode，
- *   窗口已缩短，再按键盘全高 padding 会与系统避让叠加，出现「顶得过高」。
+ *
+ * Android 不能只看 `screenY`（resize 未生效时 cover≈0）也不能盲信全高 `height`
+ * （resize 已生效时会双重顶起）。以「弹键盘前后 window.height 是否明显缩短」区分：
+ * - 已缩短：窗口布局已上移，仅留呼吸间距；
+ * - 未缩短：与 AI 页一致，按键盘高度垫高。
  */
 export function useComposerKeyboardInset(safeBottom: number): number {
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const [iosKeyboardInset, setIosKeyboardInset] = useState(0);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const baselineWinHRef = useRef(Dimensions.get("window").height);
 
   useEffect(() => {
-    const apply = (e: KeyboardEvent) => {
-      setKeyboardOpen(true);
-      if (Platform.OS === "ios") {
-        setIosKeyboardInset(overlapFromEvent(e) + KEYBOARD_GAP);
-      }
+    const syncBaseline = () => {
+      baselineWinHRef.current = Dimensions.get("window").height;
     };
+
+    const apply = (e: KeyboardEvent) => {
+      const kbH = readKeyboardHeight(e);
+
+      if (Platform.OS === "ios") {
+        setKeyboardInset(kbH + KEYBOARD_GAP);
+        return;
+      }
+
+      const winH = Dimensions.get("window").height;
+      const shrink = Math.max(0, baselineWinHRef.current - winH);
+      const resizeEffective =
+        kbH > 0 && shrink >= Math.min(kbH * RESIZE_SHRINK_RATIO, Math.max(kbH - 24, 0));
+
+      setKeyboardInset(resizeEffective ? KEYBOARD_GAP : kbH + KEYBOARD_GAP);
+    };
+
     const clear = () => {
-      setKeyboardOpen(false);
-      setIosKeyboardInset(0);
+      setKeyboardInset(0);
+      syncBaseline();
     };
 
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -53,19 +60,13 @@ export function useComposerKeyboardInset(safeBottom: number): number {
       subs.push(Keyboard.addListener("keyboardWillChangeFrame", apply));
     }
 
+    const dimSub = Dimensions.addEventListener("change", syncBaseline);
+
     return () => {
       subs.forEach((s) => s.remove());
+      dimSub.remove();
     };
   }, []);
 
-  if (!keyboardOpen) {
-    return safeBottom;
-  }
-
-  if (Platform.OS === "ios") {
-    return Math.max(iosKeyboardInset, KEYBOARD_GAP);
-  }
-
-  // Android：窗口已由系统 resize/pan，只留呼吸间距
-  return KEYBOARD_GAP;
+  return keyboardInset > 0 ? keyboardInset : safeBottom;
 }
