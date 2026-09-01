@@ -1,5 +1,13 @@
 ---
 
+## 2026-09-01 · nongyu-rn-app · 微信分享 ExpoNativeWechat.shareWebpage has been rejected
+
+- **现象**：Android 点微信好友/朋友圈 Toast「ExpoNativeWechat.shareWebpage has been rejected」。
+- **根因**：`coverUrl` 使用 `Image.resolveAssetSource(icon)` 的本地 URI；`expo-native-wechat` 原生用 OkHttp 下载缩略图，非 http(s) 同步抛 `IllegalArgumentException`，被 Expo Modules 包成 rejected。此前只改了落地页 http，未修缩略图。
+- **修复**：缩略图改为 `http://nongyu.site/apple-touch-icon.png`；失败则无图重试；解析原生 `success:false`；Toast 文案可读化。
+
+---
+
 ## 2026-09-01 · nongyu-rn-app · 分享/关于官网误用 https
 
 - **现象**：复制链接得到 `https://nongyu.site/`；微信好友/朋友圈分享失败或打开异常。
