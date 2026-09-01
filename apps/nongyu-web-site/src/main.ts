@@ -53,6 +53,51 @@ if (androidBtn) {
   }
 }
 
+const iosBtn = document.querySelector<HTMLButtonElement>("[data-ios-download]");
+const iosDialog = document.querySelector<HTMLElement>("[data-ios-dialog]");
+const iosUrl = siteConfig.downloadIosUrl.trim();
+
+function closeIosDialog() {
+  iosDialog?.setAttribute("hidden", "");
+  document.body.classList.remove("ios-dl-dialog-open");
+}
+
+function openIosDialog() {
+  if (!iosDialog) return;
+  iosDialog.removeAttribute("hidden");
+  document.body.classList.add("ios-dl-dialog-open");
+  iosDialog.querySelector<HTMLButtonElement>("[data-ios-dialog-confirm]")?.focus();
+}
+
+if (iosBtn) {
+  if (iosUrl) {
+    iosBtn.removeAttribute("aria-disabled");
+    iosBtn.classList.remove("btn--disabled");
+    iosBtn.textContent = "前往 TestFlight";
+    iosBtn.addEventListener("click", openIosDialog);
+  } else {
+    iosBtn.setAttribute("aria-disabled", "true");
+    iosBtn.classList.add("btn--disabled");
+    iosBtn.textContent = "iOS · 即将开放";
+    iosBtn.addEventListener("click", (e) => e.preventDefault());
+  }
+}
+
+if (iosDialog && iosUrl) {
+  iosDialog.querySelectorAll<HTMLElement>("[data-ios-dialog-close]").forEach((el) => {
+    el.addEventListener("click", closeIosDialog);
+  });
+  iosDialog
+    .querySelector<HTMLButtonElement>("[data-ios-dialog-confirm]")
+    ?.addEventListener("click", () => {
+      closeIosDialog();
+      window.open(iosUrl, "_blank", "noopener,noreferrer");
+    });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !iosDialog.hasAttribute("hidden")) closeIosDialog();
+  });
+}
+
 const teamTitle = document.querySelector<HTMLElement>("[data-team-title]");
 const teamBody = document.querySelector<HTMLElement>("[data-team-body]");
 if (teamTitle) teamTitle.textContent = siteConfig.team.title;

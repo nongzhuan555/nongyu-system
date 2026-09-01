@@ -27,7 +27,7 @@ export const siteConfig = {
   lead: "无广告课表、教务与二课聚合、农屿 AI，你想要的，农屿都能做到",
   /** 空字符串 = 未就绪；同源静态 APK 见 public/downloads/ */
   downloadAndroidUrl: "/downloads/nongyu-android.apk",
-  downloadIosUrl: "",
+  downloadIosUrl: "https://testflight.apple.com/join/2ujaeZYy",
   contact: {
     wechatName: "农屿校园助手",
     qqGroup: "327303003",

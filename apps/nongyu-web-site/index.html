@@ -79,7 +79,9 @@
             <header class="section__head reveal" data-reveal>
               <p class="section__eyebrow">Download</p>
               <h2 class="section__title">获取农屿</h2>
-              <p class="section__desc">Android 可直接下载 APK 侧载安装；iOS 渠道筹备中。</p>
+              <p class="section__desc">
+                Android 可直接下载 APK 侧载安装；iOS 通过 TestFlight 参与测试。
+              </p>
             </header>
             <div class="panel-grid reveal" data-reveal>
               <article class="panel">
@@ -96,11 +98,16 @@
               </article>
               <article class="panel">
                 <h3 class="panel__title">iOS</h3>
-                <p class="panel__meta">正式分发渠道尚未开放，敬请期待。</p>
+                <p class="panel__meta">通过 Apple TestFlight 安装测试版（暂未上架 App Store）。</p>
                 <div class="panel__actions">
-                  <span class="btn btn--ghost btn--disabled" aria-disabled="true"
-                    >iOS · 即将开放</span
+                  <button
+                    type="button"
+                    class="btn btn--primary btn--disabled"
+                    data-ios-download
+                    aria-disabled="true"
                   >
+                    iOS · 即将开放
+                  </button>
                 </div>
               </article>
             </div>
@@ -167,6 +174,33 @@
     </div>
 
     <div class="toast" data-toast role="status" aria-live="polite"></div>
+
+    <div class="ios-dl-dialog" data-ios-dialog hidden>
+      <div
+        class="ios-dl-dialog__backdrop"
+        data-ios-dialog-close
+        tabindex="-1"
+        aria-hidden="true"
+      ></div>
+      <div
+        class="ios-dl-dialog__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ios-dl-title"
+        aria-describedby="ios-dl-desc"
+      >
+        <h3 class="ios-dl-dialog__title" id="ios-dl-title">前往 TestFlight</h3>
+        <p class="ios-dl-dialog__desc" id="ios-dl-desc">
+          即将跳转苹果测试分发地址。农屿暂未上架 App Store。若链接打开后没有安装渠道，说明 App
+          正在审核，请耐心等待。
+        </p>
+        <div class="ios-dl-dialog__actions">
+          <button type="button" class="btn btn--ghost" data-ios-dialog-close>取消</button>
+          <button type="button" class="btn btn--primary" data-ios-dialog-confirm>继续跳转</button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

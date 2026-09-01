@@ -815,6 +815,60 @@
   gap: 0.6rem;
 }
 
+.ios-dl-dialog[hidden] {
+  display: none;
+}
+
+.ios-dl-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.ios-dl-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 20, 16, 0.42);
+  backdrop-filter: blur(4px);
+}
+
+.ios-dl-dialog__panel {
+  position: relative;
+  width: min(100%, 26rem);
+  padding: 1.5rem 1.55rem 1.35rem;
+  border-radius: 22px;
+  background: var(--ny-surface);
+  border: 1px solid color-mix(in srgb, var(--ny-outline) 90%, transparent);
+  box-shadow: 0 24px 64px rgba(15, 26, 20, 0.14);
+}
+
+.ios-dl-dialog__title {
+  margin: 0 0 0.65rem;
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.ios-dl-dialog__desc {
+  margin: 0 0 1.25rem;
+  color: var(--ny-text-2);
+  font-size: 0.94rem;
+  line-height: 1.65;
+}
+
+.ios-dl-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+body.ios-dl-dialog-open {
+  overflow: hidden;
+}
+
 .contact-panel {
   max-width: 36rem;
 }
