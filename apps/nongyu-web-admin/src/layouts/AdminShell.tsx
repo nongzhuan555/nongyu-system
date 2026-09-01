@@ -15,7 +15,7 @@ import {
 } from "@ant-design/icons";
 import { Dropdown, Menu, Tooltip } from "antd";
 import type { MenuProps } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AssistantPanel } from "../assistant/AssistantPanel";
 import { ChangePasswordModal } from "../components/ChangePasswordModal";
@@ -117,6 +117,18 @@ export function AdminShell() {
   const sidebarWidth = sidebarCollapsed
     ? SIDEBAR_WIDTH_COLLAPSED
     : clampSidebarWidth(layout.sidebarWidth);
+
+  /** 窄屏打开侧栏/助手时锁住背后滚动，避免手势冲突 */
+  useEffect(() => {
+    if (isLg) return;
+    const shouldLock = isDrawerOpen || assistantOpen;
+    if (!shouldLock) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isLg, isDrawerOpen, assistantOpen]);
 
   function persistLayout(next: ShellLayoutPrefs) {
     setLayout(next);

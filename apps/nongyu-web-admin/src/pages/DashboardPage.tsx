@@ -224,7 +224,7 @@ export function DashboardPage() {
       bare
       className="max-w-[1600px]"
       title="数据大屏"
-      description="查看运行状态与用户行为。桌面端可拖动画布卡片；手机端仅浏览，布局编辑请到宽屏。"
+      description="查看运行状态与用户行为。宽屏可拖动画布卡片；窄屏仅纵向浏览。"
       actions={
         <>
           <Button onClick={handleRefresh}>刷新</Button>

@@ -46,7 +46,8 @@ export const adminUserGrowthTool = tool({
 
 export const adminUserDistributionTool = tool({
   name: "admin_user_distribution",
-  description: "用户画像分布：性别、校区、学院、年级、设备品牌。问比例/构成时调用。",
+  description:
+    "用户画像分布：性别、学院、年级、设备品牌（campus 维度可用但不作默认引导）。问比例/构成时调用。",
   inputSchema: z.object({
     dim: z.enum(["gender", "campus", "college", "grade", "deviceBrand"]).optional(),
   }),

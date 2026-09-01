@@ -79,7 +79,7 @@
 
 - 只读问数；禁止编造数字；能调工具必须调工具；禁止写操作。
 - 用户列表/学号/姓名 → `admin_users_list`；档案 → `admin_user_detail`。
-- 总用户/在线/今日新增 → `admin_dashboard_overview`；增长趋势 → `admin_user_growth`；性别学院校区年级 → `admin_user_distribution`；App 设置分布 → `admin_settings_distribution`。
+- 总用户/在线/今日新增 → `admin_dashboard_overview`；增长趋势 → `admin_user_growth`；性别学院年级 → `admin_user_distribution`（`campus` 维度能力保留但 **暂不引导/暂不在大屏展示**）；App 设置分布 → `admin_settings_distribution`。
 - 今日日活/崩溃/打开/浏览 → `admin_track_overview`；上述指标趋势 → `admin_track_trend`；页面进入/停留/按钮/性能分布 → `admin_track_dims`；崩溃明细 → `admin_track_crashes`。
 - **禁止**自己写 SQL 或调用已删除的 SQL 执行工具。
 - **仅当**上述专用工具无法回答 Track 库内非常规分析时，调用 `admin_sql_agent`，把用户问数需求作为任务描述传入。

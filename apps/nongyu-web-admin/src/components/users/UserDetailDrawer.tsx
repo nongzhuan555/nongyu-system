@@ -2,7 +2,7 @@ import { Button, Descriptions, Drawer, Modal, Space, Spin, Tag, Tooltip, message
 import { useEffect, useState } from "react";
 import { AdminApiError, fetchAdminUser, patchAdminUser } from "../../lib/adminApi";
 import { displayText, formatAdminDateTime, formatBool, formatGender } from "../../lib/format";
-import { useDrawerWidth } from "../../lib/responsive";
+import { useDrawerWidth, useIsMd } from "../../lib/responsive";
 import type { AdminUserDetail } from "../../types/users";
 import { SetAdminPasswordModal } from "./SetAdminPasswordModal";
 
@@ -34,6 +34,8 @@ export function UserDetailDrawer({
   onChanged,
 }: UserDetailDrawerProps) {
   const drawerWidth = useDrawerWidth(480);
+  const isMd = useIsMd();
+  const confirmWidth = isMd ? 416 : "calc(100vw - 32px)";
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +100,7 @@ export function UserDetailDrawer({
       content: `确定将 ${detail.name}（${detail.studentNo}）设为管理员？`,
       okText: "确定",
       cancelText: "取消",
+      width: confirmWidth,
       onOk: async () => {
         const ok = await applyPatch({ role: 1 }, "已设为管理员");
         if (ok) setPasswordOpen(true);
@@ -113,6 +116,7 @@ export function UserDetailDrawer({
       okText: "确定",
       okButtonProps: { danger: true },
       cancelText: "取消",
+      width: confirmWidth,
       onOk: async () => {
         await applyPatch({ role: 0 }, "已取消管理员");
       },
@@ -127,6 +131,7 @@ export function UserDetailDrawer({
       okText: "确定",
       okButtonProps: { danger: true },
       cancelText: "取消",
+      width: confirmWidth,
       onOk: async () => {
         await applyPatch({ status: 0 }, "已禁用");
       },
@@ -201,7 +206,6 @@ export function UserDetailDrawer({
               <Descriptions.Item label="年级">{displayText(detail.grade)}</Descriptions.Item>
               <Descriptions.Item label="性别">{formatGender(detail.gender)}</Descriptions.Item>
               <Descriptions.Item label="家乡">{displayText(detail.hometown)}</Descriptions.Item>
-              <Descriptions.Item label="校区">{displayText(detail.campus)}</Descriptions.Item>
               <Descriptions.Item label="QQ">{displayText(detail.qq)}</Descriptions.Item>
             </Descriptions>
 

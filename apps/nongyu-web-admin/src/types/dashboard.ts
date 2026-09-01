@@ -18,6 +18,7 @@ export type UserGrowth = {
 
 export type UserDistribution = {
   gender: DistKeyCount[];
+  /** 后端仍返回；管理端大屏暂不展示（见 Spec 隐藏校区与移动端布局优化） */
   campus: DistKeyCount[];
   college: DistKeyCount[];
   grade: DistKeyCount[];

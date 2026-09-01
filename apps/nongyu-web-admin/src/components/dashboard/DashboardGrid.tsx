@@ -87,7 +87,8 @@ export function DashboardGrid({
   onCrashPageChange: (page: number) => void;
 }) {
   const screens = Grid.useBreakpoint();
-  const canEditLayout = screens.md ?? false;
+  /** ≥ lg(992) 才允许拖拽/缩放；窄屏仅浏览 */
+  const canEditLayout = screens.lg ?? false;
   /** 忽略挂载/断点切换时 RGL 自动 compact 触发的 onLayoutChange，避免覆盖 localStorage 布局 */
   const layoutTouchedRef = useRef(false);
   /** RGL 先 onDragStop/onResizeStop 再 onLayoutChange；持久化必须等 layout 变更后再写 */
@@ -139,6 +140,7 @@ export function DashboardGrid({
         coreError,
         trackError,
         growthRange: prefs.growthRange,
+        layoutEditable: canEditLayout,
         onGrowthRangeChange,
         onCrashPageChange,
       })}
@@ -154,6 +156,7 @@ function renderWidgets(args: {
   coreError: string | null;
   trackError: string | null;
   growthRange: GrowthRange;
+  layoutEditable: boolean;
   onGrowthRangeChange: (range: GrowthRange) => void;
   onCrashPageChange: (page: number) => void;
 }) {
@@ -165,7 +168,6 @@ function renderWidgets(args: {
     "kpi-web-pv",
     "chart-user-growth",
     "chart-gender",
-    "chart-campus",
     "chart-college",
     "chart-grade",
     "chart-device",
@@ -190,11 +192,12 @@ function widgetBody(
     coreError: string | null;
     trackError: string | null;
     growthRange: GrowthRange;
+    layoutEditable: boolean;
     onGrowthRangeChange: (range: GrowthRange) => void;
     onCrashPageChange: (page: number) => void;
   },
 ) {
-  const { data } = args;
+  const { data, layoutEditable } = args;
   if (id === "kpi-total-users") {
     return (
       <KpiCard
@@ -203,6 +206,7 @@ function widgetBody(
         hint={data.overview ? `其中管理员 ${data.overview.totalAdmins}` : "含管理员子集"}
         loading={args.coreLoading}
         error={args.coreError}
+        layoutEditable={layoutEditable}
       />
     );
   }
@@ -214,6 +218,7 @@ function widgetBody(
         hint="当日至少一次打开 App"
         loading={args.trackLoading}
         error={args.trackError}
+        layoutEditable={layoutEditable}
       />
     );
   }
@@ -225,6 +230,7 @@ function widgetBody(
         hint="近 10 分钟有心跳"
         loading={args.coreLoading}
         error={args.coreError}
+        layoutEditable={layoutEditable}
       />
     );
   }
@@ -236,6 +242,7 @@ function widgetBody(
         hint="今日完成注册的用户"
         loading={args.coreLoading}
         error={args.coreError}
+        layoutEditable={layoutEditable}
       />
     );
   }
@@ -247,6 +254,7 @@ function widgetBody(
         hint="每次打开/刷新官网计 1 次（PV），不含 App 页面浏览"
         loading={args.trackLoading}
         error={args.trackError}
+        layoutEditable={layoutEditable}
       />
     );
   }
@@ -258,6 +266,7 @@ function widgetBody(
         loading={args.coreLoading}
         error={args.coreError}
         empty={!option}
+        layoutEditable={layoutEditable}
         extra={
           <Select
             size="small"
@@ -275,15 +284,13 @@ function widgetBody(
   if (id === "chart-gender") {
     const option = data.distribution ? pieOption(data.distribution.gender) : null;
     return (
-      <ChartCard title="性别分布" loading={args.coreLoading} error={args.coreError} empty={!option}>
-        {option ? <EchartsBlock option={option} /> : null}
-      </ChartCard>
-    );
-  }
-  if (id === "chart-campus") {
-    const option = data.distribution ? pieOption(data.distribution.campus) : null;
-    return (
-      <ChartCard title="校区分布" loading={args.coreLoading} error={args.coreError} empty={!option}>
+      <ChartCard
+        title="性别分布"
+        loading={args.coreLoading}
+        error={args.coreError}
+        empty={!option}
+        layoutEditable={layoutEditable}
+      >
         {option ? <EchartsBlock option={option} /> : null}
       </ChartCard>
     );
@@ -291,7 +298,13 @@ function widgetBody(
   if (id === "chart-college") {
     const option = data.distribution ? barOption(data.distribution.college, true) : null;
     return (
-      <ChartCard title="学院分布" loading={args.coreLoading} error={args.coreError} empty={!option}>
+      <ChartCard
+        title="学院分布"
+        loading={args.coreLoading}
+        error={args.coreError}
+        empty={!option}
+        layoutEditable={layoutEditable}
+      >
         {option ? <EchartsBlock option={option} /> : null}
       </ChartCard>
     );
@@ -299,7 +312,13 @@ function widgetBody(
   if (id === "chart-grade") {
     const option = data.distribution ? barOption(data.distribution.grade) : null;
     return (
-      <ChartCard title="年级分布" loading={args.coreLoading} error={args.coreError} empty={!option}>
+      <ChartCard
+        title="年级分布"
+        loading={args.coreLoading}
+        error={args.coreError}
+        empty={!option}
+        layoutEditable={layoutEditable}
+      >
         {option ? <EchartsBlock option={option} /> : null}
       </ChartCard>
     );
@@ -312,6 +331,7 @@ function widgetBody(
         loading={args.coreLoading}
         error={args.coreError}
         empty={!option}
+        layoutEditable={layoutEditable}
       >
         {option ? <EchartsBlock option={option} /> : null}
       </ChartCard>
@@ -325,6 +345,7 @@ function widgetBody(
         loading={args.trackLoading}
         error={args.trackError}
         empty={!option}
+        layoutEditable={layoutEditable}
       >
         {option ? <EchartsBlock option={option} /> : null}
       </ChartCard>
@@ -338,6 +359,7 @@ function widgetBody(
         loading={args.trackLoading}
         error={args.trackError}
         empty={!option}
+        layoutEditable={layoutEditable}
       >
         {option ? <EchartsBlock option={option} /> : null}
       </ChartCard>
@@ -351,6 +373,7 @@ function widgetBody(
         loading={args.trackLoading}
         error={args.trackError}
         empty={!option}
+        layoutEditable={layoutEditable}
       >
         {option ? <EchartsBlock option={option} /> : null}
       </ChartCard>
@@ -364,6 +387,7 @@ function widgetBody(
         loading={args.coreLoading}
         error={args.coreError}
         empty={empty}
+        layoutEditable={layoutEditable}
       >
         {data.settings ? <SettingsPies data={data.settings} /> : null}
       </ChartCard>
@@ -377,6 +401,7 @@ function widgetBody(
         loading={args.trackLoading}
         error={args.trackError}
         empty={!option}
+        layoutEditable={layoutEditable}
       >
         {option ? <EchartsBlock option={option} /> : null}
       </ChartCard>
@@ -390,6 +415,7 @@ function widgetBody(
         loading={args.trackLoading}
         error={args.trackError}
         empty={!option}
+        layoutEditable={layoutEditable}
       >
         {option ? (
           <div className="flex h-full min-h-0 flex-col">
@@ -408,6 +434,7 @@ function widgetBody(
       loading={args.crashLoading && !data.crashes}
       error={args.trackError}
       empty={false}
+      layoutEditable={layoutEditable}
     >
       <CrashesTable
         data={data.crashes}

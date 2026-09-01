@@ -238,7 +238,7 @@ export function AssistantPanel({ open, onClose }: { open: boolean; onClose: () =
               <AgentSettingsForm onSaved={refreshAgent} />
             </div>
           ) : tab === "sessions" ? (
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <SessionList
                 sessions={sessions}
                 activeId={sessionId}
@@ -265,7 +265,7 @@ export function AssistantPanel({ open, onClose }: { open: boolean; onClose: () =
               />
             </div>
           ) : tab === "settings" ? (
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <AgentSettingsForm
                 onSaved={() => {
                   invalidateAdminAgent();
