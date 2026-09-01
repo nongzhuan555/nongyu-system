@@ -67,6 +67,8 @@ export type AdminUserListQuery = {
   keyword?: string;
   role?: UserRole;
   status?: UserStatus;
+  /** 仅传 1：当前在线 */
+  isOnline?: 1;
 };
 
 export type PatchAdminUserBody = {

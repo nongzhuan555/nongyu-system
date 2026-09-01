@@ -216,6 +216,8 @@ export async function listUsersAdmin(params: {
   keyword?: string;
   role?: number;
   status?: number;
+  /** 仅 `1`：当前在线（须与大屏口径一致，调用方先 clearStale） */
+  isOnline?: 1;
 }): Promise<{ rows: UserRow[]; total: number }> {
   const where: string[] = ["1=1"];
   const args: unknown[] = [];
@@ -230,6 +232,12 @@ export async function listUsersAdmin(params: {
   if (params.status !== undefined) {
     where.push("status = ?");
     args.push(params.status);
+  }
+  if (params.isOnline === 1) {
+    where.push(
+      "is_online = 1 AND last_active_at IS NOT NULL AND last_active_at >= (UTC_TIMESTAMP(3) - INTERVAL ? SECOND)",
+    );
+    args.push(ONLINE_FRESH_WINDOW_SEC);
   }
   const whereSql = where.join(" AND ");
   const pool = getPool();

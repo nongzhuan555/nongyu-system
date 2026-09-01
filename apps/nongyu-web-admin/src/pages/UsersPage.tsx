@@ -13,6 +13,7 @@ import type { AdminUserListItem, UserRole, UserStatus } from "../types/users";
 
 type RoleFilter = "all" | UserRole;
 type StatusFilter = "all" | UserStatus;
+type OnlineFilter = "all" | 1;
 
 function RoleTag({ role }: { role: UserRole }) {
   if (role === 2) return <Tag color="purple">超级管理员</Tag>;
@@ -33,6 +34,7 @@ export function UsersPage() {
   const [keyword, setKeyword] = useState("");
   const [role, setRole] = useState<RoleFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [online, setOnline] = useState<OnlineFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_USER_PAGE_SIZE);
 
@@ -56,6 +58,7 @@ export function UsersPage() {
         keyword: keyword.trim() || undefined,
         role: role === "all" ? undefined : role,
         status: status === "all" ? undefined : status,
+        isOnline: online === 1 ? 1 : undefined,
       });
       setList(data.list);
       setTotal(data.total);
@@ -80,7 +83,7 @@ export function UsersPage() {
 
   useEffect(() => {
     void loadList();
-  }, [page, pageSize, keyword, role, status]);
+  }, [page, pageSize, keyword, role, status, online]);
 
   useForegroundRefresh(() => void loadList(true), {
     intervalMs: FOREGROUND_REFRESH_INTERVAL_MS,
@@ -194,6 +197,18 @@ export function UsersPage() {
           { value: "all", label: "全部状态" },
           { value: 1, label: "正常" },
           { value: 0, label: "禁用" },
+        ]}
+      />
+      <Select<OnlineFilter>
+        className="w-full sm:w-36"
+        value={online}
+        onChange={(value) => {
+          setOnline(value);
+          setPage(1);
+        }}
+        options={[
+          { value: "all", label: "全部在线状态" },
+          { value: 1, label: "仅当前在线" },
         ]}
       />
     </div>

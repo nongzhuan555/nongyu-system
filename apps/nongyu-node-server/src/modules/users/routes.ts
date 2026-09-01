@@ -8,6 +8,7 @@ import { isAdminRole, isSuperAdminRole } from "../../lib/roles.js";
 import { toIsoUtc, toIsoUtcRequired } from "../../lib/time.js";
 import { boolFromDb, pageParams } from "../../lib/util.js";
 import {
+  clearStaleOnlineUsers,
   findUserById,
   listUsersAdmin,
   patchUserAdmin,
@@ -56,15 +57,23 @@ adminUsersRouter.get(
         keyword: z.string().optional(),
         role: z.coerce.number().optional(),
         status: z.coerce.number().optional(),
+        // 仅允许省略或 "1"；其它值校验失败 → 400
+        isOnline: z
+          .enum(["1"])
+          .optional()
+          .transform((v) => (v === undefined ? undefined : (1 as const))),
       })
       .parse(req.query);
     const { page, pageSize, offset } = pageParams(query.page, query.pageSize);
+    // 与大屏 overview 一致：先清超时在线，再查列表 / 筛在线
+    await clearStaleOnlineUsers();
     const { rows, total } = await listUsersAdmin({
       offset,
       pageSize,
       keyword: query.keyword,
       role: query.role,
       status: query.status,
+      isOnline: query.isOnline,
     });
     ok(res, {
       list: rows.map((u) => ({
