@@ -26,34 +26,20 @@ export function ContentPage() {
           {
             key: "announcement",
             label: "公告",
-            children: (
-              <PostListPanel
-                postType={contentTabToPostType("announcement")}
-                title="官方公告"
-                allowCreate
-              />
-            ),
+            children: <PostListPanel postType={contentTabToPostType("announcement")} allowCreate />,
           },
           {
             key: "feedback",
             label: "反馈",
             children: (
-              <PostListPanel
-                postType={contentTabToPostType("feedback")}
-                title="用户反馈"
-                allowCreate={false}
-              />
+              <PostListPanel postType={contentTabToPostType("feedback")} allowCreate={false} />
             ),
           },
           {
             key: "suggestion",
             label: "建议",
             children: (
-              <PostListPanel
-                postType={contentTabToPostType("suggestion")}
-                title="用户建议"
-                allowCreate={false}
-              />
+              <PostListPanel postType={contentTabToPostType("suggestion")} allowCreate={false} />
             ),
           },
         ]}

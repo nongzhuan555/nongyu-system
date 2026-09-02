@@ -48,16 +48,9 @@ const MENU_ITEMS: MenuProps["items"] = [
   { key: ROUTES.relatedSites, icon: <GlobalOutlined />, label: "相关网站" },
 ];
 
-const PAGE_TITLES: Record<string, string> = {
-  [ROUTES.workspace]: "工作台",
-  [ROUTES.dashboard]: "数据大屏",
-  [ROUTES.users]: "用户管理",
-  [ROUTES.content]: "内容管理",
-  [ROUTES.homeGreetings]: "首页问候",
-  [ROUTES.agentChatSuggestions]: "AI 建议",
-  [ROUTES.llmKeys]: "LLM Key 池",
-  [ROUTES.relatedSites]: "相关网站",
-};
+const MENU_KEYS = new Set(
+  MENU_ITEMS.flatMap((item) => (item && "key" in item && item.key ? [String(item.key)] : [])),
+);
 
 function SideMenu({
   selectedKey,
@@ -73,7 +66,7 @@ function SideMenu({
       className="admin-side-menu border-none bg-transparent"
       mode="inline"
       inlineCollapsed={collapsed}
-      selectedKeys={PAGE_TITLES[selectedKey] ? [selectedKey] : []}
+      selectedKeys={MENU_KEYS.has(selectedKey) ? [selectedKey] : []}
       items={MENU_ITEMS}
       onClick={(info) => onSelect(info.key)}
     />
@@ -111,7 +104,6 @@ export function AdminShell() {
   const userName = user?.name ?? "管理员";
   const isBootstrap = user?.bootstrap === true;
   const logout = useAuthStore((state) => state.logout);
-  const pageTitle = PAGE_TITLES[location.pathname] ?? "农屿管理台";
 
   const sidebarCollapsed = layout.sidebarCollapsed;
   const sidebarWidth = sidebarCollapsed
@@ -246,7 +238,7 @@ export function AdminShell() {
               </button>
             )}
             <div className="min-w-0">
-              <p className="truncate text-[15px] font-semibold leading-5 text-ink">{pageTitle}</p>
+              <p className="truncate text-[15px] font-semibold leading-5 text-ink">农屿管理台</p>
             </div>
           </div>
 

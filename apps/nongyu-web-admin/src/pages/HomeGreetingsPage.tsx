@@ -217,6 +217,11 @@ export function HomeGreetingsPage() {
       title="首页问候"
       description="配置 App 首页打招呼第二句；全局最多一条启用，启用新的会自动关掉旧的。"
       actions={
+        <Button type="primary" onClick={openCreate}>
+          新建问候语
+        </Button>
+      }
+      toolbar={
         <>
           <Select
             value={enabledFilter}
@@ -232,9 +237,6 @@ export function HomeGreetingsPage() {
             }}
           />
           <Button onClick={() => void loadList()}>刷新</Button>
-          <Button type="primary" onClick={openCreate}>
-            新建问候语
-          </Button>
         </>
       }
     >

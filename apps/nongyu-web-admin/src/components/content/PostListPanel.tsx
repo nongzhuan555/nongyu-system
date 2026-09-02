@@ -11,11 +11,10 @@ import { PostDetailDrawer } from "./PostDetailDrawer";
 
 type PostListPanelProps = {
   postType: PostType;
-  title: string;
   allowCreate: boolean;
 };
 
-export function PostListPanel({ postType, title, allowCreate }: PostListPanelProps) {
+export function PostListPanel({ postType, allowCreate }: PostListPanelProps) {
   const [keywordInput, setKeywordInput] = useState("");
   const [keyword, setKeyword] = useState("");
   const [subtypeInput, setSubtypeInput] = useState("");
@@ -161,10 +160,7 @@ export function PostListPanel({ postType, title, allowCreate }: PostListPanelPro
 
   return (
     <div>
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="text-[15px] font-semibold text-ink">{title}</h2>
-        </div>
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
         <Space
           wrap
           className="w-full lg:w-auto [&_.ant-input-affix-wrapper]:w-full [&_.ant-input-affix-wrapper]:sm:w-48 [&_.ant-select]:w-full [&_.ant-select]:sm:w-auto"

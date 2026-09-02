@@ -26,7 +26,7 @@ import {
   patchAdminLlmKey,
 } from "../lib/adminApi";
 import { DEFAULT_LLM_KEY_PAGE_SIZE, FOREGROUND_REFRESH_INTERVAL_MS } from "../lib/constants";
-import { displayText, formatAdminDateTime } from "../lib/format";
+import { formatAdminDateTime } from "../lib/format";
 import { useModalWidth } from "../lib/responsive";
 import type { AdminLlmKeyItem, LlmKeyStatus } from "../types/llmKeys";
 
@@ -56,6 +56,7 @@ export function LlmKeysPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<AdminLlmKeyItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [tab, setTab] = useState<"keys" | "fails">("keys");
   const [form] = Form.useForm<FormValues>();
 
   const loadList = useEffectEvent(async (silent = false) => {
@@ -281,35 +282,44 @@ export function LlmKeysPage() {
     },
   };
 
+  const isKeysTab = tab === "keys";
+
   return (
-    <PageFrame title="LLM Key 池" description="管理代理密钥与失败记录">
+    <PageFrame
+      title="LLM Key 池"
+      description="管理代理密钥与失败记录"
+      actions={
+        isKeysTab ? (
+          <Button type="primary" onClick={openCreate}>
+            添加密钥
+          </Button>
+        ) : null
+      }
+    >
       <Tabs
+        activeKey={tab}
+        onChange={(key) => setTab(key === "fails" ? "fails" : "keys")}
         items={[
           {
             key: "keys",
             label: "密钥管理",
             children: (
               <div className="flex flex-col gap-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <Space wrap>
-                    <Select
-                      value={status}
-                      className="w-full sm:w-[140px]"
-                      options={[
-                        { value: "all", label: "全部状态" },
-                        { value: 1, label: "启用" },
-                        { value: 0, label: "禁用" },
-                      ]}
-                      onChange={(value: StatusFilter) => {
-                        setPage(1);
-                        setStatus(value);
-                      }}
-                    />
-                    <Button onClick={() => void loadList()}>刷新</Button>
-                  </Space>
-                  <Button type="primary" onClick={openCreate}>
-                    添加密钥
-                  </Button>
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                  <Select
+                    value={status}
+                    className="w-full sm:w-[140px]"
+                    options={[
+                      { value: "all", label: "全部状态" },
+                      { value: 1, label: "启用" },
+                      { value: 0, label: "禁用" },
+                    ]}
+                    onChange={(value: StatusFilter) => {
+                      setPage(1);
+                      setStatus(value);
+                    }}
+                  />
+                  <Button onClick={() => void loadList()}>刷新</Button>
                 </div>
 
                 {error ? (

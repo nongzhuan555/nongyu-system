@@ -56,7 +56,7 @@ export function TrackSampleRateBar({ visible }: TrackSampleRateBarProps) {
   }
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-surface px-4 py-3 text-sm text-muted">
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-line-soft bg-surface px-4 py-3 text-sm text-muted">
       <span className="text-ink">埋点采样率</span>
       <InputNumber
         min={0}

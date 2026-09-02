@@ -233,6 +233,11 @@ export function AgentChatSuggestionsPage() {
       title="AI 建议"
       description="配置 App AI 聊天空态快捷建议；可多条同时启用，App 按排序展示最多 6 条。"
       actions={
+        <Button type="primary" onClick={openCreate}>
+          新建建议
+        </Button>
+      }
+      toolbar={
         <>
           <Select
             value={enabledFilter}
@@ -248,9 +253,6 @@ export function AgentChatSuggestionsPage() {
             }}
           />
           <Button onClick={() => void loadList()}>刷新</Button>
-          <Button type="primary" onClick={openCreate}>
-            新建建议
-          </Button>
         </>
       }
     >

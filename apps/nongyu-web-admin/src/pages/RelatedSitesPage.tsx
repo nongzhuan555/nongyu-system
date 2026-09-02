@@ -29,6 +29,7 @@ export function RelatedSitesPage() {
     <PageFrame
       title="相关网站"
       description="云厂商、农屿官网、Pushy 与 GitHub 便捷入口。农屿官网以下方手机框实时预览；若嵌入被拦截，请用外链打开。"
+      bare
     >
       <div className="flex flex-col gap-8">
         <section>

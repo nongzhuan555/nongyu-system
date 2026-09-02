@@ -233,7 +233,7 @@ export function UsersPage() {
     <PageFrame
       title="用户管理"
       description="查看用户档案，调整角色与账号状态。「仅今日活跃」按最近活跃时间近似统计，不等同大屏日活。"
-      actions={filterBar}
+      toolbar={filterBar}
     >
       {error ? (
         <Alert

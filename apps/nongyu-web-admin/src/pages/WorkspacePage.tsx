@@ -1,6 +1,8 @@
 import {
+  ApiOutlined,
   BarChartOutlined,
   FileTextOutlined,
+  GlobalOutlined,
   MessageOutlined,
   RobotOutlined,
   TeamOutlined,
@@ -17,6 +19,7 @@ type ModuleCard = {
   icon: ReactNode;
 };
 
+/** 与侧栏除「工作台」外的菜单顺序一致 */
 const MODULES: ModuleCard[] = [
   {
     to: ROUTES.dashboard,
@@ -48,6 +51,18 @@ const MODULES: ModuleCard[] = [
     description: "空态快捷建议配置",
     icon: <RobotOutlined />,
   },
+  {
+    to: ROUTES.llmKeys,
+    title: "LLM Key 池",
+    description: "代理密钥与失败记录",
+    icon: <ApiOutlined />,
+  },
+  {
+    to: ROUTES.relatedSites,
+    title: "相关网站",
+    description: "云厂商、官网与发版入口",
+    icon: <GlobalOutlined />,
+  },
 ];
 
 export function WorkspacePage() {
@@ -61,9 +76,7 @@ export function WorkspacePage() {
           className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-brand-muted/70"
           aria-hidden
         />
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand">
-          Workspace
-        </p>
+        <p className="text-[11px] font-semibold tracking-[0.14em] text-brand">工作台</p>
         <h1 className="mt-2 text-[26px] font-semibold leading-8 tracking-tight text-ink md:text-[28px]">
           你好，{name}
         </h1>

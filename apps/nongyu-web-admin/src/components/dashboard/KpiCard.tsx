@@ -29,7 +29,7 @@ export function KpiCard({
         {layoutEditable ? (
           <HolderOutlined className="shrink-0 text-sm text-muted" aria-hidden />
         ) : null}
-        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">{title}</p>
+        <p className="text-[13px] font-semibold text-muted">{title}</p>
       </div>
       <div className="mt-2 flex flex-1 flex-col justify-center">
         {error ? (
