@@ -14,6 +14,7 @@ import type { AdminUserListItem, UserRole, UserStatus } from "../types/users";
 type RoleFilter = "all" | UserRole;
 type StatusFilter = "all" | UserStatus;
 type OnlineFilter = "all" | 1;
+type ActiveTodayFilter = "all" | 1;
 
 function RoleTag({ role }: { role: UserRole }) {
   if (role === 2) return <Tag color="purple">超级管理员</Tag>;
@@ -35,6 +36,7 @@ export function UsersPage() {
   const [role, setRole] = useState<RoleFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [online, setOnline] = useState<OnlineFilter>("all");
+  const [activeToday, setActiveToday] = useState<ActiveTodayFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_USER_PAGE_SIZE);
 
@@ -59,6 +61,7 @@ export function UsersPage() {
         role: role === "all" ? undefined : role,
         status: status === "all" ? undefined : status,
         isOnline: online === 1 ? 1 : undefined,
+        activeToday: activeToday === 1 ? 1 : undefined,
       });
       setList(data.list);
       setTotal(data.total);
@@ -83,7 +86,7 @@ export function UsersPage() {
 
   useEffect(() => {
     void loadList();
-  }, [page, pageSize, keyword, role, status, online]);
+  }, [page, pageSize, keyword, role, status, online, activeToday]);
 
   useForegroundRefresh(() => void loadList(true), {
     intervalMs: FOREGROUND_REFRESH_INTERVAL_MS,
@@ -211,11 +214,27 @@ export function UsersPage() {
           { value: 1, label: "仅当前在线" },
         ]}
       />
+      <Select<ActiveTodayFilter>
+        className="w-full sm:w-36"
+        value={activeToday}
+        onChange={(value) => {
+          setActiveToday(value);
+          setPage(1);
+        }}
+        options={[
+          { value: "all", label: "全部活跃状态" },
+          { value: 1, label: "仅今日活跃" },
+        ]}
+      />
     </div>
   );
 
   return (
-    <PageFrame title="用户管理" description="查看用户档案，调整角色与账号状态" actions={filterBar}>
+    <PageFrame
+      title="用户管理"
+      description="查看用户档案，调整角色与账号状态。「仅今日活跃」按最近活跃时间近似统计，不等同大屏日活。"
+      actions={filterBar}
+    >
       {error ? (
         <Alert
           className="mb-4"

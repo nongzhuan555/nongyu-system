@@ -5,7 +5,8 @@ import { requireProvisionedAdminAuth, requireAppAuth } from "../../middlewares/a
 import { ok } from "../../lib/response.js";
 import { AppError, ErrorCodes } from "../../lib/errors.js";
 import { isAdminRole, isSuperAdminRole } from "../../lib/roles.js";
-import { toIsoUtc, toIsoUtcRequired } from "../../lib/time.js";
+import { getEnv } from "../../config/env.js";
+import { businessDayUtcRange, toIsoUtc, toIsoUtcRequired } from "../../lib/time.js";
 import { boolFromDb, pageParams } from "../../lib/util.js";
 import {
   clearStaleOnlineUsers,
@@ -62,11 +63,16 @@ adminUsersRouter.get(
           .enum(["1"])
           .optional()
           .transform((v) => (v === undefined ? undefined : (1 as const))),
+        activeToday: z
+          .enum(["1"])
+          .optional()
+          .transform((v) => (v === undefined ? undefined : (1 as const))),
       })
       .parse(req.query);
     const { page, pageSize, offset } = pageParams(query.page, query.pageSize);
     // 与大屏 overview 一致：先清超时在线，再查列表 / 筛在线
     await clearStaleOnlineUsers();
+    const { start: activeDayStart, end: activeDayEnd } = businessDayUtcRange(getEnv().BUSINESS_TZ);
     const { rows, total } = await listUsersAdmin({
       offset,
       pageSize,
@@ -74,6 +80,9 @@ adminUsersRouter.get(
       role: query.role,
       status: query.status,
       isOnline: query.isOnline,
+      activeToday: query.activeToday,
+      activeDayStart: query.activeToday === 1 ? activeDayStart : undefined,
+      activeDayEnd: query.activeToday === 1 ? activeDayEnd : undefined,
     });
     ok(res, {
       list: rows.map((u) => ({

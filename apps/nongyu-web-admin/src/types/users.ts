@@ -69,6 +69,8 @@ export type AdminUserListQuery = {
   status?: UserStatus;
   /** 仅传 1：当前在线 */
   isOnline?: 1;
+  /** 仅传 1：今日活跃（last_active_at 落在业务日） */
+  activeToday?: 1;
 };
 
 export type PatchAdminUserBody = {

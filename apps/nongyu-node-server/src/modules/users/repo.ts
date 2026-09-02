@@ -218,6 +218,10 @@ export async function listUsersAdmin(params: {
   status?: number;
   /** 仅 `1`：当前在线（须与大屏口径一致，调用方先 clearStale） */
   isOnline?: 1;
+  /** 仅 `1`：今日活跃（last_active_at 落在 BUSINESS_TZ 业务日） */
+  activeToday?: 1;
+  activeDayStart?: Date;
+  activeDayEnd?: Date;
 }): Promise<{ rows: UserRow[]; total: number }> {
   const where: string[] = ["1=1"];
   const args: unknown[] = [];
@@ -238,6 +242,13 @@ export async function listUsersAdmin(params: {
       "is_online = 1 AND last_active_at IS NOT NULL AND last_active_at >= (UTC_TIMESTAMP(3) - INTERVAL ? SECOND)",
     );
     args.push(ONLINE_FRESH_WINDOW_SEC);
+  }
+  if (params.activeToday === 1) {
+    if (!params.activeDayStart || !params.activeDayEnd) {
+      throw new Error("activeToday 筛选缺少业务日边界");
+    }
+    where.push("last_active_at >= ? AND last_active_at < ?");
+    args.push(params.activeDayStart, params.activeDayEnd);
   }
   const whereSql = where.join(" AND ");
   const pool = getPool();
