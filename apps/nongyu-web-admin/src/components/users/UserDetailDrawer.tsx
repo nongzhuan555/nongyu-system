@@ -97,7 +97,7 @@ export function UserDetailDrawer({
   }
 
   function promote() {
-    if (!detail) return;
+    if (!detail || !canManageRole) return;
     Modal.confirm({
       title: "设为管理员",
       content: `确定将 ${detail.name}（${detail.studentNo}）设为管理员？`,
@@ -113,7 +113,7 @@ export function UserDetailDrawer({
   }
 
   function demote() {
-    if (!detail || isSelf) return;
+    if (!detail || isSelf || !canManageRole) return;
     Modal.confirm({
       title: "取消管理员",
       content: "取消管理员后将清空其管理员密码，确定继续？",
@@ -230,16 +230,39 @@ export function UserDetailDrawer({
             <div>
               <p className="mb-3 text-sm font-medium text-ink">操作</p>
               <Space wrap>
-                {canManageRole && detail.role !== 2 ? (
+                {detail.role !== 2 ? (
                   detail.role === 0 ? (
-                    <Button type="primary" loading={acting} onClick={promote}>
-                      设为管理员
-                    </Button>
+                    <Tooltip title={!canManageRole ? "仅超级管理员可操作" : undefined}>
+                      <span>
+                        <Button
+                          type="primary"
+                          loading={acting}
+                          disabled={!canManageRole}
+                          onClick={promote}
+                        >
+                          设为管理员
+                        </Button>
+                      </span>
+                    </Tooltip>
                   ) : (
-                    <Tooltip title={isSelf ? "不能对自己执行此操作" : undefined}>
-                      <Button danger disabled={isSelf || acting} onClick={demote}>
-                        取消管理员
-                      </Button>
+                    <Tooltip
+                      title={
+                        isSelf
+                          ? "不能对自己执行此操作"
+                          : !canManageRole
+                            ? "仅超级管理员可操作"
+                            : undefined
+                      }
+                    >
+                      <span>
+                        <Button
+                          danger
+                          disabled={isSelf || !canManageRole || acting}
+                          onClick={demote}
+                        >
+                          取消管理员
+                        </Button>
+                      </span>
                     </Tooltip>
                   )
                 ) : null}
