@@ -32,12 +32,13 @@
 
 ## 4. 详细需求
 
-1. **路由懒加载**：~~业务页 `React.lazy`~~（已回退：Rolldown 下易与入口形成循环依赖白屏；见 BugLog 2026-09-04）。登录后壳层仍静态装配；助手/图表等用其它手段减负。
-2. **助手按需加载**：~~`AssistantPanel` 动态 import~~（同上原因暂回退为静态；登出清理仍动态 import 避免拖入 agent）。
+1. **已登录整包懒加载**：登录页留在入口；`AuthedApp`（壳 + 全部业务页）`React.lazy` 一次加载。**禁止**对 AuthedApp 内页面再二级 `lazy`（易白屏）。
+2. **助手按需加载**：仅在 `AdminShell`（已属 AuthedApp）内对 `AssistantPanel` lazy；登出清理动态 import。
 3. **ECharts 按需**：`EchartsBlock` 使用 `echarts/core` + 所需 chart/component，禁止默认全量包。
-4. **Vite 分包**：~~强制 vendor groups~~（已回退，避免循环依赖）。保留合理 `chunkSizeWarningLimit`。
+4. **Vite 分包**：禁止强制 vendor `codeSplitting.groups`。保留合理 `chunkSizeWarningLimit`；用 `scripts/check-chunk-cycles.mjs` 检查。
 5. **SDK 子路径**：`jiaowuTools` / `secondTools` 从主入口移出；RN/App 改从子路径导入；管理端仅用核心 API。
-6. **字体**：降低 Google Fonts 对首屏的阻塞（延迟或本地化策略择一，以不破坏现有排版为准）。
+6. **字体**：降低 Google Fonts 对首屏的阻塞。
+7. **错误边界**：入口挂 `AppErrorBoundary`，避免异常只剩白屏。
 
 ## 5. 验收
 

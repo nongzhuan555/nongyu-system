@@ -1,18 +1,13 @@
-import { Navigate, Route, Routes } from "react-router-dom";
-import { AdminShell } from "../layouts/AdminShell";
+import { Suspense, lazy } from "react";
+import { Route, Routes } from "react-router-dom";
+import { RouteLoading } from "../layouts/RouteLoading";
 import { ROUTES } from "../lib/constants";
-import { ContentPage } from "../pages/ContentPage";
-import { DashboardPage } from "../pages/DashboardPage";
-import { AgentChatSuggestionsPage } from "../pages/AgentChatSuggestionsPage";
-import { HomeGreetingsPage } from "../pages/HomeGreetingsPage";
-import { LlmKeysPage } from "../pages/LlmKeysPage";
 import { LoginPage } from "../pages/LoginPage";
-import { NotFoundPage } from "../pages/NotFoundPage";
-import { UsersPage } from "../pages/UsersPage";
-import { RelatedSitesPage } from "../pages/RelatedSitesPage";
-import { WorkspacePage } from "../pages/WorkspacePage";
 import { GuestOnly } from "./GuestOnly";
 import { RequireAuth } from "./RequireAuth";
+
+/** 仅已登录后加载；勿再对内部页面二级拆包 */
+const AuthedApp = lazy(() => import("./AuthedApp").then((m) => ({ default: m.AuthedApp })));
 
 export function AppRouter() {
   return (
@@ -26,24 +21,15 @@ export function AppRouter() {
         }
       />
       <Route
+        path="/*"
         element={
           <RequireAuth>
-            <AdminShell />
+            <Suspense fallback={<RouteLoading />}>
+              <AuthedApp />
+            </Suspense>
           </RequireAuth>
         }
-      >
-        <Route path="/" element={<Navigate replace to={ROUTES.workspace} />} />
-        <Route path={ROUTES.workspace} element={<WorkspacePage />} />
-        <Route path={ROUTES.dashboard} element={<DashboardPage />} />
-        <Route path={ROUTES.users} element={<UsersPage />} />
-        <Route path={ROUTES.content} element={<ContentPage />} />
-        <Route path={ROUTES.homeGreetings} element={<HomeGreetingsPage />} />
-        <Route path={ROUTES.agentChatSuggestions} element={<AgentChatSuggestionsPage />} />
-        <Route path={ROUTES.llmKeys} element={<LlmKeysPage />} />
-        <Route path={ROUTES.relatedSites} element={<RelatedSitesPage />} />
-        <Route path="/versions" element={<Navigate replace to={ROUTES.relatedSites} />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
+      />
     </Routes>
   );
 }

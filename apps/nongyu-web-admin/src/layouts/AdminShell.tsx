@@ -13,11 +13,10 @@ import {
   RobotOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
-import { Dropdown, Menu, Tooltip } from "antd";
+import { Dropdown, Menu, Spin, Tooltip } from "antd";
 import type { MenuProps } from "antd";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { AssistantPanel } from "../assistant/AssistantPanel";
 import { ChangePasswordModal } from "../components/ChangePasswordModal";
 import { ResizeHandle } from "../components/ResizeHandle";
 import {
@@ -37,6 +36,10 @@ import {
 import { NongyuLogo } from "../components/brand/NongyuLogo";
 import { useAuthStore } from "../stores/authStore";
 
+/** 仅在已登录 AuthedApp 内懒加载，避免工作台首访就拉 agent-sdk */
+const AssistantPanel = lazy(() =>
+  import("../assistant/AssistantPanel").then((m) => ({ default: m.AssistantPanel })),
+);
 const MENU_ITEMS: MenuProps["items"] = [
   { key: ROUTES.workspace, icon: <AppstoreOutlined />, label: "工作台" },
   { key: ROUTES.dashboard, icon: <BarChartOutlined />, label: "数据大屏" },
@@ -97,6 +100,7 @@ export function AdminShell() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantEverOpened, setAssistantEverOpened] = useState(false);
   const [layout, setLayout] = useState<ShellLayoutPrefs>(() => readShellLayout());
   const location = useLocation();
   const navigate = useNavigate();
@@ -251,7 +255,13 @@ export function AdminShell() {
                   : "border-line-soft bg-surface hover:bg-elev"
               }`}
               aria-label={assistantOpen ? "关闭智慧助手" : "打开智慧助手"}
-              onClick={() => setAssistantOpen((prev) => !prev)}
+              onClick={() => {
+                setAssistantOpen((prev) => {
+                  const next = !prev;
+                  if (next) setAssistantEverOpened(true);
+                  return next;
+                });
+              }}
             >
               <RobotOutlined />
             </button>
@@ -285,7 +295,19 @@ export function AdminShell() {
       </div>
 
       <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
-      <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} />
+      {assistantEverOpened ? (
+        <Suspense
+          fallback={
+            assistantOpen ? (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/20 backdrop-blur-[1px]">
+                <Spin size="large" tip="加载智慧助手…" />
+              </div>
+            ) : null
+          }
+        >
+          <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

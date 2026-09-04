@@ -4,6 +4,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import "./index.css";
 import { antdTheme } from "./theme/antdTheme";
 
@@ -17,10 +18,12 @@ const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <ConfigProvider locale={zhCN} theme={antdTheme}>
-      <BrowserRouter basename={routerBasename === "/" ? undefined : routerBasename}>
-        <App />
-      </BrowserRouter>
-    </ConfigProvider>
+    <AppErrorBoundary>
+      <ConfigProvider locale={zhCN} theme={antdTheme}>
+        <BrowserRouter basename={routerBasename === "/" ? undefined : routerBasename}>
+          <App />
+        </BrowserRouter>
+      </ConfigProvider>
+    </AppErrorBoundary>
   </React.StrictMode>,
 );

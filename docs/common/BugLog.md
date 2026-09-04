@@ -1,5 +1,13 @@
 ---
 
+## 2026-09-04 · nongyu-web-admin · 白屏修复不彻底且首包仍过大
+
+- **现象**：回退懒加载后功能可用，但首屏仍约 2.7MB 单包，弱网长时间空白被感知为白屏。
+- **根因**：业务页全量静态进入口；真正安全的拆法应是「登录静态 + 已登录 AuthedApp 整包 lazy」，且禁止对 AuthedApp 内部再二级拆页面（易循环依赖）。强制 vendor groups 曾加剧白屏。
+- **修复**：`AuthedApp` 单一懒加载边界；助手在壳内再 lazy；保留 echarts 按需；入口增加 `AppErrorBoundary`。登录首包约 **1237KB / gzip ~398KB**（仅 `index.js`），工作台再拉 AuthedApp + Echarts，打开助手再拉 agent。
+
+---
+
 ## 2026-09-04 · nongyu-web-admin · Bundle 优化后登录进工作台白屏
 
 - **现象**：首屏 Bundle 优化上线后，登录页尚可，进入工作台（及已登录直达）白屏。

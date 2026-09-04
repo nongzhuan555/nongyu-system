@@ -1,4 +1,3 @@
-import { message } from "antd";
 import { create } from "zustand";
 import {
   AdminApiError,
@@ -100,7 +99,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         clearAssistantOnLogout(adminUserId);
       });
       get().clearAuth();
-      message.info("对话记录与本地模型密钥已清除");
+      void import("antd").then(({ message }) => {
+        message.info("对话记录与本地模型密钥已清除");
+      });
     }
   },
 }));
