@@ -1,5 +1,13 @@
 ---
 
+## 2026-09-04 · nongyu-web-admin · Bundle 优化后登录进工作台白屏
+
+- **现象**：首屏 Bundle 优化上线后，登录页尚可，进入工作台（及已登录直达）白屏。
+- **根因**：路由 `React.lazy` + Vite/Rolldown 分包使业务页 chunk **反向 import 入口 `index-*.js`**（共享 antd icons 等打进入口），运行时循环依赖导致渲染失败。
+- **修复**：撤回路由/助手懒加载与强制 vendor `codeSplitting.groups`；保留 echarts 按需、`logoutCleanup` 动态导入、SDK `jiaowu`/`second` 子路径、字体非阻塞。后续若再拆路由须先保证懒加载页不依赖入口 chunk。
+
+---
+
 ## 2026-09-04 · nongyu-web-admin · 首屏单包 3.2MB 导致加载 8–9 秒
 
 - **现象**：管理端生产首屏约 8–9 秒；构建仅一个 `index.js` ≈ 3.2 MB（gzip ≈ 1.1 MB）。

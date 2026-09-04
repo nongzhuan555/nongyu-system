@@ -32,10 +32,10 @@
 
 ## 4. 详细需求
 
-1. **路由懒加载**：除登录页可静态保留外，工作台/大屏/用户/内容等业务页使用 `React.lazy` + `Suspense`，fallback 复用 `RouteLoading`。
-2. **助手按需加载**：`AdminShell` 内 `AssistantPanel` 动态 import，打开助手时再加载。
-3. **ECharts 按需**：`EchartsBlock`（及同类入口）使用 `echarts/core` + 所需 chart/component，禁止默认全量包。
-4. **Vite 分包**：生产构建将 react、antd、echarts、agent 相关拆为稳定 vendor chunk。
+1. **路由懒加载**：~~业务页 `React.lazy`~~（已回退：Rolldown 下易与入口形成循环依赖白屏；见 BugLog 2026-09-04）。登录后壳层仍静态装配；助手/图表等用其它手段减负。
+2. **助手按需加载**：~~`AssistantPanel` 动态 import~~（同上原因暂回退为静态；登出清理仍动态 import 避免拖入 agent）。
+3. **ECharts 按需**：`EchartsBlock` 使用 `echarts/core` + 所需 chart/component，禁止默认全量包。
+4. **Vite 分包**：~~强制 vendor groups~~（已回退，避免循环依赖）。保留合理 `chunkSizeWarningLimit`。
 5. **SDK 子路径**：`jiaowuTools` / `secondTools` 从主入口移出；RN/App 改从子路径导入；管理端仅用核心 API。
 6. **字体**：降低 Google Fonts 对首屏的阻塞（延迟或本地化策略择一，以不破坏现有排版为准）。
 
