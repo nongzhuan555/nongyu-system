@@ -29,8 +29,8 @@ function emptyGuard(count: number): boolean {
   return count === 0;
 }
 
-export function pieOption(rows: DistKeyCount[]): EChartsOption | null {
-  if (emptyGuard(rows.length)) return null;
+export function pieOption(rows: DistKeyCount[] | null | undefined): EChartsOption | null {
+  if (!rows || emptyGuard(rows.length)) return null;
   return {
     color: CHART_COLORS,
     tooltip: { ...TOOLTIP, trigger: "item" },
@@ -47,8 +47,11 @@ export function pieOption(rows: DistKeyCount[]): EChartsOption | null {
   };
 }
 
-export function barOption(rows: DistKeyCount[], horizontal = false): EChartsOption | null {
-  if (rows.length === 0) return null;
+export function barOption(
+  rows: DistKeyCount[] | null | undefined,
+  horizontal = false,
+): EChartsOption | null {
+  if (!rows || rows.length === 0) return null;
   const names = rows.map((row) => labelDistKey(row.key));
   const values = rows.map((row) => row.count);
   return {
@@ -89,8 +92,8 @@ export function barOption(rows: DistKeyCount[], horizontal = false): EChartsOpti
 }
 
 /** 页面使用次数：类目为 RN 路由展示名 */
-export function dimBarOption(items: TrackDimItem[]): EChartsOption | null {
-  if (items.length === 0) return null;
+export function dimBarOption(items: TrackDimItem[] | null | undefined): EChartsOption | null {
+  if (!items || items.length === 0) return null;
   const names = items.map((item) => formatRnRouteLabel(item.dimValue));
   const values = items.map((item) => item.metricValue);
   return {
@@ -119,8 +122,10 @@ export function dimBarOption(items: TrackDimItem[]): EChartsOption | null {
 }
 
 /** 按钮点击分布：类目为稳定 event_name，不做路由映射 */
-export function buttonClicksBarOption(items: TrackDimItem[]): EChartsOption | null {
-  if (items.length === 0) return null;
+export function buttonClicksBarOption(
+  items: TrackDimItem[] | null | undefined,
+): EChartsOption | null {
+  if (!items || items.length === 0) return null;
   const names = items.map((item) => item.dimValue);
   const values = items.map((item) => item.metricValue);
   return {
@@ -151,8 +156,8 @@ export function buttonClicksBarOption(items: TrackDimItem[]): EChartsOption | nu
 /**
  * 页均停留：metric_value 为 ms，展示为秒（1 位小数）
  */
-export function dwellBarOption(items: TrackDimItem[]): EChartsOption | null {
-  if (items.length === 0) return null;
+export function dwellBarOption(items: TrackDimItem[] | null | undefined): EChartsOption | null {
+  if (!items || items.length === 0) return null;
   const names = items.map((item) => formatRnRouteLabel(item.dimValue));
   const values = items.map((item) => Math.round((item.metricValue / 1000) * 10) / 10);
   return {
@@ -185,8 +190,8 @@ export function dwellBarOption(items: TrackDimItem[]): EChartsOption | null {
   };
 }
 
-export function growthOption(growth: UserGrowth): EChartsOption | null {
-  if (growth.points.length === 0) return null;
+export function growthOption(growth: UserGrowth | null | undefined): EChartsOption | null {
+  if (!growth?.points || growth.points.length === 0) return null;
   return {
     color: CHART_COLORS,
     tooltip: { ...TOOLTIP, trigger: "axis" },
@@ -216,11 +221,16 @@ export function growthOption(growth: UserGrowth): EChartsOption | null {
   };
 }
 
-export function perfOption(p50: TrackDimItem[], p95: TrackDimItem[]): EChartsOption | null {
-  const names = [...new Set([...p50, ...p95].map((item) => item.dimValue))].slice(0, 20);
+export function perfOption(
+  p50: TrackDimItem[] | null | undefined,
+  p95: TrackDimItem[] | null | undefined,
+): EChartsOption | null {
+  const safeP50 = p50 ?? [];
+  const safeP95 = p95 ?? [];
+  const names = [...new Set([...safeP50, ...safeP95].map((item) => item.dimValue))].slice(0, 20);
   if (names.length === 0) return null;
-  const p50Map = new Map(p50.map((item) => [item.dimValue, item.metricValue]));
-  const p95Map = new Map(p95.map((item) => [item.dimValue, item.metricValue]));
+  const p50Map = new Map(safeP50.map((item) => [item.dimValue, item.metricValue]));
+  const p95Map = new Map(safeP95.map((item) => [item.dimValue, item.metricValue]));
   return {
     color: CHART_COLORS,
     tooltip: { ...TOOLTIP, trigger: "axis" },
@@ -257,11 +267,16 @@ export function perfOption(p50: TrackDimItem[], p95: TrackDimItem[]): EChartsOpt
 }
 
 /** 官网 CWV：纵轴为 ms；CLS 为 score×1000；坐标轴与 tooltip 使用中文可读标签 */
-export function webVitalsOption(p50: TrackDimItem[], p95: TrackDimItem[]): EChartsOption | null {
-  const names = [...new Set([...p50, ...p95].map((item) => item.dimValue))].slice(0, 20);
+export function webVitalsOption(
+  p50: TrackDimItem[] | null | undefined,
+  p95: TrackDimItem[] | null | undefined,
+): EChartsOption | null {
+  const safeP50 = p50 ?? [];
+  const safeP95 = p95 ?? [];
+  const names = [...new Set([...safeP50, ...safeP95].map((item) => item.dimValue))].slice(0, 20);
   if (names.length === 0) return null;
-  const p50Map = new Map(p50.map((item) => [item.dimValue, item.metricValue]));
-  const p95Map = new Map(p95.map((item) => [item.dimValue, item.metricValue]));
+  const p50Map = new Map(safeP50.map((item) => [item.dimValue, item.metricValue]));
+  const p95Map = new Map(safeP95.map((item) => [item.dimValue, item.metricValue]));
   const labels = names.map((name) => webVitalChartLabel(name));
   return {
     color: CHART_COLORS,

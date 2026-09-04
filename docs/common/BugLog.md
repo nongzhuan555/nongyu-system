@@ -1,6 +1,12 @@
 ---
 
-## 2026-09-04 · nongyu-web-admin · 白屏修复不彻底且首包仍过大
+## 2026-09-04 · nongyu-web-admin · 登录后 React #130 白屏（Element type is object）
+
+- **现象**：登录后 ErrorBoundary「管理台加载失败」；Minified React error #130，`args[]=object`。
+- **根因**：`EchartsBlock` 使用 `echarts-for-react/lib/core`（CJS）；Rolldown 互操作后 JSX 拿到的仍是带 `default` 的 **object**，不是组件函数。大屏/助手图表一渲染即崩。
+- **修复**：改 import `echarts-for-react/esm/core`；`AuthedApp` 改为 default export；`react-grid-layout` CJS 组件解包；`dashboardCharts` 对缺失数组短路。
+
+---
 
 - **现象**：回退懒加载后功能可用，但首屏仍约 2.7MB 单包，弱网长时间空白被感知为白屏。
 - **根因**：业务页全量静态进入口；真正安全的拆法应是「登录静态 + 已登录 AuthedApp 整包 lazy」，且禁止对 AuthedApp 内部再二级拆页面（易循环依赖）。强制 vendor groups 曾加剧白屏。

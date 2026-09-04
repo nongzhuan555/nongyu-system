@@ -7,7 +7,7 @@ import { GuestOnly } from "./GuestOnly";
 import { RequireAuth } from "./RequireAuth";
 
 /** 仅已登录后加载；勿再对内部页面二级拆包 */
-const AuthedApp = lazy(() => import("./AuthedApp").then((m) => ({ default: m.AuthedApp })));
+const AuthedApp = lazy(() => import("./AuthedApp"));
 
 export function AppRouter() {
   return (

@@ -1,6 +1,11 @@
 import { useEffect, useRef } from "react";
 import { Grid, Select } from "antd";
-import { Responsive, WidthProvider, type Layout, type Layouts } from "react-grid-layout";
+import {
+  Responsive as ResponsiveRaw,
+  WidthProvider as WidthProviderRaw,
+  type Layout,
+  type Layouts,
+} from "react-grid-layout";
 import type {
   DashboardOverview,
   DashboardPrefsV1,
@@ -35,7 +40,22 @@ import { KpiCard } from "./KpiCard";
 import { SettingsPies } from "./SettingsPies";
 import { WebVitalsGuide } from "./WebVitalsGuide";
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+/** CJS 命名导出偶发带着 `.default`；解包后再交给 WidthProvider，避免 React #130 */
+function unwrapCjsComponent<T>(mod: T | { default: T }): T {
+  if (
+    mod &&
+    typeof mod === "object" &&
+    "default" in mod &&
+    typeof (mod as { default: unknown }).default === "function"
+  ) {
+    return (mod as { default: T }).default;
+  }
+  return mod as T;
+}
+
+const ResponsiveGridLayout = unwrapCjsComponent(WidthProviderRaw)(
+  unwrapCjsComponent(ResponsiveRaw),
+);
 
 const RANGE_OPTIONS = [
   { value: "7d", label: "近 7 天" },

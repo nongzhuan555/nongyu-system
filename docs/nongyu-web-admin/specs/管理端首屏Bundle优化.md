@@ -2,7 +2,7 @@
 
 | 项       | 内容                                         |
 | -------- | -------------------------------------------- |
-| 版本     | v1.0                                         |
+| 版本     | v1.1                                         |
 | 日期     | 2026-09-04                                   |
 | 需求类型 | **基建**（生产构建与加载策略，不改业务语义） |
 | 状态     | 已确认（对齐会话内优化方案后实施）           |
@@ -34,11 +34,12 @@
 
 1. **已登录整包懒加载**：登录页留在入口；`AuthedApp`（壳 + 全部业务页）`React.lazy` 一次加载。**禁止**对 AuthedApp 内页面再二级 `lazy`（易白屏）。
 2. **助手按需加载**：仅在 `AdminShell`（已属 AuthedApp）内对 `AssistantPanel` lazy；登出清理动态 import。
-3. **ECharts 按需**：`EchartsBlock` 使用 `echarts/core` + 所需 chart/component，禁止默认全量包。
-4. **Vite 分包**：禁止强制 vendor `codeSplitting.groups`。保留合理 `chunkSizeWarningLimit`；用 `scripts/check-chunk-cycles.mjs` 检查。
+3. **ECharts 按需**：`EchartsBlock` 使用 `echarts/core` + 所需 chart/component，禁止默认全量包；`echarts-for-react` 须走 **ESM** 入口（`esm/core`），禁止 `lib/core` CJS（易触发 React #130：Element type is object）。
+4. **Vite 分包**：禁止强制 vendor `codeSplitting.groups`。保留合理 `chunkSizeWarningLimit`；用 `scripts/check-chunk-cycles.mjs` 检查。`AuthedApp` 使用 `export default` + `lazy(() => import(...))`，避免命名导出再包一层。
 5. **SDK 子路径**：`jiaowuTools` / `secondTools` 从主入口移出；RN/App 改从子路径导入；管理端仅用核心 API。
 6. **字体**：降低 Google Fonts 对首屏的阻塞。
 7. **错误边界**：入口挂 `AppErrorBoundary`，避免异常只剩白屏。
+8. **大屏数据容错**：图表 option 构造对缺失数组字段须短路返回 null，不得因 `.length` 抛错导致 ErrorBoundary 白屏。
 
 ## 5. 验收
 
