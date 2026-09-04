@@ -1,12 +1,12 @@
 import {
   createAgent,
   OpenAIProvider,
-  jiaowuTools,
-  secondTools,
   webDetailTool,
   webSearchTool,
   type Agent,
 } from "nongyu-agent-sdk";
+import { jiaowuTools } from "nongyu-agent-sdk/jiaowu";
+import { secondTools } from "nongyu-agent-sdk/second";
 import { agentChatRunner } from "@/agent/chatRunner/agentChatRunner";
 import { resolveAgentProviderConfig } from "@/agent/resolveAgentProviderConfig";
 import { confirm } from "@/components/ui/confirm";

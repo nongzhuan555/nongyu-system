@@ -14,6 +14,14 @@
     "./stdio": {
       "import": "./dist/stdio.js",
       "types": "./dist/stdio.d.ts"
+    },
+    "./jiaowu": {
+      "import": "./dist/jiaowu.js",
+      "types": "./dist/jiaowu.d.ts"
+    },
+    "./second": {
+      "import": "./dist/second.js",
+      "types": "./dist/second.d.ts"
     }
   },
   "scripts": {

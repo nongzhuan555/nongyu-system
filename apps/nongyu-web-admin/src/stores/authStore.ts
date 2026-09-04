@@ -1,6 +1,5 @@
 import { message } from "antd";
 import { create } from "zustand";
-import { clearAssistantOnLogout } from "../assistant/logoutCleanup";
 import {
   AdminApiError,
   fetchAdminMe,
@@ -96,7 +95,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       // 服务端无黑名单，本地必须清掉
     } finally {
-      clearAssistantOnLogout(adminUserId);
+      // 动态导入，避免登出清理把助手整包打进登录首屏
+      void import("../assistant/logoutCleanup").then(({ clearAssistantOnLogout }) => {
+        clearAssistantOnLogout(adminUserId);
+      });
       get().clearAuth();
       message.info("对话记录与本地模型密钥已清除");
     }

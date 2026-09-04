@@ -18,9 +18,9 @@ export {
 // ===== 内置工具 =====
 export { webSearchTool, webDetailTool } from "./core/tool/BuiltinTools";
 
-// ===== 业务工具集 =====
-export { jiaowuTools } from "./core/tool/ExternalTools/jiaowu-tools";
-export { secondTools } from "./core/tool/ExternalTools/second-tools";
+// 教务/二课工具走子路径，避免管理端等未使用者打进主包：
+//   import { jiaowuTools } from "nongyu-agent-sdk/jiaowu"
+//   import { secondTools } from "nongyu-agent-sdk/second"
 
 export { EventBus } from "./core/events";
 

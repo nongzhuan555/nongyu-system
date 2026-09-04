@@ -1,6 +1,12 @@
 ---
 
-## 2026-09-01 · nongyu-rn-app · 微信分享 ExpoNativeWechat.shareWebpage has been rejected
+## 2026-09-04 · nongyu-web-admin · 首屏单包 3.2MB 导致加载 8–9 秒
+
+- **现象**：管理端生产首屏约 8–9 秒；构建仅一个 `index.js` ≈ 3.2 MB（gzip ≈ 1.1 MB）。
+- **根因**：路由与助手均为静态 import；`authStore` 同步引用 `logoutCleanup` → `agent` 把 SDK/SQL 打进入口；echarts 全量引入；无 Vite vendor 分包；SDK 主入口 re-export 教务/二课工具。
+- **修复**：业务页 `React.lazy`；助手首次打开再加载；登出清理改为动态 import；`echarts/core` 按需注册；Vite `codeSplitting.groups`；SDK 拆 `nongyu-agent-sdk/jiaowu|second`；字体 stylesheet 非阻塞。优化后登录首屏 preload 仅 react/antd/入口（入口 gzip ≈ 26 KB；agent/echarts/markdown 延后）。
+
+---
 
 - **现象**：Android 点微信好友/朋友圈 Toast「ExpoNativeWechat.shareWebpage has been rejected」。
 - **根因**：`coverUrl` 使用 `Image.resolveAssetSource(icon)` 的本地 URI；`expo-native-wechat` 原生用 OkHttp 下载缩略图，非 http(s) 同步抛 `IllegalArgumentException`，被 Expo Modules 包成 rejected。此前只改了落地页 http，未修缩略图。
