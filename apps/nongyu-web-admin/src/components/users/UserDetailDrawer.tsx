@@ -6,6 +6,9 @@ import { useDrawerWidth, useIsMd } from "../../lib/responsive";
 import type { AdminUserDetail } from "../../types/users";
 import { SetAdminPasswordModal } from "./SetAdminPasswordModal";
 
+/** 高于 Drawer 默认 zIndex(1000)，避免确认框被抽屉遮罩挡住。 */
+const CONFIRM_Z_INDEX = 1100;
+
 type UserDetailDrawerProps = {
   userId: number | null;
   open: boolean;
@@ -75,11 +78,11 @@ export function UserDetailDrawer({
 
   const isSelf = detail !== null && currentUserId !== null && detail.id === currentUserId;
 
-  async function applyPatch(body: { role?: 0 | 1; status?: 0 | 1 }, successText: string) {
-    if (!detail) return;
+  async function applyRolePatch(role: 0 | 1, successText: string) {
+    if (!detail) return false;
     setActing(true);
     try {
-      await patchAdminUser(detail.id, body);
+      await patchAdminUser(detail.id, { role });
       message.success(successText);
       await loadDetail(detail.id);
       onChanged();
@@ -101,8 +104,9 @@ export function UserDetailDrawer({
       okText: "确定",
       cancelText: "取消",
       width: confirmWidth,
+      zIndex: CONFIRM_Z_INDEX,
       onOk: async () => {
-        const ok = await applyPatch({ role: 1 }, "已设为管理员");
+        const ok = await applyRolePatch(1, "已设为管理员");
         if (ok) setPasswordOpen(true);
       },
     });
@@ -117,30 +121,11 @@ export function UserDetailDrawer({
       okButtonProps: { danger: true },
       cancelText: "取消",
       width: confirmWidth,
+      zIndex: CONFIRM_Z_INDEX,
       onOk: async () => {
-        await applyPatch({ role: 0 }, "已取消管理员");
+        await applyRolePatch(0, "已取消管理员");
       },
     });
-  }
-
-  function disableUser() {
-    if (!detail || isSelf) return;
-    Modal.confirm({
-      title: "禁用用户",
-      content: "禁用后该用户无法登录 App，确定继续？",
-      okText: "确定",
-      okButtonProps: { danger: true },
-      cancelText: "取消",
-      width: confirmWidth,
-      onOk: async () => {
-        await applyPatch({ status: 0 }, "已禁用");
-      },
-    });
-  }
-
-  async function enableUser() {
-    if (!detail) return;
-    await applyPatch({ status: 1 }, "已启用");
   }
 
   return (
@@ -258,23 +243,6 @@ export function UserDetailDrawer({
                     </Tooltip>
                   )
                 ) : null}
-
-                {detail.status === 1 ? (
-                  <Tooltip title={isSelf ? "不能对自己执行此操作" : undefined}>
-                    <Button danger disabled={isSelf || acting} onClick={disableUser}>
-                      禁用
-                    </Button>
-                  </Tooltip>
-                ) : (
-                  <Button
-                    loading={acting}
-                    onClick={() => {
-                      void enableUser();
-                    }}
-                  >
-                    启用
-                  </Button>
-                )}
 
                 {detail.role === 1 || detail.role === 2 ? (
                   <Button onClick={() => setPasswordOpen(true)}>设置管理员密码</Button>

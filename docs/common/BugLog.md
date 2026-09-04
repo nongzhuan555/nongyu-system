@@ -1,5 +1,13 @@
 ---
 
+## 2026-09-04 · nongyu-web-admin · 用户详情「设为管理员」点击无反应
+
+- **现象**：用户详情抽屉内点击「设为管理员 / 取消管理员」无可见反馈。
+- **根因**：`Modal.confirm` 与 `Drawer` 默认 `zIndex` 均为 1000，确认框被抽屉遮罩挡住。
+- **修复**：确认框与设密弹窗 `zIndex` 提到 1100；同时按 Spec 去掉详情抽屉「禁用 / 启用」入口。
+
+---
+
 ## 2026-09-04 · nongyu-web-admin · 登录后 React #130 白屏（Element type is object）
 
 - **现象**：登录后 ErrorBoundary「管理台加载失败」；Minified React error #130，`args[]=object`。
