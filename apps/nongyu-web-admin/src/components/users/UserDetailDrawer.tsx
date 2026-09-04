@@ -6,7 +6,7 @@ import { useDrawerWidth, useIsMd } from "../../lib/responsive";
 import type { AdminUserDetail } from "../../types/users";
 import { SetAdminPasswordModal } from "./SetAdminPasswordModal";
 
-/** 高于 Drawer 默认 zIndex(1000)，避免确认框被抽屉遮罩挡住。 */
+/** 高于 Drawer 默认 zIndex(1000)，确认框须叠在抽屉之上。 */
 const CONFIRM_Z_INDEX = 1100;
 
 type UserDetailDrawerProps = {
@@ -17,6 +17,9 @@ type UserDetailDrawerProps = {
   onClose: () => void;
   onChanged: () => void;
 };
+
+/** 升权 / 降权确认框意图（声明式 Modal，避免静态 Modal.confirm 被 Drawer 遮挡）。 */
+type RoleConfirmKind = "promote" | "demote";
 
 function RoleTag({ role }: { role: 0 | 1 | 2 }) {
   if (role === 2) return <Tag color="purple">超级管理员</Tag>;
@@ -44,6 +47,7 @@ export function UserDetailDrawer({
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [roleConfirm, setRoleConfirm] = useState<RoleConfirmKind | null>(null);
 
   async function loadDetail(id: number) {
     setLoading(true);
@@ -71,6 +75,7 @@ export function UserDetailDrawer({
     if (!open || userId === null) {
       setDetail(null);
       setError(null);
+      setRoleConfirm(null);
       return;
     }
     void loadDetail(userId);
@@ -96,36 +101,32 @@ export function UserDetailDrawer({
     }
   }
 
-  function promote() {
+  function openPromoteConfirm() {
     if (!detail || !canManageRole) return;
-    Modal.confirm({
-      title: "设为管理员",
-      content: `确定将 ${detail.name}（${detail.studentNo}）设为管理员？`,
-      okText: "确定",
-      cancelText: "取消",
-      width: confirmWidth,
-      zIndex: CONFIRM_Z_INDEX,
-      onOk: async () => {
-        const ok = await applyRolePatch(1, "已设为管理员");
-        if (ok) setPasswordOpen(true);
-      },
-    });
+    setRoleConfirm("promote");
   }
 
-  function demote() {
+  function openDemoteConfirm() {
     if (!detail || isSelf || !canManageRole) return;
-    Modal.confirm({
-      title: "取消管理员",
-      content: "取消管理员后将清空其管理员密码，确定继续？",
-      okText: "确定",
-      okButtonProps: { danger: true },
-      cancelText: "取消",
-      width: confirmWidth,
-      zIndex: CONFIRM_Z_INDEX,
-      onOk: async () => {
-        await applyRolePatch(0, "已取消管理员");
-      },
-    });
+    setRoleConfirm("demote");
+  }
+
+  /** 确认框确定：失败时 reject，避免 Ant Design 在失败后仍关窗。 */
+  async function handleRoleConfirmOk() {
+    if (!detail || roleConfirm === null) {
+      throw new Error("role-confirm-invalid");
+    }
+    const kind = roleConfirm;
+    if (kind === "promote") {
+      const ok = await applyRolePatch(1, "已设为管理员");
+      if (!ok) throw new Error("role-promote-failed");
+      setRoleConfirm(null);
+      setPasswordOpen(true);
+      return;
+    }
+    const ok = await applyRolePatch(0, "已取消管理员");
+    if (!ok) throw new Error("role-demote-failed");
+    setRoleConfirm(null);
   }
 
   return (
@@ -238,7 +239,7 @@ export function UserDetailDrawer({
                           type="primary"
                           loading={acting}
                           disabled={!canManageRole}
-                          onClick={promote}
+                          onClick={openPromoteConfirm}
                         >
                           设为管理员
                         </Button>
@@ -258,7 +259,7 @@ export function UserDetailDrawer({
                         <Button
                           danger
                           disabled={isSelf || !canManageRole || acting}
-                          onClick={demote}
+                          onClick={openDemoteConfirm}
                         >
                           取消管理员
                         </Button>
@@ -275,6 +276,32 @@ export function UserDetailDrawer({
           </div>
         ) : null}
       </Drawer>
+
+      <Modal
+        title={roleConfirm === "demote" ? "取消管理员" : "设为管理员"}
+        open={roleConfirm !== null}
+        width={confirmWidth}
+        centered
+        zIndex={CONFIRM_Z_INDEX}
+        getContainer={() => document.body}
+        okText="确定"
+        cancelText="取消"
+        okButtonProps={roleConfirm === "demote" ? { danger: true } : undefined}
+        confirmLoading={acting}
+        destroyOnClose
+        onCancel={() => {
+          if (!acting) setRoleConfirm(null);
+        }}
+        onOk={() => handleRoleConfirmOk()}
+      >
+        {roleConfirm === "demote" ? (
+          <p>取消管理员后将清空其管理员密码，确定继续？</p>
+        ) : detail ? (
+          <p>
+            确定将 {detail.name}（{detail.studentNo}）设为管理员？
+          </p>
+        ) : null}
+      </Modal>
 
       <SetAdminPasswordModal
         open={passwordOpen}

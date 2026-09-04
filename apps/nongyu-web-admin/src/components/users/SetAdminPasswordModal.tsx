@@ -54,6 +54,7 @@ export function SetAdminPasswordModal({
       width={modalWidth}
       centered
       zIndex={1100}
+      getContainer={() => document.body}
       onCancel={() => {
         form.resetFields();
         onClose();
