@@ -98,7 +98,13 @@ jobs:
         with:
           filter: "nongyu-web-site..."
       - name: 构建官网
+        env:
+          VITE_TRACK_WEB_SITE_KEY: ${{ secrets.VITE_TRACK_WEB_SITE_KEY }}
         run: |
+          if [ -z "$VITE_TRACK_WEB_SITE_KEY" ]; then
+            echo "::error::缺少 GitHub Secret VITE_TRACK_WEB_SITE_KEY（须与 Track 机 TRACK_WEB_SITE_KEY 一致）"
+            exit 1
+          fi
           pnpm --filter nongyu-web-site build
           test -f apps/nongyu-web-site/dist/index.html
           tar -czf nongyu-web-site-dist.tgz -C apps/nongyu-web-site/dist .

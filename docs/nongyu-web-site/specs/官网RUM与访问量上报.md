@@ -36,6 +36,7 @@
 - **Site Key 为空则跳过全部上报**（URL 已有默认值，不再因 URL 空而静默跳过）
 - 未配置时 console 提示一次（dev/prod 均可，便于排查）
 - 可选运行时：`/rum-config.js`（部署覆盖，模板见 `public/rum-config.example.js`），须在主入口 module 之前加载
+- **GitHub CD**：`deploy-site` 构建时注入 Secret `VITE_TRACK_WEB_SITE_KEY`（与 Track 机 `TRACK_WEB_SITE_KEY` 同值）；缺失则构建失败，避免再发无 Key 的包。`VITE_TRACK_WEB_URL` 可不配（默认同源）。
 
 ### 4.2 模块
 
@@ -82,3 +83,4 @@
 | ---------- | ----------------------------------------------------------------- |
 | 2026-08-31 | 首版                                                              |
 | 2026-09-05 | URL 默认同源；支持 `__NONGYU_RUM__` / `rum-config.js`；Key 仍必填 |
+| 2026-09-05 | CD `deploy-site` 必注入 `VITE_TRACK_WEB_SITE_KEY`                 |
