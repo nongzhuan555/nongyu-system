@@ -3,7 +3,6 @@ import type { AdminLoginResult, AdminUser, LoginType } from "../types/auth";
 import type {
   DashboardOverview,
   GrowthRange,
-  SettingsDistribution,
   TrackCrashPage,
   TrackDims,
   TrackOverview,
@@ -49,7 +48,6 @@ import {
   ADMIN_DASHBOARD_DISTRIBUTION_PATH,
   ADMIN_DASHBOARD_GROWTH_PATH,
   ADMIN_DASHBOARD_OVERVIEW_PATH,
-  ADMIN_DASHBOARD_SETTINGS_PATH,
   ADMIN_HANDOFF_REDEEM_PATH,
   ADMIN_HOME_GREETINGS_PATH,
   ADMIN_LOGIN_PATH,
@@ -331,13 +329,6 @@ export async function fetchUserGrowth(range: GrowthRange): Promise<UserGrowth> {
 export async function fetchUserDistribution(): Promise<UserDistribution> {
   const response = await adminApi.get<ApiEnvelope<UserDistribution>>(
     ADMIN_DASHBOARD_DISTRIBUTION_PATH,
-  );
-  return unwrapData(response.data);
-}
-
-export async function fetchSettingsDistribution(): Promise<SettingsDistribution> {
-  const response = await adminApi.get<ApiEnvelope<SettingsDistribution>>(
-    ADMIN_DASHBOARD_SETTINGS_PATH,
   );
   return unwrapData(response.data);
 }

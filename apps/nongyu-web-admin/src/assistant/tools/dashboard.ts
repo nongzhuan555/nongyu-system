@@ -1,11 +1,6 @@
 import { tool } from "nongyu-agent-sdk";
 import { z } from "zod";
-import {
-  fetchDashboardOverview,
-  fetchSettingsDistribution,
-  fetchUserDistribution,
-  fetchUserGrowth,
-} from "../../lib/adminApi";
+import { fetchDashboardOverview, fetchUserDistribution, fetchUserGrowth } from "../../lib/adminApi";
 
 export const adminDashboardOverviewTool = tool({
   name: "admin_dashboard_overview",
@@ -59,26 +54,6 @@ export const adminUserDistributionTool = tool({
     return {
       chartType: "pie" as const,
       title: `用户分布（${dim}）`,
-      categories: rows.map((r) => r.key),
-      series: [{ name: "人数", data: rows.map((r) => r.count) }],
-    };
-  },
-});
-
-export const adminSettingsDistributionTool = tool({
-  name: "admin_settings_distribution",
-  description: "App 设置分布：主题、首屏课表、应用内打开网页、Agent 开关。",
-  inputSchema: z.object({
-    dim: z.enum(["theme", "homeIsTimetable", "openWebInApp", "agentEnabled"]).optional(),
-  }),
-  render: { component: "AdminChart" },
-  execute: async (input) => {
-    const data = await fetchSettingsDistribution();
-    const dim = input.dim ?? "theme";
-    const rows = data[dim];
-    return {
-      chartType: "pie" as const,
-      title: `设置分布（${dim}）`,
       categories: rows.map((r) => r.key),
       series: [{ name: "人数", data: rows.map((r) => r.count) }],
     };

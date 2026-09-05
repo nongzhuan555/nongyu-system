@@ -796,3 +796,11 @@
 - **修复**：事务内先 `posts ... FOR UPDATE` 再插回复/留言；删留言 WHERE 绑定 `post_id`；轮询 SELECT `FOR UPDATE`；迁移改名为 `009_post_replies.sql`。
 
 ---
+
+## 2026-09-05 · nongyu-web-admin · 大屏「用户设置分布」全员默认值误导
+
+- **现象**：数据大屏「用户设置分布」四个饼图各项人数均等于总用户数，看起来像全员设置相同。
+- **根因**：RN App 偏好仅写本机 MMKV，Spec 明确后置不同步 `user_settings`；服务端仅在注册时插入默认行，大屏 GROUP BY 得到的是默认分布，非真实偏好。
+- **修复**：不改 RN。管理端移除 `chart-settings` 卡与相关拉数/助手工具；旧 localStorage 布局中的该 id 由 prefs sanitize 丢弃。Node `settings-distribution` 接口暂保留。
+
+---

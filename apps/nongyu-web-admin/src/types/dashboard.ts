@@ -25,13 +25,6 @@ export type UserDistribution = {
   deviceBrand: DistKeyCount[];
 };
 
-export type SettingsDistribution = {
-  theme: DistKeyCount[];
-  homeIsTimetable: DistKeyCount[];
-  openWebInApp: DistKeyCount[];
-  agentEnabled: DistKeyCount[];
-};
-
 export type TrackOverview = {
   date: string;
   dau: number;

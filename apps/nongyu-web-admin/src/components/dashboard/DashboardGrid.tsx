@@ -10,7 +10,6 @@ import type {
   DashboardOverview,
   DashboardPrefsV1,
   GrowthRange,
-  SettingsDistribution,
   TrackCrashPage,
   TrackDimItem,
   TrackOverview,
@@ -38,7 +37,6 @@ import {
 import { EchartsBlock } from "./EchartsBlock";
 import { KpiCard } from "./KpiCard";
 import { SortableChartCard } from "./SortableChartCard";
-import { SortableSettingsCard } from "./SettingsPies";
 import { WebVitalsGuide } from "./WebVitalsGuide";
 
 /** CJS 命名导出偶发带着 `.default`；解包后再交给 WidthProvider，避免 React #130 */
@@ -70,7 +68,6 @@ export type DashboardGridData = {
   overview: DashboardOverview | null;
   growth: UserGrowth | null;
   distribution: UserDistribution | null;
-  settings: SettingsDistribution | null;
   trackOverview: TrackOverview | null;
   screenViews: TrackDimItem[];
   screenDwell: TrackDimItem[];
@@ -195,7 +192,6 @@ function renderWidgets(args: {
     "chart-screen-views",
     "chart-screen-dwell",
     "chart-button-clicks",
-    "chart-settings",
     "chart-perf",
     "chart-web-vitals",
     "table-crashes",
@@ -384,16 +380,6 @@ function widgetBody(
         error={args.trackError}
         layoutEditable={layoutEditable}
         buildOption={(sortOrder) => buttonClicksBarOption(data.buttonClicks, sortOrder)}
-      />
-    );
-  }
-  if (id === "chart-settings") {
-    return (
-      <SortableSettingsCard
-        data={data.settings}
-        loading={args.coreLoading}
-        error={args.coreError}
-        layoutEditable={layoutEditable}
       />
     );
   }

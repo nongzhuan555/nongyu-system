@@ -9,7 +9,6 @@ registerToolUI("admin_user_detail", AdminUserDetailCard);
 registerToolUI("admin_dashboard_overview", AdminKpiGroupCard);
 registerToolUI("admin_user_growth", AdminChartCard);
 registerToolUI("admin_user_distribution", AdminChartCard);
-registerToolUI("admin_settings_distribution", AdminChartCard);
 registerToolUI("admin_track_overview", AdminKpiGroupCard);
 registerToolUI("admin_track_trend", AdminChartCard);
 registerToolUI("admin_track_dims", AdminChartCard);

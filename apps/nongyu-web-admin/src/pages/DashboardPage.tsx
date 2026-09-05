@@ -8,7 +8,6 @@ import { useForegroundRefresh } from "../hooks/useForegroundRefresh";
 import {
   AdminApiError,
   fetchDashboardOverview,
-  fetchSettingsDistribution,
   fetchTrackCrashes,
   fetchTrackDims,
   fetchTrackOverview,
@@ -32,7 +31,6 @@ const EMPTY_DATA: DashboardGridData = {
   overview: null,
   growth: null,
   distribution: null,
-  settings: null,
   trackOverview: null,
   screenViews: [],
   screenDwell: [],
@@ -95,13 +93,12 @@ export function DashboardPage() {
       setCoreError(null);
     }
     try {
-      const [overview, growth, distribution, settings] = await Promise.all([
+      const [overview, growth, distribution] = await Promise.all([
         fetchDashboardOverview(),
         fetchUserGrowth(range),
         fetchUserDistribution(),
-        fetchSettingsDistribution(),
       ]);
-      setData((prev) => ({ ...prev, overview, growth, distribution, settings }));
+      setData((prev) => ({ ...prev, overview, growth, distribution }));
       if (silent) setCoreError(null);
     } catch (err) {
       if (!silent) setCoreError(messageFromError(err, false));
