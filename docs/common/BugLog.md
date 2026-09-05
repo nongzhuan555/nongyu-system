@@ -1,5 +1,13 @@
 ---
 
+## 2026-09-05 · nongyu-web-site · 官网 PV / Web Vitals 大屏无数据
+
+- **现象**：管理端大屏「今日官网访问」为 0，「官网 Web Vitals」空白；App 埋点指标正常。
+- **根因**：现网官网构建未注入 `VITE_TRACK_WEB_URL`（包内无上报地址），`rumConfigured()` 恒假，PV/CWV 从不发送；官网 Nginx 亦缺 `/v1/track/web/` 反代时同源上报会 404。
+- **修复**：客户端 URL 默认同源 `/v1/track/web/events`；支持 `rum-config.js` / `__NONGYU_RUM__` 注入 Site Key；文档强调 Nginx 反代必配。部署需：写入 Site Key（构建 env 或覆盖 `rum-config.js`）并启用官网 Nginx Track 反代后重新发布官网。
+
+---
+
 ## 2026-09-04 · nongyu-web-admin · 用户详情「设为管理员」仍无弹窗
 
 - **现象**：超管点击「设为管理员 / 取消管理员」按钮非禁用，但无确认框、无 Toast、无后续。

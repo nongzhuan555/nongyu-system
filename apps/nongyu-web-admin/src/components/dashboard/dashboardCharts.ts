@@ -5,6 +5,9 @@ import { webVitalChartLabel, webVitalTooltipLine } from "./webVitalsMeta";
 
 export const CHART_COLORS = ["#0A7C59", "#2E7D6E", "#8FBF9B", "#D4E9DF", "#5A9A86", "#A8C9B8"];
 
+/** 大屏分类图数值排序；默认降序。 */
+export type ChartSortOrder = "asc" | "desc";
+
 const TOOLTIP = {
   backgroundColor: "rgba(255,255,255,0.92)",
   borderColor: "#CFE3DA",
@@ -29,8 +32,37 @@ function emptyGuard(count: number): boolean {
   return count === 0;
 }
 
-export function pieOption(rows: DistKeyCount[] | null | undefined): EChartsOption | null {
+function cmpNum(a: number, b: number, order: ChartSortOrder): number {
+  return order === "desc" ? b - a : a - b;
+}
+
+/** 分布行按 count 排序 */
+export function sortDistRows(rows: DistKeyCount[], order: ChartSortOrder = "desc"): DistKeyCount[] {
+  return rows.toSorted((a, b) => cmpNum(a.count, b.count, order));
+}
+
+/** Track 维度按 metricValue 排序 */
+export function sortDimItems(
+  items: TrackDimItem[],
+  order: ChartSortOrder = "desc",
+): TrackDimItem[] {
+  return items.toSorted((a, b) => cmpNum(a.metricValue, b.metricValue, order));
+}
+
+/**
+ * 横向柱 y 轴：类目数组第 0 项在底部。
+ * 排序后 reverse，使「排序第一」的项靠近顶部。
+ */
+function forHorizontalBars<T>(sorted: T[]): T[] {
+  return sorted.toReversed();
+}
+
+export function pieOption(
+  rows: DistKeyCount[] | null | undefined,
+  sortOrder: ChartSortOrder = "desc",
+): EChartsOption | null {
   if (!rows || emptyGuard(rows.length)) return null;
+  const sorted = sortDistRows(rows, sortOrder);
   return {
     color: CHART_COLORS,
     tooltip: { ...TOOLTIP, trigger: "item" },
@@ -41,7 +73,7 @@ export function pieOption(rows: DistKeyCount[] | null | undefined): EChartsOptio
         avoidLabelOverlap: true,
         itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 2 },
         label: { color: "#424945", fontSize: 11 },
-        data: rows.map((row) => ({ name: labelDistKey(row.key), value: row.count })),
+        data: sorted.map((row) => ({ name: labelDistKey(row.key), value: row.count })),
       },
     ],
   };
@@ -50,10 +82,13 @@ export function pieOption(rows: DistKeyCount[] | null | undefined): EChartsOptio
 export function barOption(
   rows: DistKeyCount[] | null | undefined,
   horizontal = false,
+  sortOrder: ChartSortOrder = "desc",
 ): EChartsOption | null {
   if (!rows || rows.length === 0) return null;
-  const names = rows.map((row) => labelDistKey(row.key));
-  const values = rows.map((row) => row.count);
+  const sorted = sortDistRows(rows, sortOrder);
+  const display = horizontal ? forHorizontalBars(sorted) : sorted;
+  const names = display.map((row) => labelDistKey(row.key));
+  const values = display.map((row) => row.count);
   return {
     color: CHART_COLORS,
     tooltip: { ...TOOLTIP, trigger: "axis" },
@@ -92,10 +127,14 @@ export function barOption(
 }
 
 /** 页面使用次数：类目为 RN 路由展示名 */
-export function dimBarOption(items: TrackDimItem[] | null | undefined): EChartsOption | null {
+export function dimBarOption(
+  items: TrackDimItem[] | null | undefined,
+  sortOrder: ChartSortOrder = "desc",
+): EChartsOption | null {
   if (!items || items.length === 0) return null;
-  const names = items.map((item) => formatRnRouteLabel(item.dimValue));
-  const values = items.map((item) => item.metricValue);
+  const display = forHorizontalBars(sortDimItems(items, sortOrder));
+  const names = display.map((item) => formatRnRouteLabel(item.dimValue));
+  const values = display.map((item) => item.metricValue);
   return {
     color: CHART_COLORS,
     tooltip: { ...TOOLTIP, trigger: "axis" },
@@ -124,10 +163,12 @@ export function dimBarOption(items: TrackDimItem[] | null | undefined): EChartsO
 /** 按钮点击分布：类目为稳定 event_name，不做路由映射 */
 export function buttonClicksBarOption(
   items: TrackDimItem[] | null | undefined,
+  sortOrder: ChartSortOrder = "desc",
 ): EChartsOption | null {
   if (!items || items.length === 0) return null;
-  const names = items.map((item) => item.dimValue);
-  const values = items.map((item) => item.metricValue);
+  const display = forHorizontalBars(sortDimItems(items, sortOrder));
+  const names = display.map((item) => item.dimValue);
+  const values = display.map((item) => item.metricValue);
   return {
     color: CHART_COLORS,
     tooltip: { ...TOOLTIP, trigger: "axis" },
@@ -156,10 +197,14 @@ export function buttonClicksBarOption(
 /**
  * 页均停留：metric_value 为 ms，展示为秒（1 位小数）
  */
-export function dwellBarOption(items: TrackDimItem[] | null | undefined): EChartsOption | null {
+export function dwellBarOption(
+  items: TrackDimItem[] | null | undefined,
+  sortOrder: ChartSortOrder = "desc",
+): EChartsOption | null {
   if (!items || items.length === 0) return null;
-  const names = items.map((item) => formatRnRouteLabel(item.dimValue));
-  const values = items.map((item) => Math.round((item.metricValue / 1000) * 10) / 10);
+  const display = forHorizontalBars(sortDimItems(items, sortOrder));
+  const names = display.map((item) => formatRnRouteLabel(item.dimValue));
+  const values = display.map((item) => Math.round((item.metricValue / 1000) * 10) / 10);
   return {
     color: CHART_COLORS,
     tooltip: {
@@ -221,16 +266,31 @@ export function growthOption(growth: UserGrowth | null | undefined): EChartsOpti
   };
 }
 
+function sortPerfNames(
+  names: string[],
+  p50Map: Map<string, number>,
+  p95Map: Map<string, number>,
+  sortOrder: ChartSortOrder,
+): string[] {
+  return names.toSorted((a, b) => {
+    const scoreA = p95Map.get(a) ?? p50Map.get(a) ?? 0;
+    const scoreB = p95Map.get(b) ?? p50Map.get(b) ?? 0;
+    return cmpNum(scoreA, scoreB, sortOrder);
+  });
+}
+
 export function perfOption(
   p50: TrackDimItem[] | null | undefined,
   p95: TrackDimItem[] | null | undefined,
+  sortOrder: ChartSortOrder = "desc",
 ): EChartsOption | null {
   const safeP50 = p50 ?? [];
   const safeP95 = p95 ?? [];
-  const names = [...new Set([...safeP50, ...safeP95].map((item) => item.dimValue))].slice(0, 20);
-  if (names.length === 0) return null;
+  const rawNames = [...new Set([...safeP50, ...safeP95].map((item) => item.dimValue))].slice(0, 20);
+  if (rawNames.length === 0) return null;
   const p50Map = new Map(safeP50.map((item) => [item.dimValue, item.metricValue]));
   const p95Map = new Map(safeP95.map((item) => [item.dimValue, item.metricValue]));
+  const names = sortPerfNames(rawNames, p50Map, p95Map, sortOrder);
   return {
     color: CHART_COLORS,
     tooltip: { ...TOOLTIP, trigger: "axis" },
@@ -270,13 +330,15 @@ export function perfOption(
 export function webVitalsOption(
   p50: TrackDimItem[] | null | undefined,
   p95: TrackDimItem[] | null | undefined,
+  sortOrder: ChartSortOrder = "desc",
 ): EChartsOption | null {
   const safeP50 = p50 ?? [];
   const safeP95 = p95 ?? [];
-  const names = [...new Set([...safeP50, ...safeP95].map((item) => item.dimValue))].slice(0, 20);
-  if (names.length === 0) return null;
+  const rawNames = [...new Set([...safeP50, ...safeP95].map((item) => item.dimValue))].slice(0, 20);
+  if (rawNames.length === 0) return null;
   const p50Map = new Map(safeP50.map((item) => [item.dimValue, item.metricValue]));
   const p95Map = new Map(safeP95.map((item) => [item.dimValue, item.metricValue]));
+  const names = sortPerfNames(rawNames, p50Map, p95Map, sortOrder);
   const labels = names.map((name) => webVitalChartLabel(name));
   return {
     color: CHART_COLORS,

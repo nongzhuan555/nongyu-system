@@ -37,7 +37,8 @@ import {
 } from "./dashboardCharts";
 import { EchartsBlock } from "./EchartsBlock";
 import { KpiCard } from "./KpiCard";
-import { SettingsPies } from "./SettingsPies";
+import { SortableChartCard } from "./SortableChartCard";
+import { SortableSettingsCard } from "./SettingsPies";
 import { WebVitalsGuide } from "./WebVitalsGuide";
 
 /** CJS 命名导出偶发带着 `.default`；解包后再交给 WidthProvider，避免 React #130 */
@@ -139,7 +140,7 @@ export function DashboardGrid({
       isDraggable={canEditLayout}
       isResizable={canEditLayout}
       draggableHandle=".dashboard-drag-handle"
-      draggableCancel=".dashboard-no-drag,input,button,textarea,.ant-select,.ant-pagination"
+      draggableCancel=".dashboard-no-drag,input,button,textarea,.ant-select,.ant-pagination,.ant-segmented"
       onLayoutChange={(_current: Layout[], all: Layouts) => {
         if (!layoutTouchedRef.current) return;
         onLayoutsChange(all);
@@ -302,150 +303,121 @@ function widgetBody(
     );
   }
   if (id === "chart-gender") {
-    const option = data.distribution ? pieOption(data.distribution.gender) : null;
     return (
-      <ChartCard
+      <SortableChartCard
         title="性别分布"
         loading={args.coreLoading}
         error={args.coreError}
-        empty={!option}
         layoutEditable={layoutEditable}
-      >
-        {option ? <EchartsBlock option={option} /> : null}
-      </ChartCard>
+        buildOption={(sortOrder) =>
+          data.distribution ? pieOption(data.distribution.gender, sortOrder) : null
+        }
+      />
     );
   }
   if (id === "chart-college") {
-    const option = data.distribution ? barOption(data.distribution.college, true) : null;
     return (
-      <ChartCard
+      <SortableChartCard
         title="学院分布"
         loading={args.coreLoading}
         error={args.coreError}
-        empty={!option}
         layoutEditable={layoutEditable}
-      >
-        {option ? <EchartsBlock option={option} /> : null}
-      </ChartCard>
+        buildOption={(sortOrder) =>
+          data.distribution ? barOption(data.distribution.college, true, sortOrder) : null
+        }
+      />
     );
   }
   if (id === "chart-grade") {
-    const option = data.distribution ? barOption(data.distribution.grade) : null;
     return (
-      <ChartCard
+      <SortableChartCard
         title="年级分布"
         loading={args.coreLoading}
         error={args.coreError}
-        empty={!option}
         layoutEditable={layoutEditable}
-      >
-        {option ? <EchartsBlock option={option} /> : null}
-      </ChartCard>
+        buildOption={(sortOrder) =>
+          data.distribution ? barOption(data.distribution.grade, false, sortOrder) : null
+        }
+      />
     );
   }
   if (id === "chart-device") {
-    const option = data.distribution ? pieOption(data.distribution.deviceBrand) : null;
     return (
-      <ChartCard
+      <SortableChartCard
         title="设备品牌分布"
         loading={args.coreLoading}
         error={args.coreError}
-        empty={!option}
         layoutEditable={layoutEditable}
-      >
-        {option ? <EchartsBlock option={option} /> : null}
-      </ChartCard>
+        buildOption={(sortOrder) =>
+          data.distribution ? pieOption(data.distribution.deviceBrand, sortOrder) : null
+        }
+      />
     );
   }
   if (id === "chart-screen-views") {
-    const option = dimBarOption(data.screenViews);
     return (
-      <ChartCard
+      <SortableChartCard
         title="页面使用次数"
         loading={args.trackLoading}
         error={args.trackError}
-        empty={!option}
         layoutEditable={layoutEditable}
-      >
-        {option ? <EchartsBlock option={option} /> : null}
-      </ChartCard>
+        buildOption={(sortOrder) => dimBarOption(data.screenViews, sortOrder)}
+      />
     );
   }
   if (id === "chart-screen-dwell") {
-    const option = dwellBarOption(data.screenDwell);
     return (
-      <ChartCard
+      <SortableChartCard
         title="页均停留时长"
         loading={args.trackLoading}
         error={args.trackError}
-        empty={!option}
         layoutEditable={layoutEditable}
-      >
-        {option ? <EchartsBlock option={option} /> : null}
-      </ChartCard>
+        buildOption={(sortOrder) => dwellBarOption(data.screenDwell, sortOrder)}
+      />
     );
   }
   if (id === "chart-button-clicks") {
-    const option = buttonClicksBarOption(data.buttonClicks);
     return (
-      <ChartCard
+      <SortableChartCard
         title="按钮点击分布"
         loading={args.trackLoading}
         error={args.trackError}
-        empty={!option}
         layoutEditable={layoutEditable}
-      >
-        {option ? <EchartsBlock option={option} /> : null}
-      </ChartCard>
+        buildOption={(sortOrder) => buttonClicksBarOption(data.buttonClicks, sortOrder)}
+      />
     );
   }
   if (id === "chart-settings") {
-    const empty = !data.settings;
     return (
-      <ChartCard
-        title="用户设置分布"
+      <SortableSettingsCard
+        data={data.settings}
         loading={args.coreLoading}
         error={args.coreError}
-        empty={empty}
         layoutEditable={layoutEditable}
-      >
-        {data.settings ? <SettingsPies data={data.settings} /> : null}
-      </ChartCard>
+      />
     );
   }
   if (id === "chart-perf") {
-    const option = perfOption(data.perfP50, data.perfP95);
     return (
-      <ChartCard
-        title="关键性能"
+      <SortableChartCard
+        title="应用性能"
         loading={args.trackLoading}
         error={args.trackError}
-        empty={!option}
         layoutEditable={layoutEditable}
-      >
-        {option ? <EchartsBlock option={option} /> : null}
-      </ChartCard>
+        buildOption={(sortOrder) => perfOption(data.perfP50, data.perfP95, sortOrder)}
+      />
     );
   }
   if (id === "chart-web-vitals") {
-    const option = webVitalsOption(data.webVitalP50, data.webVitalP95);
     return (
-      <ChartCard
+      <SortableChartCard
         title="官网 Web Vitals"
         loading={args.trackLoading}
         error={args.trackError}
-        empty={!option}
         layoutEditable={layoutEditable}
-      >
-        {option ? (
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="min-h-[140px] flex-1">
-              <EchartsBlock option={option} />
-            </div>
-            <WebVitalsGuide />
-          </div>
-        ) : null}
-      </ChartCard>
+        buildOption={(sortOrder) => webVitalsOption(data.webVitalP50, data.webVitalP95, sortOrder)}
+        footer={<WebVitalsGuide />}
+      />
     );
   }
   return (

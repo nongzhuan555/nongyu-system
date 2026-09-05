@@ -1,3 +1,14 @@
+type RumRuntimeConfig = {
+  url?: string;
+  siteKey?: string;
+};
+
+declare global {
+  interface Window {
+    __NONGYU_RUM__?: RumRuntimeConfig;
+  }
+}
+
 type TrackWebEvent = {
   event_id: string;
   event_type: string;
@@ -10,16 +21,39 @@ type TrackWebEvent = {
   props?: Record<string, unknown>;
 };
 
+/** 生产默认走官网同源反代，避免跨域 CORS；需 Nginx `location /v1/track/web/`。 */
+const DEFAULT_TRACK_WEB_URL = "/v1/track/web/events";
+
+let warnedMissingConfig = false;
+
+function runtimeConfig(): RumRuntimeConfig {
+  if (typeof window === "undefined") return {};
+  return window.__NONGYU_RUM__ ?? {};
+}
+
 function trackUrl(): string {
-  return (import.meta.env.VITE_TRACK_WEB_URL as string | undefined)?.trim() ?? "";
+  const fromRuntime = runtimeConfig().url?.trim();
+  if (fromRuntime) return fromRuntime;
+  const fromEnv = (import.meta.env.VITE_TRACK_WEB_URL as string | undefined)?.trim();
+  if (fromEnv) return fromEnv;
+  return DEFAULT_TRACK_WEB_URL;
 }
 
 function siteKey(): string {
+  const fromRuntime = runtimeConfig().siteKey?.trim();
+  if (fromRuntime) return fromRuntime;
   return (import.meta.env.VITE_TRACK_WEB_SITE_KEY as string | undefined)?.trim() ?? "";
 }
 
 export function rumConfigured(): boolean {
-  return Boolean(trackUrl() && siteKey());
+  const ok = Boolean(trackUrl() && siteKey());
+  if (!ok && !warnedMissingConfig) {
+    warnedMissingConfig = true;
+    console.warn(
+      "[nongyu-rum] Site Key 未配置（VITE_TRACK_WEB_SITE_KEY 或 rum-config.js），跳过官网埋点",
+    );
+  }
+  return ok;
 }
 
 /** 优先 fetch keepalive（可带自定义头）；失败再尝试 sendBeacon。 */

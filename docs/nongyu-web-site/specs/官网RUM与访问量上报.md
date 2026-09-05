@@ -6,7 +6,7 @@
 | 需求类型  | **基建**                                                               |
 | 技术方案  | `docs/nongyu-web-site/tech/官网Web-Vitals-RUM技术方案.md`              |
 | 上游 Spec | `docs/nongyu-node-track-server/specs/官网Web匿名上报与platform-web.md` |
-| 状态      | **已实现**                                                             |
+| 状态      | **已实现**（含 2026-09-05：默认同源 URL + 可选运行时配置）             |
 
 ---
 
@@ -31,9 +31,11 @@
 ### 4.1 依赖与环境
 
 - 依赖：`web-vitals`
-- `VITE_TRACK_WEB_URL`：完整 Web ingest URL
-- `VITE_TRACK_WEB_SITE_KEY`：Site Key
-- 任一空：跳过全部上报（dev 可 console 提示一次）
+- 上报 URL 解析顺序：`window.__NONGYU_RUM__.url` → `VITE_TRACK_WEB_URL` → **默认** `/v1/track/web/events`（同源，依赖官网 Nginx 反代 Track；见 `docs/nongyu-web-site/deploy/nongyu-web.nginx.conf.example`）
+- Site Key 解析顺序：`window.__NONGYU_RUM__.siteKey` → `VITE_TRACK_WEB_SITE_KEY`
+- **Site Key 为空则跳过全部上报**（URL 已有默认值，不再因 URL 空而静默跳过）
+- 未配置时 console 提示一次（dev/prod 均可，便于排查）
+- 可选运行时：`/rum-config.js`（部署覆盖，模板见 `public/rum-config.example.js`），须在主入口 module 之前加载
 
 ### 4.2 模块
 
@@ -69,12 +71,14 @@
 
 ## 5. 验收
 
-1. 配置齐全时：刷新官网，Track 出现 `web_home`；产生交互/加载后出现 cwv_*。
-2. 缺配置：页面正常、无请求或安全跳过。
+1. 配置 Site Key 且官网 Nginx 反代 `/v1/track/web/` 时：刷新官网，Track 出现 `web_home`；加载后出现 cwv_*；大屏 PV / Web Vitals 有数。
+2. 仅缺 Site Key：页面正常、控制台一次 warn、无上报请求或请求不带有效 Key。
 3. 不影响首屏可交互（动态 import web-vitals）。
+4. 未配 Nginx 反代时同源 `/v1/track/web/events` 会失败——部署检查清单须含反代。
 
 ## 修订记录
 
-| 日期       | 说明 |
-| ---------- | ---- |
-| 2026-08-31 | 首版 |
+| 日期       | 说明                                                              |
+| ---------- | ----------------------------------------------------------------- |
+| 2026-08-31 | 首版                                                              |
+| 2026-09-05 | URL 默认同源；支持 `__NONGYU_RUM__` / `rum-config.js`；Key 仍必填 |

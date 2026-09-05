@@ -31,7 +31,8 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 官网 RUM：浏览器同源 /v1/track/web → Track 服务
+    # 官网 RUM（必配）：浏览器同源 /v1/track/web → Track。缺此段则 PV/Web Vitals 上报 404，大屏官网指标为 0。
+    # YOUR_TRACK_UPSTREAM 示例：https://47.108.74.61（无尾斜杠）
     location /v1/track/web/ {
         proxy_pass YOUR_TRACK_UPSTREAM/v1/track/web/;
         proxy_http_version 1.1;
