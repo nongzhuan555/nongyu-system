@@ -53,6 +53,7 @@ apps/nongyu-go-track-server/dist/
 
 # 本机临时解包 / 压测产物
 .tmp-apk/
+.tmp-apk-check/
 .tmp-second-docs/
 scripts/track-migration-bench/out/
 scripts/track-migration-bench/out-full-node/
