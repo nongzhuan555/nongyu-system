@@ -40,6 +40,9 @@ export async function listPosts(params: {
   keyword?: string;
   authorUserId?: number;
   includeDeleted?: boolean;
+  /** 管理端可选：按阅读量或留言量排序；省略则按发布时间降序 */
+  sortBy?: "viewCount" | "replyCount";
+  sortOrder?: "asc" | "desc";
   offset: number;
   pageSize: number;
 }): Promise<{ rows: PostRow[]; total: number }> {
@@ -69,6 +72,25 @@ export async function listPosts(params: {
     where.push("p.deleted_at IS NULL");
   }
   const whereSql = where.join(" AND ");
+  // 主排序后固定 published_at DESC, id DESC，保证分页稳定
+  const dir = params.sortOrder === "asc" ? "ASC" : "DESC";
+  let orderSql = "p.published_at DESC, p.id DESC";
+  let fromSql = `FROM posts p
+     JOIN users u ON u.id = p.author_user_id`;
+  if (params.sortBy === "viewCount") {
+    orderSql = `p.view_count ${dir}, p.published_at DESC, p.id DESC`;
+  } else if (params.sortBy === "replyCount") {
+    // 口径与 countRepliesForPosts 一致：未软删 post_replies 计数
+    fromSql = `FROM posts p
+     JOIN users u ON u.id = p.author_user_id
+     LEFT JOIN (
+       SELECT post_id, COUNT(*) AS reply_count
+       FROM post_replies
+       WHERE deleted_at IS NULL
+       GROUP BY post_id
+     ) rc ON rc.post_id = p.id`;
+    orderSql = `COALESCE(rc.reply_count, 0) ${dir}, p.published_at DESC, p.id DESC`;
+  }
   const pool = getPool();
   const [countRows] = await pool.query<RowDataPacket[]>(
     `SELECT COUNT(*) AS c FROM posts p WHERE ${whereSql}`,
@@ -76,10 +98,9 @@ export async function listPosts(params: {
   );
   const [rows] = await pool.query<(PostRow & RowDataPacket)[]>(
     `SELECT p.*, u.student_no AS author_student_no, u.name AS author_name
-     FROM posts p
-     JOIN users u ON u.id = p.author_user_id
+     ${fromSql}
      WHERE ${whereSql}
-     ORDER BY p.published_at DESC
+     ORDER BY ${orderSql}
      LIMIT ? OFFSET ?`,
     [...args, params.pageSize, params.offset],
   );

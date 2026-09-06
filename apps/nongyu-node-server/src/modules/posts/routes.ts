@@ -398,6 +398,17 @@ adminPostsRouter.get(
           .union([z.literal("true"), z.literal("false"), z.boolean()])
           .optional()
           .transform((v) => v === true || v === "true"),
+        sortBy: z.enum(["viewCount", "replyCount"]).optional(),
+        sortOrder: z.enum(["asc", "desc"]).optional(),
+      })
+      .superRefine((val, ctx) => {
+        if (val.sortOrder !== undefined && val.sortBy === undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "sortOrder 须配合 sortBy 使用",
+            path: ["sortOrder"],
+          });
+        }
       })
       .parse(req.query);
     const keyword = normalizeListKeyword(query.keyword);
@@ -408,6 +419,8 @@ adminPostsRouter.get(
       subtype: query.subtype,
       keyword,
       includeDeleted: query.includeDeleted,
+      sortBy: query.sortBy,
+      sortOrder: query.sortBy ? (query.sortOrder ?? "desc") : undefined,
       offset,
       pageSize,
     });

@@ -1,11 +1,12 @@
 import { Alert, Button, Input, Switch, Table, Tag, Space, message } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
+import type { FilterValue, SorterResult } from "antd/es/table/interface";
 import { useEffect, useEffectEvent, useState } from "react";
 import { useForegroundRefresh } from "../../hooks/useForegroundRefresh";
 import { AdminApiError, listAdminPosts } from "../../lib/adminApi";
 import { DEFAULT_POST_PAGE_SIZE, FOREGROUND_REFRESH_INTERVAL_MS } from "../../lib/constants";
 import { displayText, formatAdminDateTime, formatCoverageRate } from "../../lib/format";
-import type { AdminPostItem, PostType } from "../../types/posts";
+import type { AdminPostItem, AdminPostListQuery, PostType } from "../../types/posts";
 import { AnnouncementFormDrawer } from "./AnnouncementFormDrawer";
 import { PostDetailDrawer } from "./PostDetailDrawer";
 
@@ -14,12 +15,17 @@ type PostListPanelProps = {
   allowCreate: boolean;
 };
 
+type PostSortBy = NonNullable<AdminPostListQuery["sortBy"]>;
+type PostSortOrder = NonNullable<AdminPostListQuery["sortOrder"]>;
+
 export function PostListPanel({ postType, allowCreate }: PostListPanelProps) {
   const [keywordInput, setKeywordInput] = useState("");
   const [keyword, setKeyword] = useState("");
   const [subtypeInput, setSubtypeInput] = useState("");
   const [subtype, setSubtype] = useState("");
   const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [sortBy, setSortBy] = useState<PostSortBy | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<PostSortOrder | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_POST_PAGE_SIZE);
   const [list, setList] = useState<AdminPostItem[]>([]);
@@ -45,6 +51,8 @@ export function PostListPanel({ postType, allowCreate }: PostListPanelProps) {
         keyword: keyword.trim() || undefined,
         subtype: subtype.trim() || undefined,
         includeDeleted: includeDeleted || undefined,
+        sortBy,
+        sortOrder: sortBy ? sortOrder : undefined,
       });
       setList(data.list);
       setTotal(data.total);
@@ -69,7 +77,7 @@ export function PostListPanel({ postType, allowCreate }: PostListPanelProps) {
 
   useEffect(() => {
     void loadList();
-  }, [page, pageSize, keyword, subtype, includeDeleted, postType]);
+  }, [page, pageSize, keyword, subtype, includeDeleted, postType, sortBy, sortOrder]);
 
   useForegroundRefresh(() => void loadList(true), {
     intervalMs: FOREGROUND_REFRESH_INTERVAL_MS,
@@ -127,8 +135,11 @@ export function PostListPanel({ postType, allowCreate }: PostListPanelProps) {
     {
       title: "阅读量",
       dataIndex: "viewCount",
+      key: "viewCount",
       width: 90,
       responsive: ["lg"],
+      sorter: true,
+      sortOrder: sortBy === "viewCount" ? (sortOrder === "asc" ? "ascend" : "descend") : null,
     },
     {
       title: "覆盖率",
@@ -139,8 +150,11 @@ export function PostListPanel({ postType, allowCreate }: PostListPanelProps) {
     },
     {
       title: "回复",
+      key: "replyCount",
       width: 100,
       responsive: ["md"],
+      sorter: true,
+      sortOrder: sortBy === "replyCount" ? (sortOrder === "asc" ? "ascend" : "descend") : null,
       render: (_, row) => {
         if (row.postType === "announcement") return <span className="text-muted">—</span>;
         const count = row.replyCount ?? 0;
@@ -157,6 +171,28 @@ export function PostListPanel({ postType, allowCreate }: PostListPanelProps) {
         row.deletedAt ? <Tag color="warning">已删除</Tag> : <Tag color="success">正常</Tag>,
     },
   ];
+
+  function handleTableChange(
+    pagination: TablePaginationConfig,
+    _filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<AdminPostItem> | SorterResult<AdminPostItem>[],
+  ) {
+    const nextPage = pagination.current ?? 1;
+    const nextSize = pagination.pageSize ?? DEFAULT_POST_PAGE_SIZE;
+    const single = Array.isArray(sorter) ? sorter[0] : sorter;
+    const field = single?.field ?? single?.columnKey;
+    let nextSortBy: PostSortBy | undefined;
+    let nextSortOrder: PostSortOrder | undefined;
+    if ((field === "viewCount" || field === "replyCount") && single?.order) {
+      nextSortBy = field;
+      nextSortOrder = single.order === "ascend" ? "asc" : "desc";
+    }
+    const sortChanged = nextSortBy !== sortBy || nextSortOrder !== sortOrder;
+    setSortBy(nextSortBy);
+    setSortOrder(nextSortOrder);
+    setPage(sortChanged ? 1 : nextPage);
+    setPageSize(nextSize);
+  }
 
   return (
     <div>
@@ -239,10 +275,7 @@ export function PostListPanel({ postType, allowCreate }: PostListPanelProps) {
           showSizeChanger: true,
           showTotal: (count) => `共 ${count} 条`,
         }}
-        onChange={(pagination: TablePaginationConfig) => {
-          setPage(pagination.current ?? 1);
-          setPageSize(pagination.pageSize ?? DEFAULT_POST_PAGE_SIZE);
-        }}
+        onChange={handleTableChange}
         onRow={(record) => ({
           onClick: () => {
             setSelected(record);

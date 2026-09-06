@@ -53,6 +53,10 @@ export type AdminPostListQuery = {
   subtype?: string;
   keyword?: string;
   includeDeleted?: boolean;
+  /** 服务端排序字段；不传则按发布时间降序 */
+  sortBy?: "viewCount" | "replyCount";
+  /** 仅配合 sortBy；缺省由服务端视为 desc */
+  sortOrder?: "asc" | "desc";
 };
 
 export type CreateAnnouncementBody = {
