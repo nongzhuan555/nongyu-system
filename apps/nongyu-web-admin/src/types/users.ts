@@ -12,6 +12,8 @@ export type AdminUserListItem = {
   role: UserRole;
   status: UserStatus;
   isOnline: boolean;
+  /** 累计活跃天数（上线后向前累计） */
+  activeDays: number;
   lastLoginAt: string | null;
   createdAt: string;
 };
@@ -45,6 +47,8 @@ export type AdminUserDetail = {
   createdAt: string;
   status: UserStatus;
   isOnline: boolean;
+  /** 累计活跃天数（上线后向前累计） */
+  activeDays: number;
   lastActiveAt: string | null;
   lastLoginAt: string | null;
   deviceBrand: string | null;
@@ -71,6 +75,8 @@ export type AdminUserListQuery = {
   isOnline?: 1;
   /** 仅传 1：今日活跃（last_active_at 落在业务日） */
   activeToday?: 1;
+  sortBy?: "activeDays";
+  sortOrder?: "asc" | "desc";
 };
 
 export type PatchAdminUserBody = {

@@ -1,5 +1,8 @@
 export type GrowthRange = "7d" | "30d" | "90d" | "180d" | "365d";
 
+/** 应用性能卡区间：今天 / 近 7 天 / 近 30 天 */
+export type PerfRange = "1d" | "7d" | "30d";
+
 export type DistKeyCount = {
   key: string;
   count: number;
@@ -42,7 +45,9 @@ export type TrackDimItem = {
 };
 
 export type TrackDims = {
-  date: string;
+  date?: string;
+  from?: string;
+  to?: string;
   metric: string;
   items: TrackDimItem[];
 };
@@ -80,6 +85,21 @@ export type TrackSqlQueryResult = {
   rowCount: number;
 };
 
+export type ActiveDaysRankingLimit = 50 | 100 | 200;
+
+export type ActiveDaysRankingItem = {
+  id: number;
+  studentNo: string;
+  name: string;
+  activeDays: number;
+};
+
+export type ActiveDaysRanking = {
+  list: ActiveDaysRankingItem[];
+  limit: ActiveDaysRankingLimit;
+  order: "asc" | "desc";
+};
+
 export type GridBreakpoint = "lg" | "md" | "xs";
 
 export type GridItemLayout = {
@@ -95,5 +115,7 @@ export type GridItemLayout = {
 export type DashboardPrefsV1 = {
   version: 1;
   growthRange: GrowthRange;
+  /** 应用性能卡区间；缺省视为 1d */
+  perfRange?: PerfRange;
   layouts: Partial<Record<GridBreakpoint, GridItemLayout[]>>;
 };

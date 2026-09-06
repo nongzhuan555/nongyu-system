@@ -23,9 +23,10 @@ import {
   readDashboardPrefs,
   writeDashboardPrefs,
 } from "../lib/dashboardPrefs";
-import type { DashboardPrefsV1, GrowthRange } from "../types/dashboard";
+import type { DashboardPrefsV1, GrowthRange, PerfRange } from "../types/dashboard";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
+import { perfRangeBounds } from "../lib/perfRange";
 
 const EMPTY_DATA: DashboardGridData = {
   overview: null,
@@ -48,6 +49,13 @@ function withoutWebPerf(items: { dimKey: string; dimValue: string; metricValue: 
 
 function withoutWebHome(items: { dimKey: string; dimValue: string; metricValue: number }[]) {
   return items.filter((item) => item.dimValue !== "web_home");
+}
+
+/** 按 perfRange 拉取 App 性能分位（1d 走默认今日；多日带 from/to） */
+function fetchAppPerfDims(metric: "perf_p50" | "perf_p95", range: PerfRange) {
+  if (range === "1d") return fetchTrackDims(metric);
+  const { from, to } = perfRangeBounds(range);
+  return fetchTrackDims(metric, undefined, { from, to });
 }
 
 function messageFromError(err: unknown, track: boolean): string {
@@ -82,6 +90,7 @@ export function DashboardPage() {
   const [data, setData] = useState<DashboardGridData>(EMPTY_DATA);
   const [coreLoading, setCoreLoading] = useState(true);
   const [trackLoading, setTrackLoading] = useState(true);
+  const [perfLoading, setPerfLoading] = useState(false);
   const [crashLoading, setCrashLoading] = useState(false);
   const [coreError, setCoreError] = useState<string | null>(null);
   const [trackError, setTrackError] = useState<string | null>(null);
@@ -112,6 +121,7 @@ export function DashboardPage() {
       setTrackLoading(true);
       setTrackError(null);
     }
+    const perfRange = prefsRef.current.perfRange ?? "1d";
     try {
       const [trackOverview, screens, dwell, buttons, p50, p95, webP50, webP95, crashes] =
         await Promise.all([
@@ -119,8 +129,8 @@ export function DashboardPage() {
           fetchTrackDims("screen_views"),
           fetchTrackDims("screen_dwell_avg"),
           fetchTrackDims("button_clicks"),
-          fetchTrackDims("perf_p50"),
-          fetchTrackDims("perf_p95"),
+          fetchAppPerfDims("perf_p50", perfRange),
+          fetchAppPerfDims("perf_p95", perfRange),
           fetchTrackDims("perf_p50", undefined, { platform: "web", namePrefix: "cwv_" }),
           fetchTrackDims("perf_p95", undefined, { platform: "web", namePrefix: "cwv_" }),
           fetchTrackCrashes(page, 10),
@@ -142,6 +152,25 @@ export function DashboardPage() {
       if (!silent) setTrackError(messageFromError(err, true));
     } finally {
       if (!silent) setTrackLoading(false);
+    }
+  });
+
+  const loadPerf = useEffectEvent(async (range: PerfRange) => {
+    setPerfLoading(true);
+    try {
+      const [p50, p95] = await Promise.all([
+        fetchAppPerfDims("perf_p50", range),
+        fetchAppPerfDims("perf_p95", range),
+      ]);
+      setData((prev) => ({
+        ...prev,
+        perfP50: withoutWebPerf(p50.items),
+        perfP95: withoutWebPerf(p95.items),
+      }));
+    } catch (err) {
+      setTrackError(messageFromError(err, true));
+    } finally {
+      setPerfLoading(false);
     }
   });
 
@@ -191,6 +220,11 @@ export function DashboardPage() {
     }
   }
 
+  function handlePerfRangeChange(range: PerfRange) {
+    persistPrefs({ ...prefsRef.current, perfRange: range });
+    void loadPerf(range);
+  }
+
   async function handleCrashPageChange(page: number) {
     setCrashPage(page);
     setCrashLoading(true);
@@ -209,6 +243,7 @@ export function DashboardPage() {
     const next = defaultDashboardPrefs();
     persistPrefs(next);
     void loadCore("7d");
+    void loadPerf("1d");
   }
 
   function handleRefresh() {
@@ -235,6 +270,7 @@ export function DashboardPage() {
         data={data}
         coreLoading={coreLoading}
         trackLoading={trackLoading}
+        perfLoading={perfLoading}
         crashLoading={crashLoading}
         coreError={coreError}
         trackError={trackError}
@@ -243,6 +279,7 @@ export function DashboardPage() {
         onGrowthRangeChange={(range) => {
           void handleGrowthRangeChange(range);
         }}
+        onPerfRangeChange={handlePerfRangeChange}
         onCrashPageChange={(page) => {
           void handleCrashPageChange(page);
         }}

@@ -1,5 +1,6 @@
 import { Alert, Button, Input, Pagination, Select, Spin, Table, Tag } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
+import type { FilterValue, SorterResult } from "antd/es/table/interface";
 import { useEffect, useEffectEvent, useState } from "react";
 import { PageFrame } from "../components/layout/PageFrame";
 import { UserDetailDrawer } from "../components/users/UserDetailDrawer";
@@ -15,6 +16,7 @@ type RoleFilter = "all" | UserRole;
 type StatusFilter = "all" | UserStatus;
 type OnlineFilter = "all" | 1;
 type ActiveTodayFilter = "all" | 1;
+type ActiveDaysSortOrder = "asc" | "desc" | null;
 
 function RoleTag({ role }: { role: UserRole }) {
   if (role === 2) return <Tag color="purple">超级管理员</Tag>;
@@ -37,6 +39,7 @@ export function UsersPage() {
   const [status, setStatus] = useState<StatusFilter>("all");
   const [online, setOnline] = useState<OnlineFilter>("all");
   const [activeToday, setActiveToday] = useState<ActiveTodayFilter>("all");
+  const [activeDaysSort, setActiveDaysSort] = useState<ActiveDaysSortOrder>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_USER_PAGE_SIZE);
 
@@ -62,6 +65,8 @@ export function UsersPage() {
         status: status === "all" ? undefined : status,
         isOnline: online === 1 ? 1 : undefined,
         activeToday: activeToday === 1 ? 1 : undefined,
+        sortBy: activeDaysSort ? "activeDays" : undefined,
+        sortOrder: activeDaysSort ?? undefined,
       });
       setList(data.list);
       setTotal(data.total);
@@ -86,7 +91,7 @@ export function UsersPage() {
 
   useEffect(() => {
     void loadList();
-  }, [page, pageSize, keyword, role, status, online, activeToday]);
+  }, [page, pageSize, keyword, role, status, online, activeToday, activeDaysSort]);
 
   useForegroundRefresh(() => void loadList(true), {
     intervalMs: FOREGROUND_REFRESH_INTERVAL_MS,
@@ -141,6 +146,15 @@ export function UsersPage() {
       render: (value: boolean) => (value ? "在线" : "离线"),
     },
     {
+      title: "累计活跃天数",
+      dataIndex: "activeDays",
+      key: "activeDays",
+      width: 130,
+      sorter: true,
+      sortOrder: activeDaysSort === "asc" ? "ascend" : activeDaysSort === "desc" ? "descend" : null,
+      render: (value: number) => value,
+    },
+    {
       title: "最近登录",
       dataIndex: "lastLoginAt",
       width: 160,
@@ -161,9 +175,23 @@ export function UsersPage() {
     setDrawerOpen(true);
   }
 
-  function handleTableChange(pagination: TablePaginationConfig) {
-    setPage(pagination.current ?? 1);
-    setPageSize(pagination.pageSize ?? DEFAULT_USER_PAGE_SIZE);
+  function handleTableChange(
+    pagination: TablePaginationConfig,
+    _filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<AdminUserListItem> | SorterResult<AdminUserListItem>[],
+  ) {
+    const nextPage = pagination.current ?? 1;
+    const nextSize = pagination.pageSize ?? DEFAULT_USER_PAGE_SIZE;
+    const single = Array.isArray(sorter) ? sorter[0] : sorter;
+    let nextSort: ActiveDaysSortOrder = null;
+    if (single?.field === "activeDays" || single?.columnKey === "activeDays") {
+      if (single.order === "ascend") nextSort = "asc";
+      else if (single.order === "descend") nextSort = "desc";
+    }
+    const sortChanged = nextSort !== activeDaysSort;
+    setActiveDaysSort(nextSort);
+    setPage(sortChanged ? 1 : nextPage);
+    setPageSize(nextSize);
   }
 
   const filterBar = (
@@ -232,7 +260,7 @@ export function UsersPage() {
   return (
     <PageFrame
       title="用户管理"
-      description="查看用户档案，调整角色与账号状态。「仅今日活跃」按最近活跃时间近似统计，不等同大屏日活。"
+      description="查看用户档案，调整角色与账号状态。「仅今日活跃」按最近活跃时间近似统计，不等同大屏日活。累计活跃天数从统计上线日起算，非历史回填。"
       toolbar={filterBar}
     >
       {error ? (
@@ -261,7 +289,7 @@ export function UsersPage() {
           columns={columns}
           dataSource={list}
           size="middle"
-          scroll={{ x: 900 }}
+          scroll={{ x: 1040 }}
           locale={{ emptyText: "暂无用户" }}
           pagination={{
             current: page,
@@ -306,16 +334,15 @@ export function UsersPage() {
                       <StatusTag status={user.status} />
                     </div>
                   </div>
-                  {user.college || user.isOnline ? (
-                    <p className="truncate text-[12px] text-muted">
-                      {[
-                        user.college ? displayText(user.college) : null,
-                        user.isOnline ? "在线" : "离线",
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                  ) : null}
+                  <p className="truncate text-[12px] text-muted">
+                    {[
+                      user.college ? displayText(user.college) : null,
+                      user.isOnline ? "在线" : "离线",
+                      `活跃 ${user.activeDays} 天`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
                 </button>
               ))
             : null}

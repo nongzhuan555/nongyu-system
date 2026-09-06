@@ -24,6 +24,7 @@ export function AdminUserListCard({ output, status, error }: ToolRenderProps) {
             width: 80,
             render: (role: number) => (role === 1 ? <Tag color="green">管理员</Tag> : "用户"),
           },
+          { title: "活跃天", dataIndex: "activeDays", width: 72 },
         ]}
       />
     </Card>
@@ -44,6 +45,7 @@ export function AdminUserDetailCard({ output, status, error }: ToolRenderProps) 
         <Descriptions.Item label="角色">{u.role === 1 ? "管理员" : "用户"}</Descriptions.Item>
         <Descriptions.Item label="状态">{u.status === 1 ? "正常" : "禁用"}</Descriptions.Item>
         <Descriptions.Item label="在线">{u.isOnline ? "是" : "否"}</Descriptions.Item>
+        <Descriptions.Item label="累计活跃天数">{String(u.activeDays ?? "—")}</Descriptions.Item>
       </Descriptions>
     </Card>
   );

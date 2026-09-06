@@ -2,7 +2,11 @@ import type { RowDataPacket } from "mysql2/promise";
 import { getPool } from "../../lib/db.js";
 import { getEnv } from "../../config/env.js";
 import { businessDayUtcRange, eachBusinessDateKeys } from "../../lib/time.js";
-import { ONLINE_FRESH_WINDOW_SEC, clearStaleOnlineUsers } from "../users/repo.js";
+import {
+  ONLINE_FRESH_WINDOW_SEC,
+  clearStaleOnlineUsers,
+  listActiveDaysRanking,
+} from "../users/repo.js";
 
 export async function getOverview() {
   const tz = getEnv().BUSINESS_TZ;
@@ -116,4 +120,19 @@ export async function getSettingsDistribution() {
     ),
   ]);
   return { theme, homeIsTimetable, openWebInApp, agentEnabled };
+}
+
+/** 用户累计活跃天数排行（正常账号且天数>0） */
+export async function getActiveDaysRanking(limit: 50 | 100 | 200, order: "asc" | "desc") {
+  const rows = await listActiveDaysRanking({ limit, order });
+  return {
+    list: rows.map((r) => ({
+      id: r.id,
+      studentNo: r.student_no,
+      name: r.name,
+      activeDays: r.active_days,
+    })),
+    limit,
+    order,
+  };
 }

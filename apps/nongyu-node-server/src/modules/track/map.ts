@@ -68,14 +68,21 @@ export function mapOverview(raw: unknown): {
 }
 
 export function mapDims(raw: unknown): {
-  date: string;
+  date?: string;
+  from?: string;
+  to?: string;
   metric: string;
   items: { dimKey: string; dimValue: string; metricValue: number }[];
 } {
   const record = isRecord(raw) ? raw : {};
   const itemsRaw = Array.isArray(record.items) ? record.items : [];
-  return {
-    date: asString(record.date),
+  const mapped: {
+    date?: string;
+    from?: string;
+    to?: string;
+    metric: string;
+    items: { dimKey: string; dimValue: string; metricValue: number }[];
+  } = {
     metric: asString(record.metric),
     items: itemsRaw.map((item) => {
       const row = isRecord(item) ? item : {};
@@ -86,6 +93,16 @@ export function mapDims(raw: unknown): {
       };
     }),
   };
+  if (record.date !== undefined && record.date !== null && asString(record.date)) {
+    mapped.date = asString(record.date);
+  }
+  if (record.from !== undefined && record.from !== null && asString(record.from)) {
+    mapped.from = asString(record.from);
+  }
+  if (record.to !== undefined && record.to !== null && asString(record.to)) {
+    mapped.to = asString(record.to);
+  }
+  return mapped;
 }
 
 export function mapCrashes(

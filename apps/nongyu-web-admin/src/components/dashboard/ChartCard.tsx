@@ -7,6 +7,7 @@ export function ChartCard({
   loading,
   error,
   empty,
+  emptyText = "暂无数据",
   children,
   layoutEditable = true,
 }: {
@@ -15,6 +16,7 @@ export function ChartCard({
   loading: boolean;
   error: string | null;
   empty: boolean;
+  emptyText?: string;
   children: ReactNode;
   /** 窄屏禁拖时隐藏手柄 */
   layoutEditable?: boolean;
@@ -43,7 +45,7 @@ export function ChartCard({
         ) : loading ? (
           <p className="text-[13px] text-muted">加载中…</p>
         ) : empty ? (
-          <p className="text-[13px] text-muted">暂无数据</p>
+          <p className="text-[13px] text-muted">{emptyText}</p>
         ) : (
           <div className="h-full min-h-[160px]">{children}</div>
         )}

@@ -14,15 +14,20 @@ export async function getTrackOverview(date: string) {
 
 export async function getTrackDims(
   metric: string,
-  date: string,
+  date: string | undefined,
   limit: number,
-  opts?: { platform?: string; namePrefix?: string },
+  opts?: { platform?: string; namePrefix?: string; from?: string; to?: string },
 ) {
   const query = new URLSearchParams({
     metric,
-    date,
     limit: String(limit),
   });
+  if (opts?.from && opts?.to) {
+    query.set("from", opts.from);
+    query.set("to", opts.to);
+  } else if (date) {
+    query.set("date", date);
+  }
   if (opts?.platform) query.set("platform", opts.platform);
   if (opts?.namePrefix) query.set("name_prefix", opts.namePrefix);
   const data = await trackAdminGet(`/v1/admin/metrics/dims?${query.toString()}`);

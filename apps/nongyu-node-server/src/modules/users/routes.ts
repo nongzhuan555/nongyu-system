@@ -67,6 +67,17 @@ adminUsersRouter.get(
           .enum(["1"])
           .optional()
           .transform((v) => (v === undefined ? undefined : (1 as const))),
+        sortBy: z.enum(["activeDays"]).optional(),
+        sortOrder: z.enum(["asc", "desc"]).optional(),
+      })
+      .superRefine((val, ctx) => {
+        if (val.sortOrder !== undefined && val.sortBy === undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "sortOrder 须配合 sortBy 使用",
+            path: ["sortOrder"],
+          });
+        }
       })
       .parse(req.query);
     const { page, pageSize, offset } = pageParams(query.page, query.pageSize);
@@ -83,6 +94,8 @@ adminUsersRouter.get(
       activeToday: query.activeToday,
       activeDayStart: query.activeToday === 1 ? activeDayStart : undefined,
       activeDayEnd: query.activeToday === 1 ? activeDayEnd : undefined,
+      sortBy: query.sortBy,
+      sortOrder: query.sortBy ? (query.sortOrder ?? "desc") : undefined,
     });
     ok(res, {
       list: rows.map((u) => ({
@@ -95,6 +108,7 @@ adminUsersRouter.get(
         role: u.role,
         status: u.status,
         isOnline: boolFromDb(u.is_online),
+        activeDays: Number(u.active_days ?? 0),
         lastLoginAt: toIsoUtc(u.last_login_at),
         createdAt: toIsoUtcRequired(u.created_at),
       })),
@@ -117,6 +131,7 @@ adminUsersRouter.get(
       ...toAppUserProfile(user),
       status: user.status,
       isOnline: boolFromDb(user.is_online),
+      activeDays: Number(user.active_days ?? 0),
       lastActiveAt: toIsoUtc(user.last_active_at),
       lastLoginAt: toIsoUtc(user.last_login_at),
       deviceBrand: user.device_brand,

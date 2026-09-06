@@ -1,5 +1,10 @@
 import type { EChartsOption } from "echarts";
-import type { DistKeyCount, TrackDimItem, UserGrowth } from "../../types/dashboard";
+import type {
+  DistKeyCount,
+  TrackDimItem,
+  UserGrowth,
+  ActiveDaysRankingItem,
+} from "../../types/dashboard";
 import { formatRnRouteLabel } from "../../lib/rnRouteLabels";
 import { webVitalChartLabel, webVitalTooltipLine } from "./webVitalsMeta";
 
@@ -384,6 +389,40 @@ export function webVitalsOption(
         data: names.map((name) => p95Map.get(name) ?? 0),
         barMaxWidth: 18,
         itemStyle: { borderRadius: [8, 8, 0, 0] },
+      },
+    ],
+  };
+}
+
+/** 用户累计活跃排行：类目为「姓名（学号）」；list 已由服务端按升降序排好 */
+export function activeDaysRankingOption(
+  list: ActiveDaysRankingItem[] | null | undefined,
+): EChartsOption | null {
+  if (!list || list.length === 0) return null;
+  const display = forHorizontalBars(list);
+  const names = display.map((item) => `${item.name}（${item.studentNo}）`);
+  const values = display.map((item) => item.activeDays);
+  return {
+    color: CHART_COLORS,
+    tooltip: { ...TOOLTIP, trigger: "axis" },
+    grid: { left: 140, right: 16, top: 16, bottom: 32, containLabel: true },
+    xAxis: {
+      type: "value",
+      name: "天",
+      axisLabel: { color: "#424945" },
+      splitLine: { lineStyle: { color: "#F1F5F9" } },
+    },
+    yAxis: {
+      type: "category",
+      data: names,
+      axisLabel: { color: "#424945", width: 128, overflow: "truncate" },
+    },
+    series: [
+      {
+        type: "bar",
+        data: values,
+        barMaxWidth: 22,
+        itemStyle: { borderRadius: [0, 8, 8, 0] },
       },
     ],
   };

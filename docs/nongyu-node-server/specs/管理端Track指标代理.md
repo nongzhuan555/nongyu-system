@@ -93,28 +93,41 @@
 
 ### 4.5 `GET /api/admin/track/dims`
 
-| Query    | 必填 | 说明                                                                                |
-| -------- | ---- | ----------------------------------------------------------------------------------- |
-| `metric` | 是   | `screen_views` \| `screen_dwell_avg` \| `button_clicks` \| `perf_p50` \| `perf_p95` |
-| `date`   | 否   | 缺省当天                                                                            |
-| `limit`  | 否   | 默认 50，最大 100（与 Track 一致）                                                  |
+| Query        | 必填 | 说明                                                                                |
+| ------------ | ---- | ----------------------------------------------------------------------------------- |
+| `metric`     | 是   | `screen_views` \| `screen_dwell_avg` \| `button_clicks` \| `perf_p50` \| `perf_p95` |
+| `date`       | 否   | 缺省当天；与 `from`/`to` 互斥用法见下                                               |
+| `from`       | 否   | `YYYY-MM-DD`；须与 `to` 成对；仅 `perf_p50`/`perf_p95` 允许 `from < to`             |
+| `to`         | 否   | 同上                                                                                |
+| `limit`      | 否   | 默认 50，最大 100（与 Track 一致）                                                  |
+| `platform`   | 否   | 透传 Track                                                                          |
+| `namePrefix` | 否   | 透传为 Track `name_prefix`                                                          |
 
-上游：`GET /v1/admin/metrics/dims`
+上游：`GET /v1/admin/metrics/dims`（Query 原样转发 `from`/`to`/`date`/`limit`/`platform`/`name_prefix`）。
+
+**区间规则（Node 可做预校验，亦可依赖 Track 400）：**
+
+- 缺省：无 `from`/`to` 时 `date = todayBusinessDate()`，行为与现网一致。
+- `from`/`to` 成对；跨日仅允许 perf 分位；跨度 ≤ 30 天；校验失败 400 / `40001`，可不打 Track。
+- 大屏「应用性能区间」见 `docs/nongyu-web-admin/specs/数据大屏-应用性能区间查询.md`；Track 口径见 `docs/nongyu-node-track-server/specs/应用性能dims区间分位.md`。
 
 成功 `data`：
 
 ```ts
 {
-  date: string;
+  date?: string;
+  from?: string;
+  to?: string;
   metric: string;
   items: {
     dimKey: string;
     dimValue: string;
     metricValue: number;
-  }
-  [];
+  }[];
 }
 ```
+
+映射：Track `from`/`to`/`date` 透传 camelCase；`items` 字段 camelCase 与现网一致。
 
 非法 `metric`：400 / `40001`，不打 Track。
 

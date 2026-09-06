@@ -48,6 +48,13 @@ export function isToday(date: string, t: Date = new Date()): boolean {
   return date === statDate(t);
 }
 
+/** 闭区间 [from, to] 的日历天数（含首尾）；调用前须已 parseDate 校验。 */
+export function inclusiveDaySpan(from: string, to: string): number {
+  const f = parseDate(from);
+  const t = parseDate(to);
+  return Math.round((t.getTime() - f.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+}
+
 /** 上海时区的时、分（用于定时任务） */
 export function shanghaiHourMinute(t: Date = new Date()): { hour: number; minute: number } {
   const shifted = new Date(t.getTime() + SHANGHAI_OFFSET_MS);

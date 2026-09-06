@@ -126,13 +126,8 @@ export function liveDims(
       break;
     case "perf_p50":
     case "perf_p95": {
-      const perf = perfDurations(store, date, effective);
-      const p = metric === "perf_p95" ? 95 : 50;
-      rows = [];
-      for (const [name, vals] of perf) {
-        const sorted = [...vals].sort((a, b) => a - b);
-        rows.push({ dimKey: "name", dimValue: name, metricValue: percentile(sorted, p) });
-      }
+      rows = perfDimsInRange(store, metric, date, date, lim, effective);
+      // perfDimsInRange 已排序截断；此处再走统一 sort/slice 无害
       break;
     }
     default:
@@ -280,15 +275,26 @@ WHERE stat_date=? AND event_type='screen_view' AND duration_ms IS NOT NULL`,
   return rows.map((r) => ({ dimKey: "name", dimValue: r.event_name, metricValue: r.n }));
 }
 
+/** 单日 perf 时长样本（日聚合与 live 共用）。 */
 export function perfDurations(
   store: Store,
   date: string,
   filter?: DimFilter,
 ): Map<string, number[]> {
+  return perfDurationsInRange(store, date, date, filter);
+}
+
+/** 闭区间内 perf 原始 duration_ms，按 event_name 分组。 */
+export function perfDurationsInRange(
+  store: Store,
+  from: string,
+  to: string,
+  filter?: DimFilter,
+): Map<string, number[]> {
   const base = appendEventFilters(
     `SELECT event_name, duration_ms FROM events
-WHERE stat_date=? AND event_type='perf' AND duration_ms IS NOT NULL`,
-    [date],
+WHERE stat_date>=? AND stat_date<=? AND event_type='perf' AND duration_ms IS NOT NULL`,
+    [from, to],
     filter,
   );
   const rows = store.db.prepare(base.sql).all(...base.args) as Array<{
@@ -302,6 +308,36 @@ WHERE stat_date=? AND event_type='perf' AND duration_ms IS NOT NULL`,
     out.set(r.event_name, list);
   }
   return out;
+}
+
+/**
+ * 区间内对原始样本重算 perf_p50 / perf_p95（禁止合并日聚合分位）。
+ * 默认排除 platform=web，与 liveDims 单日口径一致。
+ */
+export function perfDimsInRange(
+  store: Store,
+  metric: string,
+  from: string,
+  to: string,
+  limit: number,
+  filter?: DimFilter,
+): DimRow[] {
+  let lim = limit;
+  if (lim < 1) lim = 50;
+  const effective =
+    filter?.platform || filter?.namePrefix || filter?.excludePlatform ? filter : APP_DIM_FILTER;
+  const p = metric === "perf_p95" ? 95 : 50;
+  const perf = perfDurationsInRange(store, from, to, effective);
+  const rows: DimRow[] = [];
+  for (const [name, vals] of perf) {
+    const sorted = [...vals].sort((a, b) => a - b);
+    rows.push({ dimKey: "name", dimValue: name, metricValue: percentile(sorted, p) });
+  }
+  rows.sort((a, b) => {
+    if (a.metricValue === b.metricValue) return a.dimValue < b.dimValue ? -1 : 1;
+    return b.metricValue - a.metricValue;
+  });
+  return rows.length > lim ? rows.slice(0, lim) : rows;
 }
 
 function listEventsByType(

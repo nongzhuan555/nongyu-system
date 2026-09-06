@@ -55,13 +55,44 @@ adminTrackRouter.get(
       .object({
         metric: dimMetricSchema,
         date: dateSchema.optional(),
+        from: dateSchema.optional(),
+        to: dateSchema.optional(),
         limit: z.coerce.number().int().min(1).max(100).optional(),
         platform: z.enum(["ios", "android", "web"]).optional(),
         namePrefix: z.string().trim().min(1).max(64).optional(),
       })
       .parse(req.query);
-    const date = query.date ?? todayBusinessDate();
     const limit = query.limit ?? 50;
+    const from = query.from;
+    const to = query.to;
+    if ((from && !to) || (!from && to)) {
+      throw new AppError(ErrorCodes.VALIDATION, "from 与 to 须成对出现", 400);
+    }
+    if (from && to) {
+      if (from > to) {
+        throw new AppError(ErrorCodes.VALIDATION, "from 不能晚于 to", 400);
+      }
+      const span =
+        Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000) +
+        1;
+      if (span > 30) {
+        throw new AppError(ErrorCodes.VALIDATION, "查询跨度不能超过 30 天", 400);
+      }
+      if (from !== to && query.metric !== "perf_p50" && query.metric !== "perf_p95") {
+        throw new AppError(ErrorCodes.VALIDATION, "仅性能分位支持跨日查询", 400);
+      }
+      ok(
+        res,
+        await getTrackDims(query.metric, undefined, limit, {
+          from,
+          to,
+          platform: query.platform,
+          namePrefix: query.namePrefix,
+        }),
+      );
+      return;
+    }
+    const date = query.date ?? todayBusinessDate();
     ok(
       res,
       await getTrackDims(query.metric, date, limit, {

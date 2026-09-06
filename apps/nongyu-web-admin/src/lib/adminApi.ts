@@ -10,6 +10,8 @@ import type {
   TrackTrend,
   UserDistribution,
   UserGrowth,
+  ActiveDaysRanking,
+  ActiveDaysRankingLimit,
 } from "../types/dashboard";
 import type {
   AdminPostItem,
@@ -46,6 +48,7 @@ import type {
 import {
   ADMIN_AGENT_CHAT_SUGGESTIONS_PATH,
   ADMIN_DASHBOARD_DISTRIBUTION_PATH,
+  ADMIN_DASHBOARD_ACTIVE_DAYS_RANKING_PATH,
   ADMIN_DASHBOARD_GROWTH_PATH,
   ADMIN_DASHBOARD_OVERVIEW_PATH,
   ADMIN_HANDOFF_REDEEM_PATH,
@@ -333,6 +336,22 @@ export async function fetchUserDistribution(): Promise<UserDistribution> {
   return unwrapData(response.data);
 }
 
+export async function fetchActiveDaysRanking(params: {
+  limit?: ActiveDaysRankingLimit;
+  order?: "asc" | "desc";
+}): Promise<ActiveDaysRanking> {
+  const response = await adminApi.get<ApiEnvelope<ActiveDaysRanking>>(
+    ADMIN_DASHBOARD_ACTIVE_DAYS_RANKING_PATH,
+    {
+      params: {
+        limit: params.limit ?? 50,
+        order: params.order ?? "desc",
+      },
+    },
+  );
+  return unwrapData(response.data);
+}
+
 export async function fetchTrackOverview(): Promise<TrackOverview> {
   const response = await adminApi.get<ApiEnvelope<TrackOverview>>(ADMIN_TRACK_OVERVIEW_PATH);
   return unwrapData(response.data);
@@ -341,12 +360,20 @@ export async function fetchTrackOverview(): Promise<TrackOverview> {
 export async function fetchTrackDims(
   metric: "screen_views" | "screen_dwell_avg" | "button_clicks" | "perf_p50" | "perf_p95",
   date?: string,
-  opts?: { platform?: "ios" | "android" | "web"; namePrefix?: string; limit?: number },
+  opts?: {
+    platform?: "ios" | "android" | "web";
+    namePrefix?: string;
+    limit?: number;
+    from?: string;
+    to?: string;
+  },
 ): Promise<TrackDims> {
   const response = await adminApi.get<ApiEnvelope<TrackDims>>(ADMIN_TRACK_DIMS_PATH, {
     params: {
       metric,
-      date,
+      date: opts?.from && opts?.to ? undefined : date,
+      from: opts?.from,
+      to: opts?.to,
       limit: opts?.limit ?? 100,
       platform: opts?.platform,
       namePrefix: opts?.namePrefix,

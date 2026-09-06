@@ -196,4 +196,59 @@ describe("http basic", () => {
     expect(notAllowed.json().data.accepted).toBe(0);
     expect(notAllowed.json().data.rejected).toBe(1);
   });
+
+  it("dims perf range validates and aggregates", async () => {
+    const ctx = await makeApp();
+    cleanups.push(async () => {
+      await ctx.app.close();
+      ctx.writer.stop();
+      await ctx.syncer.stop();
+      ctx.store.close();
+      rmSync(ctx.dir, { recursive: true, force: true });
+    });
+
+    const insert = (id: string, date: string, ms: number) => {
+      ctx.store.db
+        .prepare(
+          `INSERT INTO events (
+  event_id, user_id, student_no, event_type, event_name, app_version, platform,
+  device_brand, session_id, duration_ms, props_json, client_ts_ms, received_at_ms, stat_date
+) VALUES (?, 1, 'S1', 'perf', 'course_week_first_paint', '1.0', 'android', 'x', 's', ?, '', ?, ?, ?)`,
+        )
+        .run(id, ms, Date.now(), Date.now(), date);
+    };
+    insert("d1", "2026-09-01", 100);
+    insert("d2", "2026-09-01", 200);
+    insert("d3", "2026-09-02", 300);
+
+    const badMetric = await ctx.app.inject({
+      method: "GET",
+      url: "/v1/admin/metrics/dims?metric=screen_views&from=2026-09-01&to=2026-09-02",
+      headers: { "x-internal-token": internal },
+    });
+    expect(badMetric.statusCode).toBe(400);
+
+    const tooWide = await ctx.app.inject({
+      method: "GET",
+      url: "/v1/admin/metrics/dims?metric=perf_p50&from=2026-08-01&to=2026-09-02",
+      headers: { "x-internal-token": internal },
+    });
+    expect(tooWide.statusCode).toBe(400);
+
+    const ok = await ctx.app.inject({
+      method: "GET",
+      url: "/v1/admin/metrics/dims?metric=perf_p50&from=2026-09-01&to=2026-09-02",
+      headers: { "x-internal-token": internal },
+    });
+    expect(ok.statusCode).toBe(200);
+    const body = ok.json().data as {
+      from: string;
+      to: string;
+      items: Array<{ dim_value: string; metric_value: number }>;
+    };
+    expect(body.from).toBe("2026-09-01");
+    expect(body.to).toBe("2026-09-02");
+    expect(body.items[0]?.dim_value).toBe("course_week_first_paint");
+    expect(body.items[0]?.metric_value).toBe(200);
+  });
 });

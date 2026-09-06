@@ -174,6 +174,7 @@ export function UserDetailDrawer({
               <Descriptions.Item label="在线">
                 {detail.isOnline ? "在线" : "离线"}
               </Descriptions.Item>
+              <Descriptions.Item label="累计活跃天数">{detail.activeDays}</Descriptions.Item>
               <Descriptions.Item label="最近活跃">
                 {formatAdminDateTime(detail.lastActiveAt)}
               </Descriptions.Item>

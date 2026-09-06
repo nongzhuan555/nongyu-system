@@ -8,6 +8,7 @@ import {
   getSettingsDistribution,
   getUserDistribution,
   getUserGrowth,
+  getActiveDaysRanking,
 } from "./service.js";
 
 export const adminDashboardRouter = Router();
@@ -38,6 +39,23 @@ adminDashboardRouter.get(
   requireProvisionedAdminAuth,
   asyncHandler(async (_req, res) => {
     ok(res, await getUserDistribution());
+  }),
+);
+
+adminDashboardRouter.get(
+  "/active-days-ranking",
+  requireProvisionedAdminAuth,
+  asyncHandler(async (req, res) => {
+    const query = z
+      .object({
+        limit: z
+          .enum(["50", "100", "200"])
+          .optional()
+          .transform((v) => (v === undefined ? (50 as const) : (Number(v) as 50 | 100 | 200))),
+        order: z.enum(["asc", "desc"]).default("desc"),
+      })
+      .parse(req.query);
+    ok(res, await getActiveDaysRanking(query.limit, query.order));
   }),
 );
 

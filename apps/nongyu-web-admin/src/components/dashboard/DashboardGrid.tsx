@@ -10,6 +10,7 @@ import type {
   DashboardOverview,
   DashboardPrefsV1,
   GrowthRange,
+  PerfRange,
   TrackCrashPage,
   TrackDimItem,
   TrackOverview,
@@ -22,6 +23,7 @@ import {
   GRID_ROW_HEIGHT,
   type WidgetId,
 } from "../../lib/dashboardLayout";
+import { ActiveDaysRankingCard } from "./ActiveDaysRankingCard";
 import { ChartCard } from "./ChartCard";
 import { CrashesTable } from "./CrashesTable";
 import {
@@ -64,6 +66,12 @@ const RANGE_OPTIONS = [
   { value: "365d", label: "近一年" },
 ];
 
+const PERF_RANGE_OPTIONS = [
+  { value: "1d", label: "今天" },
+  { value: "7d", label: "近 7 天" },
+  { value: "30d", label: "近 30 天" },
+];
+
 export type DashboardGridData = {
   overview: DashboardOverview | null;
   growth: UserGrowth | null;
@@ -84,24 +92,28 @@ export function DashboardGrid({
   data,
   coreLoading,
   trackLoading,
+  perfLoading,
   crashLoading,
   coreError,
   trackError,
   onLayoutsChange,
   onLayoutPersist,
   onGrowthRangeChange,
+  onPerfRangeChange,
   onCrashPageChange,
 }: {
   prefs: DashboardPrefsV1;
   data: DashboardGridData;
   coreLoading: boolean;
   trackLoading: boolean;
+  perfLoading: boolean;
   crashLoading: boolean;
   coreError: string | null;
   trackError: string | null;
   onLayoutsChange: (layouts: Layouts) => void;
   onLayoutPersist: () => void;
   onGrowthRangeChange: (range: GrowthRange) => void;
+  onPerfRangeChange: (range: PerfRange) => void;
   onCrashPageChange: (page: number) => void;
 }) {
   const screens = Grid.useBreakpoint();
@@ -154,12 +166,15 @@ export function DashboardGrid({
         data,
         coreLoading,
         trackLoading,
+        perfLoading,
         crashLoading,
         coreError,
         trackError,
         growthRange: prefs.growthRange,
+        perfRange: prefs.perfRange ?? "1d",
         layoutEditable: canEditLayout,
         onGrowthRangeChange,
+        onPerfRangeChange,
         onCrashPageChange,
       })}
     </ResponsiveGridLayout>
@@ -170,12 +185,15 @@ function renderWidgets(args: {
   data: DashboardGridData;
   coreLoading: boolean;
   trackLoading: boolean;
+  perfLoading: boolean;
   crashLoading: boolean;
   coreError: string | null;
   trackError: string | null;
   growthRange: GrowthRange;
+  perfRange: PerfRange;
   layoutEditable: boolean;
   onGrowthRangeChange: (range: GrowthRange) => void;
+  onPerfRangeChange: (range: PerfRange) => void;
   onCrashPageChange: (page: number) => void;
 }) {
   const ids: WidgetId[] = [
@@ -185,6 +203,7 @@ function renderWidgets(args: {
     "kpi-today-new",
     "kpi-web-pv",
     "chart-user-growth",
+    "chart-active-days-ranking",
     "chart-gender",
     "chart-college",
     "chart-grade",
@@ -205,12 +224,15 @@ function widgetBody(
     data: DashboardGridData;
     coreLoading: boolean;
     trackLoading: boolean;
+    perfLoading: boolean;
     crashLoading: boolean;
     coreError: string | null;
     trackError: string | null;
     growthRange: GrowthRange;
+    perfRange: PerfRange;
     layoutEditable: boolean;
     onGrowthRangeChange: (range: GrowthRange) => void;
+    onPerfRangeChange: (range: PerfRange) => void;
     onCrashPageChange: (page: number) => void;
   },
 ) {
@@ -297,6 +319,9 @@ function widgetBody(
         {option ? <EchartsBlock option={option} /> : null}
       </ChartCard>
     );
+  }
+  if (id === "chart-active-days-ranking") {
+    return <ActiveDaysRankingCard layoutEditable={layoutEditable} />;
   }
   if (id === "chart-gender") {
     return (
@@ -387,9 +412,18 @@ function widgetBody(
     return (
       <SortableChartCard
         title="应用性能"
-        loading={args.trackLoading}
+        loading={args.trackLoading || args.perfLoading}
         error={args.trackError}
         layoutEditable={layoutEditable}
+        extraBeforeSort={
+          <Select
+            size="small"
+            value={args.perfRange}
+            options={PERF_RANGE_OPTIONS}
+            onChange={(value) => args.onPerfRangeChange(value as PerfRange)}
+            className="min-w-24"
+          />
+        }
         buildOption={(sortOrder) => perfOption(data.perfP50, data.perfP95, sortOrder)}
       />
     );

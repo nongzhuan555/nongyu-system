@@ -1,12 +1,17 @@
-import type { DashboardPrefsV1, GridItemLayout, GrowthRange } from "../types/dashboard";
+import type { DashboardPrefsV1, GridItemLayout, GrowthRange, PerfRange } from "../types/dashboard";
 import { STORAGE_DASHBOARD_PREFS_KEY } from "./constants";
 import { DEFAULT_LAYOUTS, WIDGET_IDS, type GridBreakpoint, type WidgetId } from "./dashboardLayout";
 
 const GROWTH_RANGES: GrowthRange[] = ["7d", "30d", "90d", "180d", "365d"];
+const PERF_RANGES: PerfRange[] = ["1d", "7d", "30d"];
 const BREAKPOINTS: GridBreakpoint[] = ["lg", "md", "xs"];
 
 function isGrowthRange(value: unknown): value is GrowthRange {
   return typeof value === "string" && GROWTH_RANGES.includes(value as GrowthRange);
+}
+
+function isPerfRange(value: unknown): value is PerfRange {
+  return typeof value === "string" && PERF_RANGES.includes(value as PerfRange);
 }
 
 function isWidgetId(value: unknown): value is WidgetId {
@@ -63,6 +68,7 @@ export function defaultDashboardPrefs(): DashboardPrefsV1 {
   return {
     version: 1,
     growthRange: "7d",
+    perfRange: "1d",
     layouts: {
       lg: DEFAULT_LAYOUTS.lg,
       md: DEFAULT_LAYOUTS.md,
@@ -83,6 +89,7 @@ export function readDashboardPrefs(): DashboardPrefsV1 {
     return {
       version: 1,
       growthRange: isGrowthRange(record.growthRange) ? record.growthRange : "7d",
+      perfRange: isPerfRange(record.perfRange) ? record.perfRange : "1d",
       layouts: sanitizeLayouts(record.layouts),
     };
   } catch {

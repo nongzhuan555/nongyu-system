@@ -1,6 +1,6 @@
 import { isTrackWebAllowlisted } from "nongyu-track-contract";
 import type { FastifyInstance } from "fastify";
-import { isToday, parseDate, statDate } from "../bizday.js";
+import { inclusiveDaySpan, isToday, parseDate, statDate } from "../bizday.js";
 import type { Config } from "../config/env.js";
 import type { Jobs } from "../aggregate/jobs.js";
 import type { Writer } from "../ingest/writer.js";
@@ -26,6 +26,7 @@ import {
   listCrashes,
   listLlmProxyFails,
   liveDims,
+  perfDimsInRange,
   trend,
   type DimFilter,
 } from "../store/sqlite/metrics.js";
@@ -382,22 +383,62 @@ export async function registerRoutes(app: FastifyInstance, deps: ApiDeps): Promi
         const q = req.query as {
           metric?: string;
           date?: string;
+          from?: string;
+          to?: string;
           limit?: string;
           platform?: string;
           name_prefix?: string;
         };
         const metric = q.metric ?? "";
-        const date = q.date ?? "";
         if (!allowedDims.has(metric)) {
           writeFail(reply, 400, "BAD_REQUEST", "invalid metric");
           return;
         }
-        try {
-          parseDate(date);
-        } catch {
-          writeFail(reply, 400, "BAD_REQUEST", "invalid date");
-          return;
+
+        const fromRaw = (q.from ?? "").trim();
+        const toRaw = (q.to ?? "").trim();
+        const dateRaw = (q.date ?? "").trim();
+        let from = "";
+        let to = "";
+
+        if (fromRaw || toRaw) {
+          if (!fromRaw || !toRaw) {
+            writeFail(reply, 400, "BAD_REQUEST", "from and to must be paired");
+            return;
+          }
+          try {
+            parseDate(fromRaw);
+            parseDate(toRaw);
+          } catch {
+            writeFail(reply, 400, "BAD_REQUEST", "invalid from/to");
+            return;
+          }
+          if (fromRaw > toRaw) {
+            writeFail(reply, 400, "BAD_REQUEST", "from must be <= to");
+            return;
+          }
+          const span = inclusiveDaySpan(fromRaw, toRaw);
+          if (span > 30) {
+            writeFail(reply, 400, "BAD_REQUEST", "range must be <= 30 days");
+            return;
+          }
+          if (fromRaw !== toRaw && metric !== "perf_p50" && metric !== "perf_p95") {
+            writeFail(reply, 400, "BAD_REQUEST", "only perf_p50/perf_p95 support multi-day range");
+            return;
+          }
+          from = fromRaw;
+          to = toRaw;
+        } else {
+          try {
+            parseDate(dateRaw);
+          } catch {
+            writeFail(reply, 400, "BAD_REQUEST", "invalid date");
+            return;
+          }
+          from = dateRaw;
+          to = dateRaw;
         }
+
         let limit = 50;
         if (q.limit) {
           const n = Number.parseInt(q.limit, 10);
@@ -419,18 +460,23 @@ export async function registerRoutes(app: FastifyInstance, deps: ApiDeps): Promi
             : undefined;
         try {
           const rows =
-            isToday(date, now()) || filter
-              ? liveDims(deps.store, metric, date, limit, filter)
-              : dims(deps.store, metric, date, limit);
-          writeOK(reply, 200, {
-            date,
+            from !== to
+              ? perfDimsInRange(deps.store, metric, from, to, limit, filter)
+              : isToday(from, now()) || filter
+                ? liveDims(deps.store, metric, from, limit, filter)
+                : dims(deps.store, metric, from, limit);
+          const body: Record<string, unknown> = {
+            from,
+            to,
             metric,
             items: rows.map((r) => ({
               dim_key: r.dimKey,
               dim_value: r.dimValue,
               metric_value: r.metricValue,
             })),
-          });
+          };
+          if (from === to) body.date = from;
+          writeOK(reply, 200, body);
         } catch {
           writeFail(reply, 500, "INTERNAL", "query failed");
         }
