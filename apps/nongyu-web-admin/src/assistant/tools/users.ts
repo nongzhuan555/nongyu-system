@@ -44,7 +44,8 @@ export const adminUsersListTool = tool({
 
 export const adminUserDetailTool = tool({
   name: "admin_user_detail",
-  description: "按用户 id 查询用户详情（档案、在线、设置摘要）。只读，不能改角色或密码。",
+  description:
+    "按用户 id 查询用户详情（档案、在线、设备）。只读，不能改角色或密码。不返回可用的用户偏好设置（App 设置未同步远程）。",
   inputSchema: z.object({
     id: z.number().int().positive(),
   }),

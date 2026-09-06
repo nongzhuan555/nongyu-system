@@ -1,7 +1,7 @@
 import { Button, Descriptions, Drawer, Modal, Space, Spin, Tag, Tooltip, message } from "antd";
 import { useEffect, useState } from "react";
 import { AdminApiError, fetchAdminUser, patchAdminUser } from "../../lib/adminApi";
-import { displayText, formatAdminDateTime, formatBool, formatGender } from "../../lib/format";
+import { displayText, formatAdminDateTime, formatGender } from "../../lib/format";
 import { useDrawerWidth, useIsMd } from "../../lib/responsive";
 import type { AdminUserDetail } from "../../types/users";
 import { SetAdminPasswordModal } from "./SetAdminPasswordModal";
@@ -202,30 +202,6 @@ export function UserDetailDrawer({
               <Descriptions.Item label="系统">{displayText(detail.deviceOs)}</Descriptions.Item>
               <Descriptions.Item label="设备 ID">
                 {displayText(detail.currentDeviceId)}
-              </Descriptions.Item>
-            </Descriptions>
-
-            <Descriptions column={1} size="small" title="设置摘要">
-              <Descriptions.Item label="主题">
-                {displayText(detail.settings.theme)}
-              </Descriptions.Item>
-              <Descriptions.Item label="首屏课表">
-                {formatBool(detail.settings.homeIsTimetable)}
-              </Descriptions.Item>
-              <Descriptions.Item label="应用内打开网页">
-                {formatBool(detail.settings.openWebInApp)}
-              </Descriptions.Item>
-              <Descriptions.Item label="Agent">
-                {formatBool(detail.settings.agentEnabled)}
-              </Descriptions.Item>
-              <Descriptions.Item label="高亮今日列">
-                {formatBool(detail.settings.highlightTodayColumn)}
-              </Descriptions.Item>
-              <Descriptions.Item label="课表配色">
-                {displayText(detail.settings.courseCardColorMode)}
-              </Descriptions.Item>
-              <Descriptions.Item label="学期开始">
-                {displayText(detail.settings.semesterStartDate)}
               </Descriptions.Item>
             </Descriptions>
 
