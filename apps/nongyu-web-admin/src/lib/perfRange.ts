@@ -1,4 +1,4 @@
-import type { PerfRange } from "../types/dashboard";
+import type { GrowthRange, PerfRange } from "../types/dashboard";
 
 const SHANGHAI = "Asia/Shanghai";
 
@@ -22,6 +22,16 @@ export function addBusinessDays(dateKey: string, delta: number): string {
   const mid = new Date(Date.UTC(y!, m! - 1, d!, 12, 0, 0));
   mid.setUTCDate(mid.getUTCDate() + delta);
   return `${mid.getUTCFullYear()}-${pad2(mid.getUTCMonth() + 1)}-${pad2(mid.getUTCDate())}`;
+}
+
+/** GrowthRange / trackTrendRange → 闭区间 [from, to]（含今天共 N 天） */
+export function growthRangeBounds(
+  range: GrowthRange,
+  now = new Date(),
+): { from: string; to: string } {
+  const to = businessToday(now);
+  const days = Number(range.replace("d", ""));
+  return { from: addBusinessDays(to, -(days - 1)), to };
 }
 
 /** perfRange → 闭区间 [from, to]（含今天共 N 天） */

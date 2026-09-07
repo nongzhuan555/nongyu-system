@@ -39,6 +39,7 @@ export function mapOverview(raw: unknown): {
   crashCount: number;
   appOpenCount: number;
   screenViewCount: number;
+  onlinePeak: number;
   buttonClickCount?: number;
   webScreenViewCount?: number;
 } {
@@ -49,6 +50,7 @@ export function mapOverview(raw: unknown): {
     crashCount: number;
     appOpenCount: number;
     screenViewCount: number;
+    onlinePeak: number;
     buttonClickCount?: number;
     webScreenViewCount?: number;
   } = {
@@ -57,6 +59,7 @@ export function mapOverview(raw: unknown): {
     crashCount: asNumber(record.crash_count),
     appOpenCount: asNumber(record.app_open_count),
     screenViewCount: asNumber(record.screen_view_count),
+    onlinePeak: asNumber(record.online_peak),
   };
   if (record.button_click_count !== undefined) {
     mapped.buttonClickCount = asNumber(record.button_click_count);

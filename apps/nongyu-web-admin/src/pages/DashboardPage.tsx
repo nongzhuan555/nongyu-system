@@ -11,6 +11,7 @@ import {
   fetchTrackCrashes,
   fetchTrackDims,
   fetchTrackOverview,
+  fetchTrackTrend,
   fetchUserDistribution,
   fetchUserGrowth,
 } from "../lib/adminApi";
@@ -23,16 +24,18 @@ import {
   readDashboardPrefs,
   writeDashboardPrefs,
 } from "../lib/dashboardPrefs";
-import type { DashboardPrefsV1, GrowthRange, PerfRange } from "../types/dashboard";
+import type { DashboardPrefsV1, GrowthRange, PerfRange, TrackTrend } from "../types/dashboard";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import { perfRangeBounds } from "../lib/perfRange";
+import { growthRangeBounds, perfRangeBounds } from "../lib/perfRange";
 
 const EMPTY_DATA: DashboardGridData = {
   overview: null,
   growth: null,
   distribution: null,
   trackOverview: null,
+  dauTrend: null,
+  onlinePeakTrend: null,
   screenViews: [],
   screenDwell: [],
   buttonClicks: [],
@@ -56,6 +59,11 @@ function fetchAppPerfDims(metric: "perf_p50" | "perf_p95", range: PerfRange) {
   if (range === "1d") return fetchTrackDims(metric);
   const { from, to } = perfRangeBounds(range);
   return fetchTrackDims(metric, undefined, { from, to });
+}
+
+function fetchTrackTrendPair(range: GrowthRange): Promise<[TrackTrend, TrackTrend]> {
+  const { from, to } = growthRangeBounds(range);
+  return Promise.all([fetchTrackTrend("dau", from, to), fetchTrackTrend("online_peak", from, to)]);
 }
 
 function messageFromError(err: unknown, track: boolean): string {
@@ -90,6 +98,7 @@ export function DashboardPage() {
   const [data, setData] = useState<DashboardGridData>(EMPTY_DATA);
   const [coreLoading, setCoreLoading] = useState(true);
   const [trackLoading, setTrackLoading] = useState(true);
+  const [trackTrendLoading, setTrackTrendLoading] = useState(false);
   const [perfLoading, setPerfLoading] = useState(false);
   const [crashLoading, setCrashLoading] = useState(false);
   const [coreError, setCoreError] = useState<string | null>(null);
@@ -122,22 +131,36 @@ export function DashboardPage() {
       setTrackError(null);
     }
     const perfRange = prefsRef.current.perfRange ?? "1d";
+    const trackTrendRange = prefsRef.current.trackTrendRange ?? "7d";
     try {
-      const [trackOverview, screens, dwell, buttons, p50, p95, webP50, webP95, crashes] =
-        await Promise.all([
-          fetchTrackOverview(),
-          fetchTrackDims("screen_views"),
-          fetchTrackDims("screen_dwell_avg"),
-          fetchTrackDims("button_clicks"),
-          fetchAppPerfDims("perf_p50", perfRange),
-          fetchAppPerfDims("perf_p95", perfRange),
-          fetchTrackDims("perf_p50", undefined, { platform: "web", namePrefix: "cwv_" }),
-          fetchTrackDims("perf_p95", undefined, { platform: "web", namePrefix: "cwv_" }),
-          fetchTrackCrashes(page, 10),
-        ]);
+      const [
+        trackOverview,
+        screens,
+        dwell,
+        buttons,
+        p50,
+        p95,
+        webP50,
+        webP95,
+        crashes,
+        [dauTrend, onlinePeakTrend],
+      ] = await Promise.all([
+        fetchTrackOverview(),
+        fetchTrackDims("screen_views"),
+        fetchTrackDims("screen_dwell_avg"),
+        fetchTrackDims("button_clicks"),
+        fetchAppPerfDims("perf_p50", perfRange),
+        fetchAppPerfDims("perf_p95", perfRange),
+        fetchTrackDims("perf_p50", undefined, { platform: "web", namePrefix: "cwv_" }),
+        fetchTrackDims("perf_p95", undefined, { platform: "web", namePrefix: "cwv_" }),
+        fetchTrackCrashes(page, 10),
+        fetchTrackTrendPair(trackTrendRange),
+      ]);
       setData((prev) => ({
         ...prev,
         trackOverview,
+        dauTrend,
+        onlinePeakTrend,
         screenViews: withoutWebHome(screens.items),
         screenDwell: withoutWebHome(dwell.items),
         buttonClicks: buttons.items,
@@ -171,6 +194,18 @@ export function DashboardPage() {
       setTrackError(messageFromError(err, true));
     } finally {
       setPerfLoading(false);
+    }
+  });
+
+  const loadTrackTrends = useEffectEvent(async (range: GrowthRange) => {
+    setTrackTrendLoading(true);
+    try {
+      const [dauTrend, onlinePeakTrend] = await fetchTrackTrendPair(range);
+      setData((prev) => ({ ...prev, dauTrend, onlinePeakTrend }));
+    } catch (err) {
+      setTrackError(messageFromError(err, true));
+    } finally {
+      setTrackTrendLoading(false);
     }
   });
 
@@ -225,6 +260,11 @@ export function DashboardPage() {
     void loadPerf(range);
   }
 
+  function handleTrackTrendRangeChange(range: GrowthRange) {
+    persistPrefs({ ...prefsRef.current, trackTrendRange: range });
+    void loadTrackTrends(range);
+  }
+
   async function handleCrashPageChange(page: number) {
     setCrashPage(page);
     setCrashLoading(true);
@@ -244,6 +284,7 @@ export function DashboardPage() {
     persistPrefs(next);
     void loadCore("7d");
     void loadPerf("1d");
+    void loadTrackTrends("7d");
   }
 
   function handleRefresh() {
@@ -270,6 +311,7 @@ export function DashboardPage() {
         data={data}
         coreLoading={coreLoading}
         trackLoading={trackLoading}
+        trackTrendLoading={trackTrendLoading}
         perfLoading={perfLoading}
         crashLoading={crashLoading}
         coreError={coreError}
@@ -280,6 +322,7 @@ export function DashboardPage() {
           void handleGrowthRangeChange(range);
         }}
         onPerfRangeChange={handlePerfRangeChange}
+        onTrackTrendRangeChange={handleTrackTrendRangeChange}
         onCrashPageChange={(page) => {
           void handleCrashPageChange(page);
         }}

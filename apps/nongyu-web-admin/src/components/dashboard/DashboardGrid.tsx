@@ -14,6 +14,7 @@ import type {
   TrackCrashPage,
   TrackDimItem,
   TrackOverview,
+  TrackTrend,
   UserDistribution,
   UserGrowth,
 } from "../../types/dashboard";
@@ -34,6 +35,7 @@ import {
   growthOption,
   perfOption,
   pieOption,
+  trackTrendOption,
   webVitalsOption,
 } from "./dashboardCharts";
 import { EchartsBlock } from "./EchartsBlock";
@@ -77,6 +79,8 @@ export type DashboardGridData = {
   growth: UserGrowth | null;
   distribution: UserDistribution | null;
   trackOverview: TrackOverview | null;
+  dauTrend: TrackTrend | null;
+  onlinePeakTrend: TrackTrend | null;
   screenViews: TrackDimItem[];
   screenDwell: TrackDimItem[];
   buttonClicks: TrackDimItem[];
@@ -92,6 +96,7 @@ export function DashboardGrid({
   data,
   coreLoading,
   trackLoading,
+  trackTrendLoading,
   perfLoading,
   crashLoading,
   coreError,
@@ -100,12 +105,14 @@ export function DashboardGrid({
   onLayoutPersist,
   onGrowthRangeChange,
   onPerfRangeChange,
+  onTrackTrendRangeChange,
   onCrashPageChange,
 }: {
   prefs: DashboardPrefsV1;
   data: DashboardGridData;
   coreLoading: boolean;
   trackLoading: boolean;
+  trackTrendLoading: boolean;
   perfLoading: boolean;
   crashLoading: boolean;
   coreError: string | null;
@@ -114,6 +121,7 @@ export function DashboardGrid({
   onLayoutPersist: () => void;
   onGrowthRangeChange: (range: GrowthRange) => void;
   onPerfRangeChange: (range: PerfRange) => void;
+  onTrackTrendRangeChange: (range: GrowthRange) => void;
   onCrashPageChange: (page: number) => void;
 }) {
   const screens = Grid.useBreakpoint();
@@ -166,15 +174,18 @@ export function DashboardGrid({
         data,
         coreLoading,
         trackLoading,
+        trackTrendLoading,
         perfLoading,
         crashLoading,
         coreError,
         trackError,
         growthRange: prefs.growthRange,
         perfRange: prefs.perfRange ?? "1d",
+        trackTrendRange: prefs.trackTrendRange ?? "7d",
         layoutEditable: canEditLayout,
         onGrowthRangeChange,
         onPerfRangeChange,
+        onTrackTrendRangeChange,
         onCrashPageChange,
       })}
     </ResponsiveGridLayout>
@@ -185,24 +196,30 @@ function renderWidgets(args: {
   data: DashboardGridData;
   coreLoading: boolean;
   trackLoading: boolean;
+  trackTrendLoading: boolean;
   perfLoading: boolean;
   crashLoading: boolean;
   coreError: string | null;
   trackError: string | null;
   growthRange: GrowthRange;
   perfRange: PerfRange;
+  trackTrendRange: GrowthRange;
   layoutEditable: boolean;
   onGrowthRangeChange: (range: GrowthRange) => void;
   onPerfRangeChange: (range: PerfRange) => void;
+  onTrackTrendRangeChange: (range: GrowthRange) => void;
   onCrashPageChange: (page: number) => void;
 }) {
   const ids: WidgetId[] = [
     "kpi-total-users",
     "kpi-dau",
     "kpi-online",
+    "kpi-online-peak",
     "kpi-today-new",
     "kpi-web-pv",
     "chart-user-growth",
+    "chart-dau-trend",
+    "chart-online-peak-trend",
     "chart-active-days-ranking",
     "chart-gender",
     "chart-college",
@@ -218,21 +235,36 @@ function renderWidgets(args: {
   return ids.map((id) => <div key={id}>{widgetBody(id, args)}</div>);
 }
 
+function trackTrendRangeSelect(range: GrowthRange, onChange: (range: GrowthRange) => void) {
+  return (
+    <Select
+      size="small"
+      value={range}
+      options={RANGE_OPTIONS}
+      onChange={(value) => onChange(value as GrowthRange)}
+      className="min-w-28"
+    />
+  );
+}
+
 function widgetBody(
   id: WidgetId,
   args: {
     data: DashboardGridData;
     coreLoading: boolean;
     trackLoading: boolean;
+    trackTrendLoading: boolean;
     perfLoading: boolean;
     crashLoading: boolean;
     coreError: string | null;
     trackError: string | null;
     growthRange: GrowthRange;
     perfRange: PerfRange;
+    trackTrendRange: GrowthRange;
     layoutEditable: boolean;
     onGrowthRangeChange: (range: GrowthRange) => void;
     onPerfRangeChange: (range: PerfRange) => void;
+    onTrackTrendRangeChange: (range: GrowthRange) => void;
     onCrashPageChange: (page: number) => void;
   },
 ) {
@@ -269,6 +301,18 @@ function widgetBody(
         hint="近 10 分钟有心跳"
         loading={args.coreLoading}
         error={args.coreError}
+        layoutEditable={layoutEditable}
+      />
+    );
+  }
+  if (id === "kpi-online-peak") {
+    return (
+      <KpiCard
+        title="今日最高同时在线"
+        value={data.trackOverview ? (data.trackOverview.onlinePeak ?? 0) : null}
+        hint="当日定时采样峰值"
+        loading={args.trackLoading}
+        error={args.trackError}
         layoutEditable={layoutEditable}
       />
     );
@@ -315,6 +359,36 @@ function widgetBody(
             className="min-w-28"
           />
         }
+      >
+        {option ? <EchartsBlock option={option} /> : null}
+      </ChartCard>
+    );
+  }
+  if (id === "chart-dau-trend") {
+    const option = trackTrendOption(data.dauTrend);
+    return (
+      <ChartCard
+        title="日活趋势"
+        loading={args.trackLoading || args.trackTrendLoading}
+        error={args.trackError}
+        empty={!option}
+        layoutEditable={layoutEditable}
+        extra={trackTrendRangeSelect(args.trackTrendRange, args.onTrackTrendRangeChange)}
+      >
+        {option ? <EchartsBlock option={option} /> : null}
+      </ChartCard>
+    );
+  }
+  if (id === "chart-online-peak-trend") {
+    const option = trackTrendOption(data.onlinePeakTrend);
+    return (
+      <ChartCard
+        title="最高同时在线趋势"
+        loading={args.trackLoading || args.trackTrendLoading}
+        error={args.trackError}
+        empty={!option}
+        layoutEditable={layoutEditable}
+        extra={trackTrendRangeSelect(args.trackTrendRange, args.onTrackTrendRangeChange)}
       >
         {option ? <EchartsBlock option={option} /> : null}
       </ChartCard>

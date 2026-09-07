@@ -42,7 +42,8 @@ func (a *API) handleOverview(w http.ResponseWriter, r *http.Request) {
 		screens, err3 := a.store.CountByType(ctx, a.store.ReadDB(), date, "screen_view")
 		clicks, err4 := a.store.CountByType(ctx, a.store.ReadDB(), date, "button_click")
 		crashes, err5 := a.store.CountByType(ctx, a.store.ReadDB(), date, "crash")
-		if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil {
+		onlinePeak, err6 := a.liveTrendValue(ctx, "online_peak", date)
+		if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil || err6 != nil {
 			writeFail(w, http.StatusInternalServerError, "INTERNAL", "live query failed")
 			return
 		}
@@ -53,9 +54,10 @@ func (a *API) handleOverview(w http.ResponseWriter, r *http.Request) {
 			"app_open_count":     appOpen,
 			"screen_view_count":  screens,
 			"button_click_count": clicks,
+			"online_peak":        onlinePeak,
 		}
 		// 空结果不缓存，避免「先查到 0 → 事件刚写入仍吃缓存」
-		if dau > 0 || appOpen > 0 || screens > 0 || clicks > 0 || crashes > 0 {
+		if dau > 0 || appOpen > 0 || screens > 0 || clicks > 0 || crashes > 0 || onlinePeak > 0 {
 			a.cacheLive(date, live)
 		}
 		writeOK(w, http.StatusOK, live)
@@ -74,86 +76,87 @@ func (a *API) handleOverview(w http.ResponseWriter, r *http.Request) {
 		"app_open_count":     metrics["app_open_count"],
 		"screen_view_count":  metrics["screen_view_count"],
 		"button_click_count": metrics["button_click_count"],
+		"online_peak":        metrics["online_peak"],
 	})
 }
 
-	func (a *API) handleTrend(w http.ResponseWriter, r *http.Request) {
-		metric := r.URL.Query().Get("metric")
-		from := r.URL.Query().Get("from")
-		to := r.URL.Query().Get("to")
-		if _, ok := allowedTrend[metric]; !ok {
-			writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid metric")
+func (a *API) handleTrend(w http.ResponseWriter, r *http.Request) {
+	metric := r.URL.Query().Get("metric")
+	from := r.URL.Query().Get("from")
+	to := r.URL.Query().Get("to")
+	if _, ok := allowedTrend[metric]; !ok {
+		writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid metric")
+		return
+	}
+	ft, err1 := bizday.ParseDate(from)
+	tt, err2 := bizday.ParseDate(to)
+	if err1 != nil || err2 != nil || ft.After(tt) {
+		writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid from/to")
+		return
+	}
+	rows, err := a.store.Trend(r.Context(), metric, from, to)
+	if err != nil {
+		writeFail(w, http.StatusInternalServerError, "INTERNAL", "query failed")
+		return
+	}
+	points := make([]map[string]any, 0, len(rows))
+	for _, row := range rows {
+		points = append(points, map[string]any{"date": row.StatDate, "value": row.Value})
+	}
+
+	// 今日尚无日聚合；区间含今天时用 events / presence live 填今日点，避免趋势图今日恒为缺省/0
+	today := bizday.StatDate(a.now())
+	if from <= today && today <= to {
+		live, liveErr := a.liveTrendValue(r.Context(), metric, today)
+		if liveErr != nil {
+			writeFail(w, http.StatusInternalServerError, "INTERNAL", "live trend failed")
 			return
 		}
-		ft, err1 := bizday.ParseDate(from)
-		tt, err2 := bizday.ParseDate(to)
-		if err1 != nil || err2 != nil || ft.After(tt) {
-			writeFail(w, http.StatusBadRequest, "BAD_REQUEST", "invalid from/to")
-			return
+		replaced := false
+		for i := range points {
+			if points[i]["date"] == today {
+				points[i]["value"] = live
+				replaced = true
+				break
+			}
 		}
-		rows, err := a.store.Trend(r.Context(), metric, from, to)
+		if !replaced {
+			points = append(points, map[string]any{"date": today, "value": live})
+		}
+	}
+
+	writeOK(w, http.StatusOK, points)
+}
+
+func (a *API) liveTrendValue(ctx context.Context, metric, date string) (int64, error) {
+	q := a.store.ReadDB()
+	switch metric {
+	case "dau":
+		return a.store.CountDistinctDAU(ctx, q, date)
+	case "app_open_count":
+		return a.store.CountByType(ctx, q, date, "app_open")
+	case "screen_view_count":
+		return a.store.CountByType(ctx, q, date, "screen_view")
+	case "crash_count":
+		return a.store.CountByType(ctx, q, date, "crash")
+	case "online_peak":
+		online, err := a.store.CountOnline(ctx)
 		if err != nil {
-			writeFail(w, http.StatusInternalServerError, "INTERNAL", "query failed")
-			return
+			return 0, err
 		}
-		points := make([]map[string]any, 0, len(rows))
-		for _, row := range rows {
-			points = append(points, map[string]any{"date": row.StatDate, "value": row.Value})
+		metrics, err := a.store.GetMetricMap(ctx, date)
+		if err != nil {
+			return 0, err
 		}
-
-		// 今日尚无日聚合；区间含今天时用 events / presence live 填今日点，避免趋势图今日恒为缺省/0
-		today := bizday.StatDate(a.now())
-		if from <= today && today <= to {
-			live, liveErr := a.liveTrendValue(r.Context(), metric, today)
-			if liveErr != nil {
-				writeFail(w, http.StatusInternalServerError, "INTERNAL", "live trend failed")
-				return
-			}
-			replaced := false
-			for i := range points {
-				if points[i]["date"] == today {
-					points[i]["value"] = live
-					replaced = true
-					break
-				}
-			}
-			if !replaced {
-				points = append(points, map[string]any{"date": today, "value": live})
-			}
+		peak := metrics["online_peak"]
+		if online > peak {
+			return online, nil
 		}
-
-		writeOK(w, http.StatusOK, points)
+		return peak, nil
+	default:
+		return 0, nil
 	}
-
-	func (a *API) liveTrendValue(ctx context.Context, metric, date string) (int64, error) {
-		q := a.store.ReadDB()
-		switch metric {
-		case "dau":
-			return a.store.CountDistinctDAU(ctx, q, date)
-		case "app_open_count":
-			return a.store.CountByType(ctx, q, date, "app_open")
-		case "screen_view_count":
-			return a.store.CountByType(ctx, q, date, "screen_view")
-		case "crash_count":
-			return a.store.CountByType(ctx, q, date, "crash")
-		case "online_peak":
-			online, err := a.store.CountOnline(ctx)
-			if err != nil {
-				return 0, err
-			}
-			metrics, err := a.store.GetMetricMap(ctx, date)
-			if err != nil {
-				return 0, err
-			}
-			peak := metrics["online_peak"]
-			if online > peak {
-				return online, nil
-			}
-			return peak, nil
-		default:
-			return 0, nil
-		}
-	}
+}
 
 func (a *API) handleDims(w http.ResponseWriter, r *http.Request) {
 	metric := r.URL.Query().Get("metric")

@@ -85,11 +85,12 @@
   crashCount: number;
   appOpenCount: number;
   screenViewCount: number;
+  onlinePeak: number; // Track online_peak；缺省 0
   buttonClickCount?: number;
 }
 ```
 
-忽略 Track 的 `online`（在线人数只读本库）。
+忽略 Track 的 `online`（在线人数只读本库）。`onlinePeak` 为当日最高同时在线（来自 Track `online_peak`）。
 
 ### 4.5 `GET /api/admin/track/dims`
 

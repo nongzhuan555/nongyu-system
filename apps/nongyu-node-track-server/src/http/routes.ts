@@ -290,6 +290,7 @@ export async function registerRoutes(app: FastifyInstance, deps: ApiDeps): Promi
             const screens = screensAll - webScreens;
             const clicks = countByType(deps.store, date, "button_click");
             const crashes = countByType(deps.store, date, "crash");
+            const onlinePeak = liveTrendValue(deps.store, "online_peak", date);
             const liveData = {
               date,
               dau,
@@ -298,6 +299,7 @@ export async function registerRoutes(app: FastifyInstance, deps: ApiDeps): Promi
               screen_view_count: screens,
               button_click_count: clicks,
               web_screen_view_count: webScreens,
+              online_peak: onlinePeak,
             };
             if (
               dau > 0 ||
@@ -305,7 +307,8 @@ export async function registerRoutes(app: FastifyInstance, deps: ApiDeps): Promi
               screens > 0 ||
               clicks > 0 ||
               crashes > 0 ||
-              webScreens > 0
+              webScreens > 0 ||
+              onlinePeak > 0
             ) {
               live = { date, at: Date.now(), value: liveData };
             }
@@ -326,6 +329,7 @@ export async function registerRoutes(app: FastifyInstance, deps: ApiDeps): Promi
             screen_view_count: metrics.screen_view_count ?? 0,
             button_click_count: metrics.button_click_count ?? 0,
             web_screen_view_count: webScreens,
+            online_peak: metrics.online_peak ?? 0,
           });
         } catch {
           writeFail(reply, 500, "INTERNAL", "query failed");

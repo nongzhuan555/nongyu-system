@@ -69,6 +69,7 @@ export function defaultDashboardPrefs(): DashboardPrefsV1 {
     version: 1,
     growthRange: "7d",
     perfRange: "1d",
+    trackTrendRange: "7d",
     layouts: {
       lg: DEFAULT_LAYOUTS.lg,
       md: DEFAULT_LAYOUTS.md,
@@ -90,6 +91,7 @@ export function readDashboardPrefs(): DashboardPrefsV1 {
       version: 1,
       growthRange: isGrowthRange(record.growthRange) ? record.growthRange : "7d",
       perfRange: isPerfRange(record.perfRange) ? record.perfRange : "1d",
+      trackTrendRange: isGrowthRange(record.trackTrendRange) ? record.trackTrendRange : "7d",
       layouts: sanitizeLayouts(record.layouts),
     };
   } catch {

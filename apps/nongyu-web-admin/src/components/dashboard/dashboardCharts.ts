@@ -2,6 +2,7 @@ import type { EChartsOption } from "echarts";
 import type {
   DistKeyCount,
   TrackDimItem,
+  TrackTrend,
   UserGrowth,
   ActiveDaysRankingItem,
 } from "../../types/dashboard";
@@ -263,6 +264,39 @@ export function growthOption(growth: UserGrowth | null | undefined): EChartsOpti
         type: "line",
         smooth: true,
         data: growth.points.map((p) => p.newUsers),
+        areaStyle: { color: "rgba(16,185,129,0.12)" },
+        symbol: "circle",
+        symbolSize: 6,
+      },
+    ],
+  };
+}
+
+/** Track 日趋势折线（DAU / online_peak）；无点或全 0 时返回 null →「暂无数据」 */
+export function trackTrendOption(trend: TrackTrend | null | undefined): EChartsOption | null {
+  if (!trend?.points || trend.points.length === 0) return null;
+  if (trend.points.every((p) => p.value === 0)) return null;
+  return {
+    color: CHART_COLORS,
+    tooltip: { ...TOOLTIP, trigger: "axis" },
+    grid: { left: 16, right: 16, top: 24, bottom: 24, containLabel: true },
+    xAxis: {
+      type: "category",
+      data: trend.points.map((p) => p.date.slice(5)),
+      axisLabel: { color: "#424945" },
+      boundaryGap: false,
+    },
+    yAxis: {
+      type: "value",
+      minInterval: 1,
+      axisLabel: { color: "#424945" },
+      splitLine: { lineStyle: { color: "#F1F5F9" } },
+    },
+    series: [
+      {
+        type: "line",
+        smooth: true,
+        data: trend.points.map((p) => p.value),
         areaStyle: { color: "rgba(16,185,129,0.12)" },
         symbol: "circle",
         symbolSize: 6,

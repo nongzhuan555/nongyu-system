@@ -31,6 +31,8 @@ export type UserDistribution = {
 export type TrackOverview = {
   date: string;
   dau: number;
+  /** 该业务日最高同时在线（采样峰值）；BFF 缺省按 0 */
+  onlinePeak: number;
   crashCount: number;
   appOpenCount: number;
   screenViewCount: number;
@@ -117,5 +119,7 @@ export type DashboardPrefsV1 = {
   growthRange: GrowthRange;
   /** 应用性能卡区间；缺省视为 1d */
   perfRange?: PerfRange;
+  /** DAU / 在线峰值趋势共用区间；缺省视为 7d */
+  trackTrendRange?: GrowthRange;
   layouts: Partial<Record<GridBreakpoint, GridItemLayout[]>>;
 };
