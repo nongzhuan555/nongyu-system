@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "node .cursor/hooks/mark-code-edit.mjs",
+        "matcher": "Write"
+      }
+    ],
+    "stop": [
+      {
+        "command": "node .cursor/hooks/force-code-review.mjs",
+        "loop_limit": 1
+      }
+    ]
+  }
+}
