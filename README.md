@@ -54,7 +54,7 @@ pnpm的优势为：
 
 农屿系统的开发前期基于Trae国际版桌面版+DeepSeek API，后期基于Cursor的Pro订阅模式（闲鱼85人民币购入），主力开发模型为Auto（Composer系列模型和Grok系列模型），少数复杂需求使用GLM5.2、Kimi K3等较高级模型
 
-AI编码经验参考：
+AI编码经验参考：docs\common\AICodingHarness实践.md
 
 #### RN端智慧校园助手Agent（农小屿）
 
